@@ -1,10 +1,12 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { useDroppable } from '@dnd-kit/core';
+import { dropId, UngroupedDropZone } from '../AlertDragAndDrop';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Activity, Plug, TriangleAlert, Wrench } from 'lucide-react';
-import { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
@@ -81,6 +83,8 @@ export const AlertsTable = ({
 	onAlertClick,
 	activeAlertId = null,
 	incidentsById,
+	dragAndDrop = false,
+	removeDropZone = false,
 	onOpenIncident,
 	activeIncidentId = null,
 	onEditIncident,
@@ -124,6 +128,14 @@ export const AlertsTable = ({
 	// and cancel the pending settle timer exactly when a sidebar toggle re-renders
 	// the table mid-animation. Stable identity limits runs to real node changes.
 	// Everything captured is a ref or a setState, so the empty deps are sound.
+	// The whole scroller is a drop area for "take out of the incident" (see
+	// UngroupedDropZone); rows and folders inside it win when the pointer is over them.
+	// Scoped per table: the split view renders two, each with its own band and background.
+	const dropScope = useId();
+	const { setNodeRef: setDropAreaRef, isOver: isOverDropArea } = useDroppable({
+		id: dropId.ungroupedArea(dropScope),
+		disabled: !removeDropZone,
+	});
 	const observeScroller = useCallback((el: HTMLDivElement | null) => {
 		scrollerRef.current = el;
 		resizeObserverRef.current?.disconnect();
@@ -171,6 +183,14 @@ export const AlertsTable = ({
 			resizeObserverRef.current = observer;
 		}
 	}, []);
+
+	const attachScroller = useCallback(
+		(el: HTMLDivElement | null) => {
+			observeScroller(el);
+			setDropAreaRef(el);
+		},
+		[observeScroller, setDropAreaRef]
+	);
 
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
@@ -418,8 +438,11 @@ export const AlertsTable = ({
 					    filter click that flips the overflow state feeds back through the width
 					    observer (width change -> column widths recompute -> overflow can flip
 					    again), visible as a ~15px column jump and wasted re-renders. */}
+					{removeDropZone && (
+						<UngroupedDropZone id={dropId.ungrouped(dropScope)} areaIsOver={isOverDropArea} />
+					)}
 					<div
-						ref={observeScroller}
+						ref={attachScroller}
 						className="flex-1 min-h-0 overflow-auto"
 						style={{ scrollbarGutter: 'stable' }}
 					>
@@ -629,6 +652,7 @@ export const AlertsTable = ({
 									onEditIncident={onEditIncident}
 									onUngroupIncident={onUngroupIncident}
 									onRemoveFromIncident={onRemoveFromIncident}
+									dragAndDrop={dragAndDrop}
 									onSelectAlert={handleSelectAlert}
 									onSelectRange={handleSelectRange}
 									onSelectOnly={handleSelectOnly}

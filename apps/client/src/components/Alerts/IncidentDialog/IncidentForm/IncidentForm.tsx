@@ -5,9 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { pluralize } from '@/lib/text';
+import { IncidentSummary } from '@OpsiMate/shared';
 import { Folder, FolderInput, FolderMinus, FolderPlus, Pencil } from 'lucide-react';
 import { FormEvent, useId, useState } from 'react';
-import { IncidentDialogTarget, IncidentFormResult } from '../IncidentDialog.types';
+import { IncidentDialogPreset, IncidentDialogTarget, IncidentFormResult } from '../IncidentDialog.types';
 import { DestinationOption } from './DestinationOption';
 import { DESTINATION_MODE, Destination, Mode, SUBMIT_LABELS } from './IncidentForm.constants';
 
@@ -18,18 +19,37 @@ interface IncidentFormProps {
 	isSubmitting?: boolean;
 }
 
+interface InitialChoice {
+	destination: Destination;
+	incidentId: string;
+}
+
+// Where the form starts: a drop can open it on its own target ("Existing" with that
+// incident chosen, or "Remove"); otherwise on "New", with the first candidate ready
+// should the user switch to "Existing".
+const initialChoice = (preset: IncidentDialogPreset | undefined, candidates: IncidentSummary[]): InitialChoice => {
+	const fallback = candidates[0] ? String(candidates[0].id) : '';
+	if (preset?.destination === 'remove') return { destination: 'remove', incidentId: fallback };
+	const chosen = preset ? candidates.find((incident) => incident.id === preset.incidentId) : undefined;
+	return chosen
+		? { destination: 'existing', incidentId: String(chosen.id) }
+		: { destination: 'new', incidentId: fallback };
+};
+
 export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: IncidentFormProps) => {
 	const idPrefix = useId();
 	const editing = 'incident' in target ? target.incident : null;
 	const alerts = 'alerts' in target ? target.alerts : [];
 	const incidents = 'alerts' in target ? target.incidents : [];
 	const incidentsState = 'alerts' in target ? target.incidentsState : 'ready';
+	const preset = 'alerts' in target ? target.preset : undefined;
 	// An incident every selected alert already belongs to has nothing to receive.
 	const candidates = incidents.filter((incident) => alerts.some((alert) => alert.incidentId !== incident.id));
 	// Members among the selection, for the remove option.
 	const members = alerts.filter((alert) => alert.incidentId != null);
-	const [destination, setDestination] = useState<Destination>('new');
-	const [incidentId, setIncidentId] = useState<string>(candidates[0] ? String(candidates[0].id) : '');
+	const start = initialChoice(preset, candidates);
+	const [destination, setDestination] = useState<Destination>(start.destination);
+	const [incidentId, setIncidentId] = useState<string>(start.incidentId);
 	const [name, setName] = useState(editing?.name ?? '');
 	const [description, setDescription] = useState(editing?.description ?? '');
 

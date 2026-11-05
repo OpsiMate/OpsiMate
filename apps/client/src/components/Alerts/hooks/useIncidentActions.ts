@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { pluralize } from '@/lib/text';
 import { Alert } from '@OpsiMate/shared';
 import { useRef, useState } from 'react';
-import { IncidentDialogTarget, IncidentFormResult } from '../IncidentDialog';
+import { IncidentDialogPreset, IncidentDialogTarget, IncidentFormResult } from '../IncidentDialog';
 
 interface UseIncidentActionsProps {
 	// The current selection: what "group into / add to / remove from incident" acts on.
@@ -42,6 +42,8 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 	// Incident whose details panel is open; null = alert details (or nothing) shown.
 	const [selectedIncidentId, setSelectedIncidentId] = useState<number | null>(null);
 	const [dialog, setDialog] = useState<IncidentDialogState>(null);
+	// Where the create dialog starts when a drop opened it (see openCreateDialogFor).
+	const [createPreset, setCreatePreset] = useState<IncidentDialogPreset | undefined>(undefined);
 	// Synchronous in-flight guard: a double submit before the mutation's isPending reaches
 	// the dialog would send two requests, and the server re-homes exclusive memberships,
 	// so the second could undo the first.
@@ -65,6 +67,7 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 					alerts: selectedAlerts,
 					incidents,
 					incidentsState: isError ? 'error' : isLoading ? 'loading' : 'ready',
+					preset: createPreset,
 				}
 			: dialog != null && incidentsById.has(dialog)
 				? { incident: incidentsById.get(dialog)! }
@@ -92,9 +95,10 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 		}
 	};
 
-	const addSelectionToIncident = async (incidentId: number) => {
+	const addSelectionToIncident = (incidentId: number) => addAlertsToIncident(selectedAlerts, incidentId);
+
+	const addAlertsToIncident = async (alerts: Alert[], incidentId: number) => {
 		const incident = incidentsById.get(incidentId);
-		const alerts = selectedAlerts;
 		closeDialogIf('create');
 		onSelectAlerts([]);
 		try {
@@ -109,14 +113,15 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 	// Bulk "Remove from incident": the selection may span several incidents, and the
 	// endpoint is per incident, so group the members by theirs. Alerts in no incident are
 	// left alone.
-	const removeSelectionFromIncidents = async () => {
+	const removeSelectionFromIncidents = () => removeAlertsFromIncidents(selectedAlerts);
+
+	const removeAlertsFromIncidents = async (selection: Alert[]) => {
 		const byIncident = new Map<number, Alert[]>();
-		for (const alert of selectedAlerts) {
+		for (const alert of selection) {
 			if (alert.incidentId == null) continue;
 			byIncident.set(alert.incidentId, [...(byIncident.get(alert.incidentId) ?? []), alert]);
 		}
 		if (byIncident.size === 0) return;
-		const selection = selectedAlerts;
 		closeDialogIf('create');
 		onSelectAlerts([]);
 		setRemovalPending(true);
@@ -214,15 +219,35 @@ export const useIncidentActions = ({ selectedAlerts, onSelectAlerts, alertsById 
 		}
 	};
 
+	// Drag and drop: the dialog reads the selection, so "the dialog for these alerts" first
+	// makes them the selection, then opens it — on the drop's own destination when the
+	// drop needs the dialog's dissolve warning before it goes ahead.
+	const openCreateDialogFor = (alerts: Alert[], preset?: IncidentDialogPreset) => {
+		onSelectAlerts(alerts);
+		setCreatePreset(preset);
+		setDialog('create');
+	};
+
+	// The selection bar's dialog always starts on "New".
+	const openDialog = (target: 'create' | number) => {
+		setCreatePreset(undefined);
+		setDialog(target);
+	};
+
 	return {
 		incidents,
 		incidentsById,
+		// The incidents list is loaded and trustworthy (drag targets, dissolution checks).
+		incidentsReady: !isLoading && !isError,
+		addAlertsToIncident,
+		removeAlertsFromIncidents,
+		openCreateDialogFor,
 		// The open panel's incident, or null (also while the list has not loaded it yet).
 		selectedIncident: selectedIncidentId != null ? (incidentsById.get(selectedIncidentId) ?? null) : null,
 		selectedIncidentId,
 		openIncidentPanel,
 		closeIncidentPanel,
-		openDialog: (target: 'create' | number) => setDialog(target),
+		openDialog,
 		closeDialog,
 		dialogTarget,
 		handleDialogSubmit,

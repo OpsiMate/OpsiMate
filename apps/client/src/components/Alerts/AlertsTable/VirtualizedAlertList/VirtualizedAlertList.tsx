@@ -22,6 +22,7 @@ interface VirtualizedAlertListProps {
 	onUngroupIncident?: (incidentId: number) => void;
 	// Offered on member rows (rendered under a folder) only.
 	onRemoveFromIncident?: (alertId: string) => void;
+	dragAndDrop?: boolean;
 	onSelectAlert: (alert: Alert) => void;
 	onSelectRange?: (alert: Alert) => void;
 	onSelectOnly?: (alert: Alert) => void;
@@ -61,6 +62,7 @@ export const VirtualizedAlertList = ({
 	onEditIncident,
 	onUngroupIncident,
 	onRemoveFromIncident,
+	dragAndDrop = false,
 	onSelectAlert,
 	onSelectRange,
 	onSelectOnly,
@@ -165,6 +167,7 @@ export const VirtualizedAlertList = ({
 								onUngroup={onUngroupIncident}
 								isActive={item.incident.id === activeIncidentId}
 								selectionState={onSelectAlerts && onToggleMembersSelection ? selectionState : undefined}
+								dropTarget={dragAndDrop}
 								onToggleSelection={
 									onSelectAlerts && onToggleMembersSelection
 										? () => onToggleMembersSelection(item.members)
@@ -216,6 +219,7 @@ export const VirtualizedAlertList = ({
 								onDeleteAlert={onDeleteAlert}
 								onUnresolveAlert={onUnresolveAlert}
 								onRemoveFromIncident={item.incidentMember ? onRemoveFromIncident : undefined}
+								dragAndDrop={dragAndDrop}
 								onSelectAlerts={onSelectAlerts}
 								isResolved={isResolved}
 								severityColors={severityColors}
