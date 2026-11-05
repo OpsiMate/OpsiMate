@@ -13,5 +13,5 @@ export const GROUP_SELECTION_LABELS = {
 		`Unselect the ${loaded} loaded alerts of group ${groupLabel} (${total} in total)`,
 	// Tooltip on a partially loaded group's checkbox.
 	partialHint: (loaded: number, total: number) =>
-		`Only ${loaded} of this group's ${total} alerts are loaded; the checkbox selects those.`,
+		`Only ${loaded} of this group's ${total} alerts are loaded; the checkbox only affects those.`,
 };

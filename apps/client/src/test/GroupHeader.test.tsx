@@ -104,7 +104,7 @@ describe('GroupHeader with only some of the group loaded', () => {
 		});
 		expect(checkbox).toHaveAttribute(
 			'title',
-			"Only 2 of this group's 57 alerts are loaded; the checkbox selects those."
+			"Only 2 of this group's 57 alerts are loaded; the checkbox only affects those."
 		);
 	});
 });
