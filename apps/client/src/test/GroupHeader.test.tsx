@@ -1,10 +1,14 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
+import { Alert } from '@OpsiMate/shared';
 import { FlatGroupItem } from '@/components/Alerts/AlertsTable/AlertsTable.types';
+
+type GroupItem = Extract<FlatGroupItem, { type: 'group' }>;
+const alerts = [{ id: 'a' }, { id: 'b' }, { id: 'c' }] as Alert[];
 import { GroupHeader } from '@/components/Alerts/AlertsTable/GroupHeader/GroupHeader';
 import { StickyGroupHeader } from '@/components/Alerts/AlertsTable/StickyGroupHeader/StickyGroupHeader';
 
-const makeGroup = (isExpanded: boolean): FlatGroupItem => ({
+const makeGroup = (isExpanded: boolean): GroupItem => ({
 	type: 'group',
 	key: 'status:firing',
 	field: 'status',
@@ -13,7 +17,7 @@ const makeGroup = (isExpanded: boolean): FlatGroupItem => ({
 	level: 0,
 	isExpanded,
 	groupStatus: 'firing',
-	members: [],
+	members: alerts,
 });
 
 describe.each([
@@ -84,5 +88,23 @@ describe.each([
 		fireEvent.click(screen.getByRole('checkbox'));
 		expect(onToggleSelection).toHaveBeenCalledTimes(1);
 		expect(onToggle).not.toHaveBeenCalled();
+	});
+});
+
+describe('GroupHeader with only some of the group loaded', () => {
+	const partial: GroupItem = { ...makeGroup(false), count: 57, members: alerts.slice(0, 2) };
+
+	it('shows loaded/total and names the loaded alerts as the checkbox scope', () => {
+		render(
+			<GroupHeader item={partial} onToggle={vi.fn()} columnLabels={{ status: 'Status' }} selectionState="all" />
+		);
+		expect(screen.getByText('2/57')).toBeInTheDocument();
+		const checkbox = screen.getByRole('checkbox', {
+			name: 'Unselect the 2 loaded alerts of group Status: firing (57 in total)',
+		});
+		expect(checkbox).toHaveAttribute(
+			'title',
+			"Only 2 of this group's 57 alerts are loaded; the checkbox selects those."
+		);
 	});
 });

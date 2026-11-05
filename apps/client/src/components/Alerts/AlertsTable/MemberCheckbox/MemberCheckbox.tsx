@@ -11,6 +11,8 @@ interface MemberCheckboxProps {
 	state: MemberSelectionState;
 	// Accessible names, naming the row (folder, group) for screen reader users moving between checkboxes.
 	labels: Record<'select' | 'unselect', string>;
+	// Hover text, when the checkbox needs to explain its scope.
+	title?: string;
 	onToggle?: () => void;
 }
 
@@ -19,7 +21,7 @@ interface MemberCheckboxProps {
 // checkboxes: same width, and the same left-only padding the table cells get (TableCell
 // drops its right padding around a checkbox). Clicks stay in the cell; the row behind
 // it toggles expansion.
-export const MemberCheckbox = ({ state, labels, onToggle }: MemberCheckboxProps) => (
+export const MemberCheckbox = ({ state, labels, title, onToggle }: MemberCheckboxProps) => (
 	<div
 		className="flex shrink-0 items-center justify-center pl-2"
 		style={{ width: SELECT_COLUMN_WIDTH }}
@@ -35,6 +37,7 @@ export const MemberCheckbox = ({ state, labels, onToggle }: MemberCheckboxProps)
 			}
 			onCheckedChange={() => onToggle?.()}
 			aria-label={state === MEMBER_SELECTION_STATE.ALL ? labels.unselect : labels.select}
+			title={title}
 			className={MEMBER_CHECKBOX_CLASSES}
 		/>
 	</div>

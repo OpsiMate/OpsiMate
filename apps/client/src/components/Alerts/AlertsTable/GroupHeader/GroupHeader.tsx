@@ -12,7 +12,8 @@ import {
 } from '../AlertsTable.constants';
 import { MemberCheckbox } from '../MemberCheckbox';
 import { FlatGroupItem } from '../AlertsTable.types';
-import { GROUP_SELECTION_LABELS } from './GroupHeader.constants';
+import { INDENT_PER_LEVEL_PX } from './GroupHeader.constants';
+import { groupCheckboxText, groupCountLabel, groupLabels } from './GroupHeader.utils';
 
 interface GroupHeaderProps {
 	item: FlatGroupItem;
@@ -23,9 +24,6 @@ interface GroupHeaderProps {
 	// The group checkbox: select every alert in the group, or unselect them all.
 	onToggleSelection?: () => void;
 }
-
-// Indentation per nesting level, matching the group tree's.
-const INDENT_PER_LEVEL_PX = 24;
 
 // Layout: without a checkbox cell the chevron takes the select column's padding; with
 // one, nesting indents the content after the cell, never the cell itself. The count
@@ -45,22 +43,22 @@ export const GroupHeader = ({
 }: GroupHeaderProps) => {
 	if (item.type !== 'group') return null;
 
-	const fieldLabel = columnLabels[item.field] || COLUMN_LABELS[item.field] || item.field;
-	const groupLabel = `${fieldLabel}: ${item.value}`;
-	const hasCheckbox = selectionState !== undefined;
+	const { fieldLabel, groupLabel } = groupLabels(item, columnLabels, COLUMN_LABELS);
+	const checkbox = groupCheckboxText(item, groupLabel);
 
 	return (
 		<div
 			className={cn(
 				'flex items-center h-8 border-b bg-muted/50 hover:bg-muted/70 pr-2 cursor-pointer',
-				!hasCheckbox && 'pl-2'
+				selectionState === undefined && 'pl-2'
 			)}
 			onClick={() => onToggle(item.key)}
 		>
 			{selectionState !== undefined && (
 				<MemberCheckbox
 					state={selectionState}
-					labels={GROUP_SELECTION_LABELS(groupLabel)}
+					labels={checkbox.labels}
+					title={checkbox.title}
 					onToggle={onToggleSelection}
 				/>
 			)}
@@ -78,7 +76,7 @@ export const GroupHeader = ({
 					variant={GROUP_STATUS_BADGE_VARIANT[item.groupStatus]}
 					className={`${GROUP_COUNT_BADGE_CLASSES} mr-2 ${GROUP_STATUS_BADGE_CLASS[item.groupStatus]}`}
 				>
-					{item.count}
+					{groupCountLabel(item)}
 				</Badge>
 				<span className="font-semibold text-sm mr-2 text-foreground">{fieldLabel}:</span>
 				<span className="text-sm text-foreground/80">
