@@ -246,6 +246,13 @@ describe('on-call team ids and missing teams', () => {
 		expect(members.body.error).toBe('Team not found');
 	});
 
+	test('deleting a team that does not exist is a 404', async () => {
+		const del = await app.delete('/api/v1/oncall/teams/999999').set('Authorization', `Bearer ${adminToken}`);
+		expect(del.status).toBe(404);
+		expect(del.body.success).toBe(false);
+		expect(del.body.error).toBe('Team not found');
+	});
+
 	test('a non-numeric or non-positive team id is a 400 on every write', async () => {
 		for (const teamId of ['abc', '0']) {
 			const requests: [Verb, string][] = [
