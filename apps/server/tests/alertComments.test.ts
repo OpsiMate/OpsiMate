@@ -105,8 +105,8 @@ describe('/alerts/comments', () => {
 			'an-1',
 			userId,
 			'First comment',
-			'2026-08-11T00:00:00.000Z',
-			'2026-08-11T00:00:00.000Z'
+			'2026-08-10T00:00:00.000Z',
+			'2026-08-10T00:00:00.000Z'
 		);
 
 		insertComment.run(
