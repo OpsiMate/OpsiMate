@@ -1,10 +1,9 @@
-import { IncidentRollups } from '@/components/Alerts/IncidentRollups';
-import { Badge } from '@/components/ui/badge';
+import { SeverityBadge } from '@/components/Alerts/SeverityBadge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
+import { IncidentCountBadge } from './IncidentCountBadge';
 import { INCIDENT_SELECTION_LABELS, INCIDENT_SELECTION_STATE, IncidentSelectionState } from './IncidentRow.constants';
 import { formatShortDateTime } from '@/lib/datetime';
-import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
 import { useId } from 'react';
 import {
@@ -57,7 +56,6 @@ export const IncidentRow = ({
 	onToggleSelection,
 	dropTarget = false,
 }: IncidentRowProps) => {
-	const partial = shownCount < incident.alertCount;
 	// An incident spanning several group-by segments renders one folder per segment; each
 	// is its own drop target.
 	const dropScope = useId();
@@ -117,6 +115,7 @@ export const IncidentRow = ({
 			>
 				{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 			</button>
+			<IncidentCountBadge incident={incident} shownCount={shownCount} />
 			{isExpanded ? (
 				<FolderOpen className="h-4 w-4 shrink-0 text-primary" />
 			) : (
@@ -133,17 +132,13 @@ export const IncidentRow = ({
 			>
 				{incident.name}
 			</button>
-			<Badge variant="outline" className="h-5 px-1.5 text-xs shrink-0">
-				{partial ? `${shownCount} of ${incident.alertCount}` : incident.alertCount}{' '}
-				{pluralize(incident.alertCount, 'alert')}
-			</Badge>
+			{incident.worstSeverity && <SeverityBadge severity={incident.worstSeverity} />}
 			{incident.ownerName && (
 				<span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0" title="Incident owner">
 					<User className="h-3 w-3" />
 					{incident.ownerName}
 				</span>
 			)}
-			<IncidentRollups incident={incident} />
 			<span className="ml-auto text-xs text-muted-foreground shrink-0">
 				{incident.latestUpdatedAt ? formatShortDateTime(incident.latestUpdatedAt, '') : ''}
 			</span>

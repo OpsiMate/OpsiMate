@@ -2,8 +2,13 @@ import { TextWithFlags } from '@/components/shared/TextWithFlags';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { COLUMN_LABELS } from '../AlertsTable.constants';
-import { FlatGroupItem, GroupStatus } from '../AlertsTable.types';
+import {
+	COLUMN_LABELS,
+	GROUP_COUNT_BADGE_CLASSES,
+	GROUP_STATUS_BADGE_CLASS,
+	GROUP_STATUS_BADGE_VARIANT,
+} from '../AlertsTable.constants';
+import { FlatGroupItem } from '../AlertsTable.types';
 
 interface GroupHeaderProps {
 	item: FlatGroupItem;
@@ -11,26 +16,10 @@ interface GroupHeaderProps {
 	columnLabels?: Record<string, string>;
 }
 
-const getStatusBadgeVariant = (status: GroupStatus): 'destructive' | 'success' | 'muted' | 'secondary' => {
-	switch (status) {
-		case 'firing':
-			return 'destructive';
-		case 'muted':
-			return 'secondary';
-		case 'resolved':
-			return 'success';
-		case 'silenced':
-			return 'muted';
-	}
-};
-
 export const GroupHeader = ({ item, onToggle, columnLabels = {} }: GroupHeaderProps) => {
 	if (item.type !== 'group') return null;
 
 	const fieldLabel = columnLabels[item.field] || COLUMN_LABELS[item.field] || item.field;
-	const badgeVariant = getStatusBadgeVariant(item.groupStatus);
-	const mutedBadgeClass =
-		item.groupStatus === 'muted' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30' : '';
 
 	return (
 		<div
@@ -55,8 +44,8 @@ export const GroupHeader = ({ item, onToggle, columnLabels = {} }: GroupHeaderPr
 			{/* Fixed-width count right after the chevron so the numbers align vertically
 			    across groups regardless of how long each group's label is. */}
 			<Badge
-				variant={badgeVariant}
-				className={`h-5 min-w-10 justify-center px-1.5 mr-2 text-xs rounded-sm ${mutedBadgeClass}`}
+				variant={GROUP_STATUS_BADGE_VARIANT[item.groupStatus]}
+				className={`${GROUP_COUNT_BADGE_CLASSES} mr-2 ${GROUP_STATUS_BADGE_CLASS[item.groupStatus]}`}
 			>
 				{item.count}
 			</Badge>
