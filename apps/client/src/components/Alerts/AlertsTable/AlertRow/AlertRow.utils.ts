@@ -1,4 +1,4 @@
-import { ROW_INTERACTIVE_CONTROL_SELECTOR, SELECT_CELL_SELECTOR } from './AlertRow.constants';
+import { COPY_VALUE_ATTR, ROW_INTERACTIVE_CONTROL_SELECTOR, SELECT_CELL_SELECTOR } from './AlertRow.constants';
 
 // Selection modifiers. Cmd is the Mac convention; Ctrl works there too (see AlertRow's handleRowContextMenu).
 export const isToggleModifier = (e: Pick<React.MouseEvent, 'metaKey' | 'ctrlKey'>) => e.metaKey || e.ctrlKey;
@@ -18,3 +18,20 @@ export const isForeignTarget = (e: Pick<React.MouseEvent, 'currentTarget' | 'tar
 // A press on the checkbox cell, which its own mousedown handler takes care of.
 export const isSelectCellTarget = (e: Pick<React.MouseEvent, 'target'>) =>
 	!!(e.target as Element).closest?.(SELECT_CELL_SELECTOR);
+
+// What a right-click on the row would copy: the clicked cell's full value, else its text.
+// Nothing for the checkbox cell, cells with no text (icons, actions), or a click that did
+// not land in a cell.
+export const copyValueOf = (target: EventTarget | null): string | null => {
+	const cell = (target as Element | null)?.closest?.('td');
+	if (!cell || cell.matches(SELECT_CELL_SELECTOR)) return null;
+	const value = cell.getAttribute(COPY_VALUE_ATTR) ?? cell.textContent ?? '';
+	const trimmed = value.trim();
+	return trimmed.length > 0 ? trimmed : null;
+};
+
+// A one-line preview of a value for a menu item.
+export const previewValue = (value: string, max: number): string => {
+	const oneLine = value.replace(/\s+/g, ' ').trim();
+	return oneLine.length > max ? `${oneLine.slice(0, max - 1)}…` : oneLine;
+};

@@ -24,7 +24,7 @@ import {
 } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { IncidentSummary } from '@OpsiMate/shared';
-import { filterAlerts } from './AlertsTable.utils';
+import { filterAlerts, memberSelectionState } from './AlertsTable.utils';
 import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
 import {
@@ -623,6 +623,16 @@ export const AlertsTable = ({
 												item={item}
 												onToggle={toggleGroup}
 												columnLabels={allColumnLabels}
+												selectionState={
+													onSelectAlerts && item.type === 'group'
+														? memberSelectionState(item.members, selectedAlerts)
+														: undefined
+												}
+												onToggleSelection={
+													onSelectAlerts && item.type === 'group'
+														? () => handleToggleMembers(item.members)
+														: undefined
+												}
 											/>
 										))}
 									</div>

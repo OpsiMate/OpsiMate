@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { AlertDragData, dragId, dropId } from '../../AlertDragAndDrop';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -8,7 +8,9 @@ import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { ACTIONS_COLUMN, COLUMN_SEPARATOR_CLASSES, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { CELL_PADDING } from './AlertRow.constants';
-import { isForeignTarget, isPrimaryPress, isSelectCellTarget, isToggleModifier } from './AlertRow.utils';
+import { copyValueOf, isForeignTarget, isPrimaryPress, isSelectCellTarget, isToggleModifier } from './AlertRow.utils';
+import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
+import { AlertCellContextMenu } from './AlertCellContextMenu';
 import { getAlertSeverity, SEVERITY_ROW_CLASSES } from '../../utils/severity.utils';
 import { AlertActionsColumn } from './Columns/AlertActionsColumn';
 import { AlertNameColumn } from './Columns/AlertNameColumn';
@@ -213,187 +215,222 @@ export const AlertRow = ({
 		}
 	};
 
-	return (
-		<TableRow
-			ref={setRowRef}
-			data-alert-id={alert.id}
-			{...(dragAndDrop ? dragListeners : {})}
-			className={cn(
-				'h-8 cursor-pointer hover:bg-muted/50',
-				COLUMN_SEPARATOR_CLASSES,
-				// Severity tint sits under selection/active highlights so those still win.
-				severityColors && SEVERITY_ROW_CLASSES[getAlertSeverity(alert)],
-				// Selection carries its own hover class so the severity hover tint can't
-				// override the selection cue while the pointer is over the row.
-				isSelected && 'bg-muted/50 hover:bg-muted/50',
-				// Unread alerts render at the heaviest weight until someone opens them, so an
-				// updated or freshly firing row stands out clearly from the regular-weight ones.
-				alert.isRead === false && 'font-black',
-				// The alert currently open in the details panel: tinted row + accent edge,
-				// inset shadow instead of a border so the columns don't shift.
-				isActiveRow && 'bg-primary/10 hover:bg-primary/15 shadow-[inset_3px_0_0_0] shadow-primary',
-				// Drag and drop: the dragged row dims (the overlay follows the pointer); a row
-				// under a drag shows it will take the drop.
-				dragAndDrop && 'select-none',
-				isBeingDragged && 'opacity-40',
-				isDropTarget && 'ring-2 ring-inset ring-primary bg-primary/10'
-			)}
-			onClick={handleRowClick}
-			onMouseDown={handleRowMouseDown}
-			onContextMenu={handleRowContextMenu}
-			onMouseEnter={handleRowMouseEnter}
-		>
-			{onSelectAlerts && (
-				<TableCell
-					className={cn(CELL_PADDING, 'cursor-pointer select-none')}
-					style={{ width: SELECT_COLUMN_WIDTH, minWidth: SELECT_COLUMN_WIDTH, maxWidth: SELECT_COLUMN_WIDTH }}
-					onClick={(e) => e.stopPropagation()}
-					data-select-cell
-					onMouseDown={handleCheckboxMouseDown}
-					onMouseEnter={handleCheckboxMouseEnter}
-				>
-					<div className="flex items-center justify-center">
-						<Checkbox
-							checked={isSelected}
-							className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
-						/>
-					</div>
-				</TableCell>
-			)}
-			{orderedColumns.map((column) => {
-				if (isTagKeyColumn(column)) {
-					const tagKey = extractTagKeyFromColumnId(column);
-					if (tagKey) {
-						return (
-							<AlertTagKeyColumn
-								key={column}
-								alert={alert}
-								tagKey={tagKey}
-								expanded={expandRows}
-								className={COLUMN_WIDTHS.default}
-								style={contentColumnWidths[column] ? { width: contentColumnWidths[column] } : undefined}
-							/>
-						);
-					}
-					return null;
-				}
+	// The cell under a right-click, captured as the menu opens so its items know what to
+	// copy. A right-click from a portaled child (the owner picker, the actions menu) is
+	// theirs: no row menu, and no browser menu either.
+	const [copyValue, setCopyValue] = useState<string | null>(null);
+	const handleMenuContextMenu = (e: React.MouseEvent) => {
+		if (isForeignTarget(e)) {
+			e.preventDefault();
+			return;
+		}
+		setCopyValue(copyValueOf(e.target));
+	};
 
-				switch (column) {
-					case 'type':
-						return <AlertTypeColumn key={column} alert={alert} className={COLUMN_WIDTHS.type} />;
-					case 'alertName':
-						return (
-							<AlertNameColumn
-								key={column}
-								alert={alert}
-								expanded={expandRows}
-								className={COLUMN_WIDTHS.alertName}
-								style={
-									contentColumnWidths['alertName']
-										? { width: contentColumnWidths['alertName'] }
-										: undefined
-								}
-							/>
-						);
-					case 'severity':
-						return <AlertSeverityColumn key={column} alert={alert} className={COLUMN_WIDTHS.severity} />;
-					case 'fix':
-						return <AlertFixColumn key={column} alert={alert} className={COLUMN_WIDTHS.fix} />;
-					case 'status':
-						return <AlertStatusColumn key={column} alert={alert} className={COLUMN_WIDTHS.status} />;
-					case 'summary':
-						return (
-							<AlertSummaryColumn
-								key={column}
-								alert={alert}
-								expanded={expandRows}
-								className={COLUMN_WIDTHS.summary}
-								style={
-									contentColumnWidths['summary']
-										? { width: contentColumnWidths['summary'] }
-										: undefined
-								}
-							/>
-						);
-					case 'lastComment':
-						return (
-							<AlertLastCommentColumn
-								key={column}
-								alert={alert}
-								expanded={expandRows}
-								className={COLUMN_WIDTHS.lastComment}
-								style={
-									contentColumnWidths['lastComment']
-										? { width: contentColumnWidths['lastComment'] }
-										: undefined
-								}
-							/>
-						);
-					case 'owner':
-						return (
-							<AlertOwnerColumn
-								key={column}
-								alert={alert}
-								className={COLUMN_WIDTHS.owner}
-								isResolved={isResolved}
-								style={
-									contentColumnWidths['owner'] ? { width: contentColumnWidths['owner'] } : undefined
-								}
-							/>
-						);
-					case 'startsAt':
-						return (
-							<AlertStartsAtColumn
-								key={column}
-								alert={alert}
-								className={COLUMN_WIDTHS.startsAt}
-								style={
-									contentColumnWidths['startsAt']
-										? { width: contentColumnWidths['startsAt'] }
-										: undefined
-								}
-							/>
-						);
-					case 'updatedAt':
-						return (
-							<AlertUpdatedAtColumn
-								key={column}
-								alert={alert}
-								className={COLUMN_WIDTHS.updatedAt}
-								style={
-									contentColumnWidths['updatedAt']
-										? { width: contentColumnWidths['updatedAt'] }
-										: undefined
-								}
-							/>
-						);
-					case ACTIONS_COLUMN:
-						return (
-							<Fragment key={column}>
-								{/* Mirrors the header's filler (see AlertsTable): when summary is
+	return (
+		<ContextMenu modal={false}>
+			<ContextMenuTrigger asChild onContextMenu={handleMenuContextMenu}>
+				<TableRow
+					ref={setRowRef}
+					data-alert-id={alert.id}
+					{...(dragAndDrop ? dragListeners : {})}
+					className={cn(
+						'h-8 cursor-pointer hover:bg-muted/50',
+						COLUMN_SEPARATOR_CLASSES,
+						// Severity tint sits under selection/active highlights so those still win.
+						severityColors && SEVERITY_ROW_CLASSES[getAlertSeverity(alert)],
+						// Selection carries its own hover class so the severity hover tint can't
+						// override the selection cue while the pointer is over the row.
+						isSelected && 'bg-muted/50 hover:bg-muted/50',
+						// Unread alerts render at the heaviest weight until someone opens them, so an
+						// updated or freshly firing row stands out clearly from the regular-weight ones.
+						alert.isRead === false && 'font-black',
+						// The alert currently open in the details panel: tinted row + accent edge,
+						// inset shadow instead of a border so the columns don't shift.
+						isActiveRow && 'bg-primary/10 hover:bg-primary/15 shadow-[inset_3px_0_0_0] shadow-primary',
+						// Drag and drop: the dragged row dims (the overlay follows the pointer); a row
+						// under a drag shows it will take the drop.
+						dragAndDrop && 'select-none',
+						isBeingDragged && 'opacity-40',
+						isDropTarget && 'ring-2 ring-inset ring-primary bg-primary/10'
+					)}
+					onClick={handleRowClick}
+					onMouseDown={handleRowMouseDown}
+					onContextMenu={handleRowContextMenu}
+					onMouseEnter={handleRowMouseEnter}
+				>
+					{onSelectAlerts && (
+						<TableCell
+							className={cn(CELL_PADDING, 'cursor-pointer select-none')}
+							style={{
+								width: SELECT_COLUMN_WIDTH,
+								minWidth: SELECT_COLUMN_WIDTH,
+								maxWidth: SELECT_COLUMN_WIDTH,
+							}}
+							onClick={(e) => e.stopPropagation()}
+							data-select-cell
+							onMouseDown={handleCheckboxMouseDown}
+							onMouseEnter={handleCheckboxMouseEnter}
+						>
+							<div className="flex items-center justify-center">
+								<Checkbox
+									checked={isSelected}
+									className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary pointer-events-none"
+								/>
+							</div>
+						</TableCell>
+					)}
+					{orderedColumns.map((column) => {
+						if (isTagKeyColumn(column)) {
+							const tagKey = extractTagKeyFromColumnId(column);
+							if (tagKey) {
+								return (
+									<AlertTagKeyColumn
+										key={column}
+										alert={alert}
+										tagKey={tagKey}
+										expanded={expandRows}
+										className={COLUMN_WIDTHS.default}
+										style={
+											contentColumnWidths[column]
+												? { width: contentColumnWidths[column] }
+												: undefined
+										}
+									/>
+								);
+							}
+							return null;
+						}
+
+						switch (column) {
+							case 'type':
+								return <AlertTypeColumn key={column} alert={alert} className={COLUMN_WIDTHS.type} />;
+							case 'alertName':
+								return (
+									<AlertNameColumn
+										key={column}
+										alert={alert}
+										expanded={expandRows}
+										className={COLUMN_WIDTHS.alertName}
+										style={
+											contentColumnWidths['alertName']
+												? { width: contentColumnWidths['alertName'] }
+												: undefined
+										}
+									/>
+								);
+							case 'severity':
+								return (
+									<AlertSeverityColumn
+										key={column}
+										alert={alert}
+										className={COLUMN_WIDTHS.severity}
+									/>
+								);
+							case 'fix':
+								return <AlertFixColumn key={column} alert={alert} className={COLUMN_WIDTHS.fix} />;
+							case 'status':
+								return (
+									<AlertStatusColumn key={column} alert={alert} className={COLUMN_WIDTHS.status} />
+								);
+							case 'summary':
+								return (
+									<AlertSummaryColumn
+										key={column}
+										alert={alert}
+										expanded={expandRows}
+										className={COLUMN_WIDTHS.summary}
+										style={
+											contentColumnWidths['summary']
+												? { width: contentColumnWidths['summary'] }
+												: undefined
+										}
+									/>
+								);
+							case 'lastComment':
+								return (
+									<AlertLastCommentColumn
+										key={column}
+										alert={alert}
+										expanded={expandRows}
+										className={COLUMN_WIDTHS.lastComment}
+										style={
+											contentColumnWidths['lastComment']
+												? { width: contentColumnWidths['lastComment'] }
+												: undefined
+										}
+									/>
+								);
+							case 'owner':
+								return (
+									<AlertOwnerColumn
+										key={column}
+										alert={alert}
+										className={COLUMN_WIDTHS.owner}
+										isResolved={isResolved}
+										style={
+											contentColumnWidths['owner']
+												? { width: contentColumnWidths['owner'] }
+												: undefined
+										}
+									/>
+								);
+							case 'startsAt':
+								return (
+									<AlertStartsAtColumn
+										key={column}
+										alert={alert}
+										className={COLUMN_WIDTHS.startsAt}
+										style={
+											contentColumnWidths['startsAt']
+												? { width: contentColumnWidths['startsAt'] }
+												: undefined
+										}
+									/>
+								);
+							case 'updatedAt':
+								return (
+									<AlertUpdatedAtColumn
+										key={column}
+										alert={alert}
+										className={COLUMN_WIDTHS.updatedAt}
+										style={
+											contentColumnWidths['updatedAt']
+												? { width: contentColumnWidths['updatedAt'] }
+												: undefined
+										}
+									/>
+								);
+							case ACTIONS_COLUMN:
+								return (
+									<Fragment key={column}>
+										{/* Mirrors the header's filler (see AlertsTable): when summary is
 								    hidden — or pinned to a manual width, which appears in the width
 								    map — this empty flexible cell absorbs the leftover width. The
 								    condition MUST match the header's needsFillerColumn or the two
 								    layouts misalign. */}
-								{(!orderedColumns.includes('summary') ||
-									contentColumnWidths['summary'] !== undefined) && (
-									<TableCell aria-hidden className="p-0" />
-								)}
-								<AlertActionsColumn
-									alert={alert}
-									width={actionsColumnWidth}
-									onSilenceAlert={onSilenceAlert}
-									onUnsilenceAlert={onUnsilenceAlert}
-									onDeleteAlert={onDeleteAlert}
-									onUnresolveAlert={onUnresolveAlert}
-									onRemoveFromIncident={onRemoveFromIncident}
-								/>
-							</Fragment>
-						);
-					default:
-						return null;
-				}
-			})}
-		</TableRow>
+										{(!orderedColumns.includes('summary') ||
+											contentColumnWidths['summary'] !== undefined) && (
+											<TableCell aria-hidden className="p-0" />
+										)}
+										<AlertActionsColumn
+											alert={alert}
+											width={actionsColumnWidth}
+											onSilenceAlert={onSilenceAlert}
+											onUnsilenceAlert={onUnsilenceAlert}
+											onDeleteAlert={onDeleteAlert}
+											onUnresolveAlert={onUnresolveAlert}
+											onRemoveFromIncident={onRemoveFromIncident}
+										/>
+									</Fragment>
+								);
+							default:
+								return null;
+						}
+					})}
+				</TableRow>
+			</ContextMenuTrigger>
+			<AlertCellContextMenu alert={alert} cellValue={copyValue} />
+		</ContextMenu>
 	);
 };

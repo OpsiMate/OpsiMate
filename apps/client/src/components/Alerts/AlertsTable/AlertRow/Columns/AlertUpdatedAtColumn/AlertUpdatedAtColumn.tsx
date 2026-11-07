@@ -14,7 +14,11 @@ export interface AlertUpdatedAtColumnProps {
 export const AlertUpdatedAtColumn = ({ alert, className, style }: AlertUpdatedAtColumnProps) => {
 	const fullTimestamp = formatFullTimestamp(alert.updatedAt);
 	return (
-		<TableCell style={style} className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
+		<TableCell
+			style={style}
+			data-copy-value={fullTimestamp ?? String(alert.updatedAt)}
+			className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}
+		>
 			<span className="text-xs text-foreground truncate block" title={fullTimestamp}>
 				{formatDate(alert.updatedAt)}
 			</span>

@@ -1,8 +1,7 @@
 import { SeverityBadge } from '@/components/Alerts/SeverityBadge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
 import { IncidentCountBadge } from './IncidentCountBadge';
-import { INCIDENT_SELECTION_LABELS, INCIDENT_SELECTION_STATE, IncidentSelectionState } from './IncidentRow.constants';
+import { INCIDENT_SELECTION_LABELS, IncidentSelectionState } from './IncidentRow.constants';
+import { MemberCheckbox } from '../MemberCheckbox';
 import { formatShortDateTime } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
 import { useId } from 'react';
@@ -74,32 +73,14 @@ export const IncidentRow = ({
 			role="row"
 		>
 			{selectionState !== undefined && (
-				// Sits under the table's select column so the folder checkbox lines up with the
-				// rows' checkboxes: same width, and the same left-only padding the table cells get
-				// (TableCell drops its right padding around a checkbox). Mixed state when only
-				// some members are selected.
-				<div
-					className="flex shrink-0 items-center justify-center pl-2"
-					style={{ width: SELECT_COLUMN_WIDTH }}
-					onClick={(e) => e.stopPropagation()}
-				>
-					<Checkbox
-						checked={
-							selectionState === INCIDENT_SELECTION_STATE.ALL
-								? true
-								: selectionState === INCIDENT_SELECTION_STATE.SOME
-									? 'indeterminate'
-									: false
-						}
-						onCheckedChange={() => onToggleSelection?.()}
-						aria-label={
-							selectionState === INCIDENT_SELECTION_STATE.ALL
-								? INCIDENT_SELECTION_LABELS.unselect(incident.name)
-								: INCIDENT_SELECTION_LABELS.select(incident.name)
-						}
-						className="h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary"
-					/>
-				</div>
+				<MemberCheckbox
+					state={selectionState}
+					labels={{
+						select: INCIDENT_SELECTION_LABELS.select(incident.name),
+						unselect: INCIDENT_SELECTION_LABELS.unselect(incident.name),
+					}}
+					onToggle={onToggleSelection}
+				/>
 			)}
 			{/* A real button, not just the clickable row: keyboard users need a focusable
 			    toggle, and aria-expanded belongs on the control that toggles. */}
