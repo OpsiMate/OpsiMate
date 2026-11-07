@@ -14,7 +14,11 @@ export interface AlertNameColumnProps {
 
 export const AlertNameColumn = ({ alert, expanded = false, className, style }: AlertNameColumnProps) => {
 	return (
-		<TableCell style={style} className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
+		<TableCell
+			style={style}
+			data-copy-value={alert.alertName}
+			className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}
+		>
 			<span
 				className={cn(
 					'text-sm block text-foreground',

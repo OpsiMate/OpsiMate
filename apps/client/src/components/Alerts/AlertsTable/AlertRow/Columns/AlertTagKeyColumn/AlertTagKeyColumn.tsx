@@ -19,7 +19,11 @@ export const AlertTagKeyColumn = ({ alert, tagKey, expanded = false, className, 
 	const value = alert.tags?.[tagKey];
 
 	return (
-		<TableCell style={style} className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
+		<TableCell
+			style={style}
+			data-copy-value={value || ''}
+			className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}
+		>
 			{value ? (
 				<Badge
 					variant="outline"

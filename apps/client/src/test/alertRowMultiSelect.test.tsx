@@ -1,5 +1,5 @@
 import { Alert } from '@OpsiMate/shared';
-import { act, cleanup, fireEvent, render, renderHook } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import { AlertRow } from '@/components/Alerts/AlertsTable/AlertRow';
@@ -156,11 +156,13 @@ describe('AlertRow right-click and checkbox presses', () => {
 		expect(onSelectAlert).not.toHaveBeenCalled();
 	});
 
-	test('a real right-click keeps its context menu and selects nothing', () => {
+	test('a real right-click opens the row copy menu (not the browser menu) and selects nothing', () => {
 		const { row, onSelectAlert, onDragStart } = renderRow();
 		fireEvent.mouseDown(row, { button: 2, buttons: 2, ctrlKey: true });
-		expect(fireEvent.contextMenu(row, { button: 2 })).toBe(true);
-		expect(fireEvent.contextMenu(row, { ctrlKey: true, button: 2 })).toBe(true);
+		// The row's menu takes the right-click over the browser's.
+		expect(fireEvent.contextMenu(row, { button: 2 })).toBe(false);
+		expect(screen.getByRole('menu')).toBeInTheDocument();
+		expect(screen.getByText('Copy alert name')).toBeInTheDocument();
 		expect(onSelectAlert).not.toHaveBeenCalled();
 		expect(onDragStart).not.toHaveBeenCalled();
 	});
