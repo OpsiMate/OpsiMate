@@ -1,4 +1,5 @@
 import { UserInfo } from '@/hooks/queries/users';
+import { MEMBER_SELECTION_STATE, MemberSelectionState } from './AlertsTable.constants';
 import { formatDateTime, formatTime, isSameLocalDay } from '@/lib/datetime';
 import { Alert, getAlertGroupValue, groupKeySegment, searchAlerts, sortAlertsBy } from '@OpsiMate/shared';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
@@ -138,6 +139,19 @@ const getGroupStatus = (node: GroupNode): GroupStatus => {
 	return 'silenced';
 };
 
+// Every alert under a node, nested groups included, in row order.
+const collectAlerts = (node: GroupNode): Alert[] =>
+	node.type === 'leaf' ? [node.alert] : node.children.flatMap(collectAlerts);
+
+// How many of a row's members are selected — drives the folder's / group header's checkbox.
+export const memberSelectionState = (members: Alert[], selectedAlerts: Alert[]): MemberSelectionState => {
+	if (members.length === 0) return MEMBER_SELECTION_STATE.NONE;
+	const selectedIds = new Set(selectedAlerts.map((alert) => alert.id));
+	const selected = members.filter((member) => selectedIds.has(member.id)).length;
+	if (selected === 0) return MEMBER_SELECTION_STATE.NONE;
+	return selected === members.length ? MEMBER_SELECTION_STATE.ALL : MEMBER_SELECTION_STATE.SOME;
+};
+
 export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): FlatGroupItem[] => {
 	const result: FlatGroupItem[] = [];
 
@@ -157,6 +171,7 @@ export const flattenGroups = (nodes: GroupNode[], expandedKeys: Set<string>): Fl
 					level: node.level,
 					isExpanded,
 					groupStatus,
+					members: collectAlerts(node),
 				});
 
 				if (isExpanded) {

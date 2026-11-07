@@ -111,6 +111,9 @@ export type FlatGroupItem =
 			level: number;
 			isExpanded: boolean;
 			groupStatus: GroupStatus;
+			// Every alert under this group (nested groups included), so the header's
+			// checkbox can select them without a second lookup.
+			members: Alert[];
 	  }
 	// incidentMember: this leaf renders indented beneath its incident's folder row.
 	| { type: 'leaf'; alert: Alert; incidentMember?: boolean }

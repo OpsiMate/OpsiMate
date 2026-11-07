@@ -5,7 +5,7 @@ import { AlertRow } from '../AlertRow';
 import { FlatGroupItem } from '../AlertsTable.types';
 import { GroupHeader } from '../GroupHeader';
 import { IncidentRow } from '../IncidentRow';
-import { INCIDENT_SELECTION_STATE, IncidentSelectionState } from '../IncidentRow/IncidentRow.constants';
+import { memberSelectionState } from '../AlertsTable.utils';
 
 interface VirtualizedAlertListProps {
 	virtualizer: Virtualizer<HTMLDivElement, Element>;
@@ -129,21 +129,27 @@ export const VirtualizedAlertList = ({
 								transform: `translateY(${virtualRow.start}px)`,
 							}}
 						>
-							<GroupHeader item={item} onToggle={onToggleGroup} columnLabels={columnLabels} />
+							<GroupHeader
+								item={item}
+								onToggle={onToggleGroup}
+								columnLabels={columnLabels}
+								selectionState={
+									onSelectAlerts && onToggleMembersSelection
+										? memberSelectionState(item.members, selectedAlerts)
+										: undefined
+								}
+								onToggleSelection={
+									onSelectAlerts && onToggleMembersSelection
+										? () => onToggleMembersSelection(item.members)
+										: undefined
+								}
+							/>
 						</div>
 					);
 				}
 
 				if (item.type === 'incident') {
-					const selectedMembers = item.members.filter((member) =>
-						selectedAlerts.some((a) => a.id === member.id)
-					);
-					const selectionState: IncidentSelectionState =
-						selectedMembers.length === 0
-							? INCIDENT_SELECTION_STATE.NONE
-							: selectedMembers.length === item.members.length
-								? INCIDENT_SELECTION_STATE.ALL
-								: INCIDENT_SELECTION_STATE.SOME;
+					const selectionState = memberSelectionState(item.members, selectedAlerts);
 					return (
 						<div
 							key={virtualRow.key}

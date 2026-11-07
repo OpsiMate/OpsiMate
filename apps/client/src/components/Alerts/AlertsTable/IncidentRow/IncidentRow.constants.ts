@@ -1,11 +1,9 @@
-// How many of a folder's folded members are selected: drives the folder checkbox.
-export type IncidentSelectionState = 'none' | 'some' | 'all';
+import { MEMBER_SELECTION_STATE, MemberSelectionState } from '../AlertsTable.constants';
 
-export const INCIDENT_SELECTION_STATE: Record<Uppercase<IncidentSelectionState>, IncidentSelectionState> = {
-	NONE: 'none',
-	SOME: 'some',
-	ALL: 'all',
-};
+// How many of a folder's folded members are selected: drives the folder checkbox (the
+// table-wide member selection state, under the folder's own name).
+export type IncidentSelectionState = MemberSelectionState;
+export const INCIDENT_SELECTION_STATE = MEMBER_SELECTION_STATE;
 
 // Accessible names for the folder checkbox; the incident name tells folders apart for
 // screen reader users moving between checkboxes.
