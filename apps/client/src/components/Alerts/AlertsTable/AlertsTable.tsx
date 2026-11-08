@@ -239,6 +239,7 @@ export const AlertsTable = ({
 		handleSelectAlert,
 		handleSelectRange,
 		handleSelectOnly,
+		handleExtendSelection,
 		handleToggleMembers,
 		setAnchor,
 	} = useAlertSelection({
@@ -287,7 +288,15 @@ export const AlertsTable = ({
 	}, [expandRows, virtualizer]);
 
 	// ArrowUp/ArrowDown move the details-sidebar selection through the rows.
-	useAlertKeyboardNav({ flatRows, activeAlertId, onAlertClick, virtualizer, scrollerRef });
+	useAlertKeyboardNav({
+		flatRows,
+		activeAlertId,
+		onAlertClick,
+		onSelectOnly: onSelectAlerts ? handleSelectOnly : undefined,
+		onExtendSelection: onSelectAlerts ? handleExtendSelection : undefined,
+		virtualizer,
+		scrollerRef,
+	});
 	// Click a cell, Cmd/Ctrl+C copies it.
 	useCellCopyShortcut({ scrollerRef });
 

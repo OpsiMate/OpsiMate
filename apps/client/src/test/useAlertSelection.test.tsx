@@ -171,6 +171,17 @@ describe('useAlertSelection plain click and folder checkbox', () => {
 		expect(onSelectAlerts).toHaveBeenCalledWith([activeRows[0]]);
 	});
 
+	test('handleExtendSelection adds the row and keeps everything else (Cmd/Ctrl+arrow); already in: no call', () => {
+		const onSelectAlerts = vi.fn();
+		const selected = [...copyOf(resolvedRows), copyOf(activeRows)[1]];
+		const { result } = renderSelection({ sortedAlerts: activeRows, selectedAlerts: selected, onSelectAlerts });
+		act(() => result.current.handleExtendSelection(activeRows[0]));
+		expect(onSelectAlerts).toHaveBeenCalledWith([...selected, activeRows[0]]);
+		onSelectAlerts.mockClear();
+		act(() => result.current.handleExtendSelection(activeRows[1]));
+		expect(onSelectAlerts).not.toHaveBeenCalled();
+	});
+
 	test('handleToggleMembers adds the missing members, then drops them all once every one is selected', () => {
 		const onSelectAlerts = vi.fn();
 		const other = copyOf(resolvedRows)[0];
