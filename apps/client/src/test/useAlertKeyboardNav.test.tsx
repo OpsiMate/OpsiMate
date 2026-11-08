@@ -30,6 +30,8 @@ interface HookProps {
 
 interface HookSetup {
 	onAlertClick: ReturnType<typeof vi.fn>;
+	onSelectOnly: ReturnType<typeof vi.fn>;
+	onExtendSelection: ReturnType<typeof vi.fn>;
 	scrollToIndex: ReturnType<typeof vi.fn>;
 	unmount: () => void;
 	rerender: (next: HookProps) => void;
@@ -37,6 +39,8 @@ interface HookSetup {
 
 const setup = (rows: FlatGroupItem[], activeAlertId: string | null = null): HookSetup => {
 	const onAlertClick = vi.fn();
+	const onSelectOnly = vi.fn();
+	const onExtendSelection = vi.fn();
 	const scrollToIndex = vi.fn();
 	const virtualizer = { scrollToIndex } as unknown as Virtualizer<HTMLDivElement, Element>;
 	const scrollerRef = { current: document.createElement('div') };
@@ -46,12 +50,21 @@ const setup = (rows: FlatGroupItem[], activeAlertId: string | null = null): Hook
 				flatRows: rows,
 				activeAlertId: props.activeAlertId,
 				onAlertClick,
+				onSelectOnly,
+				onExtendSelection,
 				virtualizer,
 				scrollerRef,
 			}),
 		{ initialProps: { activeAlertId } }
 	);
-	return { onAlertClick, scrollToIndex, unmount: view.unmount, rerender: view.rerender };
+	return {
+		onAlertClick,
+		onSelectOnly,
+		onExtendSelection,
+		scrollToIndex,
+		unmount: view.unmount,
+		rerender: view.rerender,
+	};
 };
 
 const press = (key: string, init: KeyboardEventInit = {}) =>
@@ -95,15 +108,47 @@ describe('useAlertKeyboardNav', () => {
 		h.unmount();
 	});
 
-	test('typing targets and modified arrows are left alone', () => {
+	test('typing targets and Alt/Shift-modified arrows are left alone', () => {
 		const h = setup([leaf('a'), leaf('b')]);
 		const input = document.createElement('input');
 		document.body.appendChild(input);
 		act(() => {
 			input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
 		});
-		press('ArrowDown', { metaKey: true });
+		press('ArrowDown', { altKey: true });
 		press('ArrowDown', { shiftKey: true });
+		expect(h.onAlertClick).not.toHaveBeenCalled();
+		expect(h.onSelectOnly).not.toHaveBeenCalled();
+		h.unmount();
+	});
+
+	test('the checkbox follows the cursor: a plain arrow selects just the row it lands on', () => {
+		const h = setup([leaf('a'), leaf('b'), leaf('c')], 'a');
+		press('ArrowDown');
+		expect(h.onSelectOnly).toHaveBeenCalledTimes(1);
+		expect(h.onSelectOnly.mock.calls[0][0].id).toBe('b');
+		expect(h.onExtendSelection).not.toHaveBeenCalled();
+		expect(h.onAlertClick.mock.calls[0][0].id).toBe('b');
+		h.unmount();
+	});
+
+	test('Cmd/Ctrl+arrow adds the row to the selection instead, and still opens it', () => {
+		const h = setup([leaf('a'), leaf('b'), leaf('c')], 'a');
+		press('ArrowDown', { metaKey: true });
+		h.rerender({ activeAlertId: 'b' });
+		press('ArrowDown', { ctrlKey: true });
+		expect(h.onExtendSelection.mock.calls.map((c) => c[0].id)).toEqual(['b', 'c']);
+		expect(h.onSelectOnly).not.toHaveBeenCalled();
+		expect(h.onAlertClick.mock.calls.map((c) => c[0].id)).toEqual(['b', 'c']);
+		h.unmount();
+	});
+
+	test('a boundary press moves neither the cursor nor the checkbox', () => {
+		const h = setup([leaf('a'), leaf('b')], 'b');
+		press('ArrowDown');
+		press('ArrowDown', { metaKey: true });
+		expect(h.onSelectOnly).not.toHaveBeenCalled();
+		expect(h.onExtendSelection).not.toHaveBeenCalled();
 		expect(h.onAlertClick).not.toHaveBeenCalled();
 		h.unmount();
 	});

@@ -71,6 +71,14 @@ export const useAlertSelection = ({
 		onSelectAlerts([alert]);
 	};
 
+	// Cmd/Ctrl+arrow: the row the cursor moved to joins the selection; nothing is dropped
+	// (unlike a Cmd/Ctrl+click, which toggles).
+	const handleExtendSelection = (alert: Alert) => {
+		if (!onSelectAlerts) return;
+		anchorIdRef.current = alert.id;
+		addToSelection([alert]);
+	};
+
 	// The folder checkbox: when every member is already selected, drop them all;
 	// otherwise add the missing ones (union, like select-all).
 	const handleToggleMembers = (members: Alert[]) => {
@@ -99,6 +107,7 @@ export const useAlertSelection = ({
 		handleSelectAlert,
 		handleSelectRange,
 		handleSelectOnly,
+		handleExtendSelection,
 		handleToggleMembers,
 		setAnchor,
 	};
