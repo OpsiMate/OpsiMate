@@ -80,12 +80,26 @@ export async function setupListeningExpressApp(db: Database.Database): Promise<L
 		throw new Error('Failed to create Express app in test setup');
 	}
 	const server = http.createServer(expressApp);
-	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+	// A failed bind is an 'error' event, not a callback argument; without this the
+	// rejection would surface as an uncaught error in the worker instead of failing
+	// beforeAll.
+	await new Promise<void>((resolve, reject) => {
+		server.once('error', reject);
+		server.listen(0, '127.0.0.1', () => {
+			server.off('error', reject);
+			resolve();
+		});
+	});
 	return {
 		app: request(server) as unknown as SuperTest<Test>,
 		close: async () => {
+			// Stop accepting first, then drop what is still open, so a connection arriving
+			// between the two calls cannot keep the server alive.
+			const closed = new Promise<void>((resolve, reject) =>
+				server.close((error) => (error ? reject(error) : resolve()))
+			);
 			server.closeAllConnections();
-			await new Promise<void>((resolve) => server.close(() => resolve()));
+			await closed;
 		},
 	};
 }
