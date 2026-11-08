@@ -88,9 +88,11 @@ describe('isCopyShortcut / browserOwnsCopy', () => {
 
 	test('the browser owns copy inside editable fields', () => {
 		document.body.innerHTML =
-			'<textarea id="t"></textarea><div contenteditable="true" id="e"></div><div id="d"></div>';
+			'<textarea id="t"></textarea><div contenteditable="true" id="e"></div><div contenteditable="plaintext-only" id="p"></div><div contenteditable="false" id="f"></div><div id="d"></div>';
 		expect(browserOwnsCopy(document.getElementById('t'))).toBe(true);
 		expect(browserOwnsCopy(document.getElementById('e'))).toBe(true);
+		expect(browserOwnsCopy(document.getElementById('p'))).toBe(true);
+		expect(browserOwnsCopy(document.getElementById('f'))).toBe(false);
 		expect(browserOwnsCopy(document.getElementById('d'))).toBe(false);
 		expect(browserOwnsCopy(null)).toBe(false);
 	});
