@@ -3,7 +3,7 @@ name: opsimate
 description: OpsiMate - A Helm chart for deploying the OpsiMate application
 type: application
 version: 0.1.1
-appVersion: "0.1.0"
+appVersion: "0.1.5"
 maintainers:
   - name: Sai
     email: burra.sa@northeastern.edu
