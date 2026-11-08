@@ -30,13 +30,14 @@ import { GroupByControls } from './GroupByControls';
 import {
 	useAlertGrouping,
 	useAlertKeyboardNav,
-	useIncidentFolding,
 	useAlertSelection,
 	useAlertSorting,
+	useCellCopyShortcut,
 	useColumnResize,
 	useContentColumnWidths,
 	useDragAutoScroll,
 	useDragSelection,
+	useIncidentFolding,
 	useStickyHeaders,
 } from './hooks';
 import { SearchBar } from './SearchBar';
@@ -287,6 +288,8 @@ export const AlertsTable = ({
 
 	// ArrowUp/ArrowDown move the details-sidebar selection through the rows.
 	useAlertKeyboardNav({ flatRows, activeAlertId, onAlertClick, virtualizer, scrollerRef });
+	// Click a cell, Cmd/Ctrl+C copies it.
+	useCellCopyShortcut({ scrollerRef });
 
 	const virtualItems = virtualizer.getVirtualItems();
 
