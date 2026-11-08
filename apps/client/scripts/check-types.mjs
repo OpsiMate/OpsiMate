@@ -1,8 +1,9 @@
 // Gate the client's `tsc` output against a committed baseline. `vite build` strips
 // types, so type errors otherwise reach main unnoticed (this exact gap once shipped a
-// hook calling a function with the wrong argument shape). The client carries a set of
-// pre-existing type errors we don't fix in one sweep; this script FAILS only on errors
-// NOT already in the baseline, so new code is gated while the backlog shrinks over time.
+// hook calling a function with the wrong argument shape). This script FAILS on errors
+// NOT in the committed baseline. The baseline is empty since the backlog was cleared,
+// so every client type error fails CI; it stays as a file so a deliberate, temporary
+// exception can be recorded with --update instead of loosening tsconfig.
 //
 //   node scripts/check-types.mjs            check (used by CI); exits 1 on new errors
 //   node scripts/check-types.mjs --update   rewrite the baseline from current output
