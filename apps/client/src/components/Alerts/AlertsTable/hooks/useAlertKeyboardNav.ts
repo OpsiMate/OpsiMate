@@ -97,9 +97,12 @@ export const useAlertKeyboardNav = ({
 	scrollerRef,
 }: UseAlertKeyboardNavOptions) => {
 	// The window listener lives for the instance's lifetime; reading through a ref keeps
-	// it current without re-registering (and re-ordering the registry) every render.
+	// it current without re-registering (and re-ordering the registry) every render. The
+	// ref is synced after commit, so a render React discards never reaches the handler.
 	const latest = useRef({ flatRows, activeAlertId, onAlertClick, onSelectOnly, onExtendSelection, virtualizer });
-	latest.current = { flatRows, activeAlertId, onAlertClick, onSelectOnly, onExtendSelection, virtualizer };
+	useEffect(() => {
+		latest.current = { flatRows, activeAlertId, onAlertClick, onSelectOnly, onExtendSelection, virtualizer };
+	});
 
 	useEffect(() => {
 		// The row index the keyboard last navigated to, or null when nothing is pinned.
