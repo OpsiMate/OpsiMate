@@ -97,6 +97,25 @@ Good-first-issues are how new people get into the project, so we try to spread t
 - **Docs issues go to the docs repository.** Issues with a "📍 Where this lives" note are fixed in https://github.com/OpsiMate/documentation, not here.
 - **Using AI tools is fine; unchecked output is not.** PRs that change unrelated files, paste tests into source files, or don't do what the issue asks are closed and labelled `spam` (they don't count for Hacktoberfest).
 
+# How a Pull Request Gets Reviewed
+
+Every PR goes through the same steps. Knowing them up front saves a round trip:
+
+1. **CI must be green.** Lint, Prettier, the typecheck gates and all three test suites run on every push. A red check is looked at before anything else; fix it or explain it in a comment.
+2. **CodeRabbit reviews first.** Reply on **every** thread it opens, either with the commit that fixes it or with why it does not apply. Threads left without an answer are read as "not done". Pushing a fix without replying is the most common reason a PR stalls.
+3. **A maintainer reviews on top of current main.** They run the tests for what you changed and check every item the issue lists. Expect specific requests; answer each one.
+4. **Merge.** Squash, with your commits as the PR's history. Contributor PRs are merged by a maintainer only.
+
+Rules the reviews enforce, so you can apply them before pushing:
+
+- **Named types everywhere.** No anonymous inline object types, in tests included. Declare an `interface` or `type` and use it. This is checked in review, not by lint.
+- **No wall-clock assertions in tests.** Timing bounds flake on a loaded CI runner. Count the expensive call, assert on order or on the mocked clock, never on elapsed milliseconds.
+- **Stay inside the issue.** A PR that touches unrelated files, reformats code it does not change, or bundles a second fix gets a request to split it.
+- **Proof in the PR.** A screenshot for UI or docs changes (light and dark if the change is visual), the test output for tests.
+- **Dependencies and config need a second look.** PRs from contributors that change workflows, hooks, scripts, `package.json`, the lockfile, tool configs, Dockerfiles, infrastructure, `index.html` or shell scripts, or whose branch was force-pushed, fail the *Sensitive change guard* check until a maintainer reads them and adds the `maintainer-reviewed` label. That is expected; mention in the PR why the change is needed.
+- **Keep the claim alive.** An assigned issue with no activity and no open PR for 14 days is released automatically with a comment, so someone else can take it. If you need longer, say so on the issue; a maintainer can add `keep-assigned`.
+- **Check-in dates are real.** When a review asks for changes by a date and nothing happens, the PR is closed and the issue goes back to the pool. Comment to get it reassigned if you come back.
+
 # Pull Request Title 
 ### Your Pull Request title must strictly follow one of the following formats:
 - [FEAT]: Short descriptive title
