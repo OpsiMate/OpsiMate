@@ -93,7 +93,10 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 									Paste your webhook URL into the <strong>Post URL</strong> field
 								</li>
 								<li>
-									Ensure <strong>Content Type</strong> is set to "JSON" (default)
+									Ensure <strong>Content Type</strong> is set to "JSON" (default) and keep the default
+									Uptime Kuma payload (malformed <code>heartbeat</code> or <code>monitor</code> fields
+									return HTTP 400, while payloads omitting both fields return HTTP 200 and create a
+									"Test Alert"; extra keys on the default payload are accepted)
 								</li>
 								<li>Click "Test" to verify the connection</li>
 								<li>
@@ -117,8 +120,18 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 								<li>Your webhook endpoint must be accessible from your Uptime Kuma instance</li>
 								<li>Alerts will appear in OpsiMate's Alerts page once configured</li>
 								<li>
-									The "Test" button in Uptime Kuma will send a test alert that should appear in
-									OpsiMate
+									Each monitor maps to alert ID <code>UPTIMEKUMA_&lt;monitor.id&gt;</code>. The alert
+									name uses <code>pathName</code> or <code>name</code>, the summary uses{' '}
+									<code>heartbeat.msg</code>, and the tags use <code>name: value</code> monitor tags.
+								</li>
+								<li>
+									Status <code>0</code> (down) or <code>2</code> (pending) fires the alert, and status{' '}
+									<code>1</code> (up) auto-resolves it and moves it to the <strong>Resolved</strong>{' '}
+									list
+								</li>
+								<li>
+									The "Test" button in Uptime Kuma creates a firing alert named{' '}
+									<strong>Test Alert</strong> in OpsiMate; resolve it manually afterwards
 								</li>
 							</ul>
 						</div>
