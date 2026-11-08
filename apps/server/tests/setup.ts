@@ -1,3 +1,4 @@
+import http from 'node:http';
 import { vi } from 'vitest';
 import Database from 'better-sqlite3';
 import { createApp, AppMode } from '../src/app.ts';
@@ -59,6 +60,34 @@ export async function setupExpressApp(db: Database.Database): Promise<SuperTest<
 		throw new Error('Failed to create Express app in test setup');
 	}
 	return request(expressApp) as unknown as SuperTest<Test>;
+}
+
+export interface ListeningTestApp {
+	app: SuperTest<Test>;
+	close: () => Promise<void>;
+}
+
+// setupExpressApp hands supertest the bare express app, and supertest then starts a
+// server of its own that closes once the last in-flight request settles and restarts
+// on the next one. Every request fired while that restart is pending waits on the
+// server's 'listening'/'error'/'close' events, so a burst of more than ten concurrent
+// requests trips MaxListenersExceededWarning. Tests that fire such a burst use this
+// instead: the server is already listening, supertest dispatches straight away, and
+// the test owns the server's lifetime via close().
+export async function setupListeningExpressApp(db: Database.Database): Promise<ListeningTestApp> {
+	const expressApp = await createApp(db, AppMode.SERVER);
+	if (!expressApp) {
+		throw new Error('Failed to create Express app in test setup');
+	}
+	const server = http.createServer(expressApp);
+	await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+	return {
+		app: request(server) as unknown as SuperTest<Test>,
+		close: async () => {
+			server.closeAllConnections();
+			await new Promise<void>((resolve) => server.close(() => resolve()));
+		},
+	};
 }
 
 export async function setupUserWithToken(app: SuperTest<Test>): Promise<string> {
