@@ -262,9 +262,14 @@ export function getFieldError(fieldName: string, response: { details?: Validatio
  * Checks if a response contains validation errors
  */
 export function isValidationError(response: unknown): response is ValidationErrorResponse {
+	if (typeof response !== 'object' || response === null) {
+		return false;
+	}
+	const candidate = response as Partial<ValidationErrorResponse>;
 	return (
-		response?.success === false &&
-		(response?.error === 'Validation error' || response?.error?.includes('Validation error')) &&
-		Array.isArray(response?.details)
+		candidate.success === false &&
+		typeof candidate.error === 'string' &&
+		candidate.error.includes('Validation error') &&
+		Array.isArray(candidate.details)
 	);
 }

@@ -66,7 +66,7 @@ const Login: React.FC = () => {
 			}>('/users/login', 'POST', { email, password });
 
 			if (res.success) {
-				const token = (res.data && res.data.token) || res.token;
+				const token = (res.data && res.data.token) || (typeof res.token === 'string' ? res.token : undefined);
 				if (token) {
 					localStorage.setItem(AUTH_TOKEN_STORAGE_KEY, token);
 					window.location.href = ROUTES.home;
