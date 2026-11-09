@@ -47,6 +47,67 @@ const actorIdOf = (req: AuthenticatedRequest): string | null => (req.user != nul
 const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
 
+interface UptimeKumaNotice {
+	kind: 'certificate' | 'domain' | 'notice';
+	id: string;
+	alertName: string;
+	summary: string;
+	alertUrl: string;
+	tags: Record<string, string>;
+}
+
+// Uptime Kuma's Test button sends `${notification.name} Testing` (server.js, the
+// testNotification handler). Anything else arriving without a monitor is a notice the
+// monitor loop sent by message only: a certificate expiry
+// ("[name][url] <type> certificate <CN> will expire in N days") or a domain expiry
+// ("Domain name <domain> will expire in N days"). Such notices have no "up" heartbeat
+// to resolve them, so they get a stable id per subject (not per message) and are
+// updated in place as the day count shrinks.
+const UPTIME_KUMA_TEST_MESSAGE = /(^|\s)Testing$/;
+const UPTIME_KUMA_CERT_NOTICE = /^\[(.+?)\]\[(.+?)\] (.+?) certificate (.+?) will expire in (\d+) days?$/;
+const UPTIME_KUMA_DOMAIN_NOTICE = /^Domain name (.+?) will expire in (\d+) days?$/;
+
+const noticeId = (subject: string): string => createHash('sha1').update(subject).digest('hex').slice(0, 12);
+
+export function parseUptimeKumaNotice(msg: string): UptimeKumaNotice | null {
+	const message = msg.trim();
+	if (message === '' || UPTIME_KUMA_TEST_MESSAGE.test(message)) {
+		return null;
+	}
+	const cert = UPTIME_KUMA_CERT_NOTICE.exec(message);
+	if (cert) {
+		const [, monitorName, url, certType, certCN, days] = cert;
+		return {
+			kind: 'certificate',
+			id: `UPTIMEKUMA_CERT_${noticeId(url)}`,
+			alertName: `${monitorName}: TLS certificate expires in ${days} days`,
+			summary: message,
+			alertUrl: url,
+			tags: { notice: 'certificate', monitor: monitorName, certificate: certCN, certificate_type: certType },
+		};
+	}
+	const domain = UPTIME_KUMA_DOMAIN_NOTICE.exec(message);
+	if (domain) {
+		const [, name, days] = domain;
+		return {
+			kind: 'domain',
+			id: `UPTIMEKUMA_DOMAIN_${noticeId(name)}`,
+			alertName: `Domain ${name} expires in ${days} days`,
+			summary: message,
+			alertUrl: '',
+			tags: { notice: 'domain', domain: name },
+		};
+	}
+	return {
+		kind: 'notice',
+		id: `UPTIMEKUMA_NOTICE_${noticeId(message)}`,
+		alertName: message.length > 120 ? `${message.slice(0, 117)}...` : message,
+		summary: message,
+		alertUrl: '',
+		tags: { notice: 'other' },
+	};
+}
+
 export class AlertController {
 	constructor(
 		private alertBL: AlertBL,
@@ -266,26 +327,56 @@ export class AlertController {
 			// payload with one real field and the other missing/null is a malformed alert
 			// and must fall through to the strict parse (400), not become a phantom
 			// "Test Alert".
+			//
+			// Certificate-expiry and domain-expiry notices use the same call with the same
+			// null defaults (model/monitor.js sendCertNotificationByTargetDays,
+			// model/domain_expiry.js sendDomainNotificationByTargetDays); only `msg`
+			// distinguishes them from the Test button, so a message that is not the
+			// "<notification name> Testing" string becomes a firing notice alert instead.
 			const raw: unknown = req.body;
-			const field = (key: 'heartbeat' | 'monitor'): unknown =>
+			const field = (key: 'heartbeat' | 'monitor' | 'msg'): unknown =>
 				typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>)[key] : undefined;
-			const isTestRequest = field('heartbeat') == null && field('monitor') == null;
-			if (isTestRequest) {
-				logger.info('UptimeKuma Test Alert Created');
-				await this.alertBL.insertOrUpdateAlert({
-					id: randomUUID(),
+			const isBodyWithoutMonitor = field('heartbeat') == null && field('monitor') == null;
+			if (isBodyWithoutMonitor) {
+				const msg = field('msg');
+				const notice = parseUptimeKumaNotice(typeof msg === 'string' ? msg : '');
+				if (!notice) {
+					logger.info('UptimeKuma Test Alert Created');
+					await this.alertBL.insertOrUpdateAlert({
+						id: randomUUID(),
+						type: 'UptimeKuma',
+						status: AlertStatus.FIRING,
+						tags: {},
+						startsAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+						alertUrl: '',
+						alertName: 'Test Alert',
+						summary: 'Test Alert by UptimeKuma was created successfully',
+						runbookUrl: undefined,
+					});
+
+					return res.status(200).json({ success: true, data: null });
+				}
+
+				logger.info(`Received Uptime Kuma ${notice.kind} notice: ${notice.summary}`);
+				const now = new Date().toISOString();
+				const { owner } = await this.alertBL.insertOrUpdateAlert({
+					id: notice.id,
 					type: 'UptimeKuma',
 					status: AlertStatus.FIRING,
-					tags: {},
-					startsAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-					alertUrl: '',
-					alertName: 'Test Alert',
-					summary: 'Test Alert by UptimeKuma was created successfully',
+					tags: notice.tags,
+					startsAt: now,
+					updatedAt: now,
+					alertUrl: notice.alertUrl,
+					alertName: notice.alertName,
+					summary: notice.summary,
 					runbookUrl: undefined,
 				});
 
-				return res.status(200).json({ success: true, data: null });
+				return res.status(200).json({
+					success: true,
+					data: { alertId: notice.id, updated: true, ...(owner ? { owner } : {}) },
+				});
 			}
 
 			const payload = UptimeKumaWebhookPayloadSchema.parse(req.body);
