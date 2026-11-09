@@ -7,7 +7,6 @@ import { AlertRootCauseSection } from '../AlertRootCauseSection';
 import { AlertLinksSection } from '../AlertLinksSection';
 import { getAlertLinks } from '../../utils/links.utils';
 import { AlertSummarySection } from '../AlertSummarySection';
-import { AlertTagsSection } from '../AlertTagsSection';
 import { AlertTeamSection } from '../AlertTeamSection';
 import { CollapsibleSection } from '../CollapsibleSection';
 
@@ -20,7 +19,7 @@ interface AlertDetailsBodyProps {
 }
 
 // The Details-tab body, shared by all alert-detail containers. Identity stays pinned at the
-// top with the id + label chips right under it; everything else lives in collapsible
+// top (labels and the id live behind its tag icon); everything else lives in collapsible
 // sections (summary, team, root cause, latest comment, links) followed by the
 // custom-actions section. History has its own tab (AlertHistoryWall)
 // and the silence/resolve buttons are NOT part of the body — containers pin them at the
@@ -29,9 +28,6 @@ export const AlertDetailsBody = ({ alert, onViewAllComments, isResolved }: Alert
 	return (
 		<div className="p-4 space-y-2">
 			<AlertInfoSection alert={alert} isResolved={isResolved} />
-
-			{/* Always present: the alert id is listed here even when the alert has no tags. */}
-			<AlertTagsSection alert={alert} />
 
 			{alert.summary && (
 				<CollapsibleSection title="Summary" icon={<FileText className="h-3.5 w-3.5" />} defaultOpen>
