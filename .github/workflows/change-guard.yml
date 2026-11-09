@@ -44,3 +44,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          # Maintainers whose org membership is private read as CONTRIBUTOR through the
+          # workflow token; list them here so their PRs pass like any member's.
+          TRUSTED_LOGINS: idanlodzki
