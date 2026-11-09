@@ -1526,6 +1526,93 @@ describe('Alerts API', () => {
 			expect(count()).toBe(before);
 		});
 
+		// Uptime Kuma's cert-expiry and domain-expiry notices use the very same
+		// Notification.send(config, msg) call as the Test button (model/monitor.js and
+		// model/domain_expiry.js), so they also arrive with heartbeat and monitor null.
+		// Only the message tells them apart; they must become real alerts, not Test Alerts.
+		test('a certificate-expiry notice becomes a firing alert with a stable id', async () => {
+			const send = (days: number) =>
+				app
+					.post('/api/v1/alerts/custom/uptimekuma')
+					.set('Authorization', `Bearer ${jwtToken}`)
+					.send({
+						heartbeat: null,
+						monitor: null,
+						msg: `[Shop][https://shop.example.com] valid certificate shop.example.com will expire in ${days} days`,
+					});
+			const first = await send(21);
+			expect(first.status).toBe(200);
+			const alertId = first.body.data.alertId as string;
+			expect(alertId).toMatch(/^UPTIMEKUMA_CERT_[0-9a-f]{12}$/);
+
+			const second = await send(7);
+			expect(second.body.data.alertId).toBe(alertId);
+
+			const row = db
+				.prepare('SELECT type, status, alert_name, summary, alert_url, tags FROM alerts WHERE id = ?')
+				.get(alertId) as AlertRow;
+			expect(row.type).toBe('UptimeKuma');
+			expect(row.status).toBe('firing');
+			expect(row.alert_name).toBe('Shop: TLS certificate expires in 7 days');
+			expect(row.summary).toBe(
+				'[Shop][https://shop.example.com] valid certificate shop.example.com will expire in 7 days'
+			);
+			expect(row.alert_url).toBe('https://shop.example.com');
+			expect(JSON.parse(row.tags)).toMatchObject({
+				notice: 'certificate',
+				monitor: 'Shop',
+				certificate: 'shop.example.com',
+				certificate_type: 'valid',
+			});
+			expect(
+				(
+					db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name LIKE '%TLS certificate%'").get() as {
+						c: number;
+					}
+				).c
+			).toBe(1);
+		});
+
+		test('a domain-expiry notice becomes a firing alert', async () => {
+			const response = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ heartbeat: null, monitor: null, msg: 'Domain name example.org will expire in 30 days' });
+			expect(response.status).toBe(200);
+			const row = db
+				.prepare('SELECT alert_name, summary, tags FROM alerts WHERE id = ?')
+				.get(response.body.data.alertId) as AlertRow;
+			expect(row.alert_name).toBe('Domain example.org expires in 30 days');
+			expect(row.summary).toBe('Domain name example.org will expire in 30 days');
+			expect(JSON.parse(row.tags)).toMatchObject({ notice: 'domain', domain: 'example.org' });
+		});
+
+		test('the Test button message is still a Test Alert, and an unknown message is a generic notice', async () => {
+			const testAlerts = () =>
+				(db.prepare("SELECT COUNT(*) AS c FROM alerts WHERE alert_name = 'Test Alert'").get() as { c: number })
+					.c;
+			const before = testAlerts();
+			const test = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ heartbeat: null, monitor: null, msg: 'OpsiMate prod Testing' });
+			expect(test.body).toEqual({ success: true, data: null });
+			expect(testAlerts()).toBe(before + 1);
+
+			const other = await app
+				.post('/api/v1/alerts/custom/uptimekuma')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ heartbeat: null, monitor: null, msg: 'Something unexpected from Uptime Kuma' });
+			expect(other.status).toBe(200);
+			expect(other.body.data.alertId).toMatch(/^UPTIMEKUMA_NOTICE_[0-9a-f]{12}$/);
+			const row = db
+				.prepare('SELECT alert_name, tags FROM alerts WHERE id = ?')
+				.get(other.body.data.alertId) as AlertRow;
+			expect(row.alert_name).toBe('Something unexpected from Uptime Kuma');
+			expect(JSON.parse(row.tags)).toMatchObject({ notice: 'other' });
+			expect(testAlerts()).toBe(before + 1);
+		});
+
 		test('should create a test alert for an empty request body', async () => {
 			const response = await app
 				.post('/api/v1/alerts/custom/uptimekuma')
