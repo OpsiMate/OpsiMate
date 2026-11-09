@@ -51,6 +51,41 @@ const triggerDownload = (filename: string, mimeType: string, content: string) =>
 	URL.revokeObjectURL(url);
 };
 
+interface HistoryContentProps {
+	history: AlertHistoryQueryState;
+	visible: AlertHistoryData[];
+	isFiltered: boolean;
+	lane: HistoryLaneFilter;
+}
+
+// What fills the tab below the header: loading first, then a failed fetch, else the
+// timeline (which renders its own empty state).
+const HistoryContent = ({ history, visible, isFiltered, lane }: HistoryContentProps) => {
+	if (history.isLoading) {
+		return (
+			<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+				Loading history...
+			</div>
+		);
+	}
+	if (history.isError) {
+		return (
+			<div className="flex items-center justify-center py-8 text-sm text-destructive">
+				Couldn't load history. Try again later.
+			</div>
+		);
+	}
+	return (
+		<AlertHistoryTimeline
+			data={visible}
+			isFiltered={isFiltered}
+			laneFilter={lane}
+			// The tab's ScrollArea scrolls; the timeline must not clip itself.
+			className="max-h-none overflow-visible"
+		/>
+	);
+};
+
 // The History tab of the details panel (sibling of CommentsWall): a header with the entry
 // count, a lane filter and CSV/JSON export, over a git-style two-branch timeline. Filtered
 // by the active time range so it mirrors what the "All time" button shows for the list.
@@ -139,23 +174,7 @@ export const AlertHistoryWall = ({ history, timeRange }: AlertHistoryWallProps) 
 
 			<ScrollArea className="flex-1">
 				<div className="p-3">
-					{history.isLoading ? (
-						<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
-							Loading history...
-						</div>
-					) : history.isError ? (
-						<div className="flex items-center justify-center py-8 text-sm text-destructive">
-							Couldn't load history. Try again later.
-						</div>
-					) : (
-						<AlertHistoryTimeline
-							data={visible}
-							isFiltered={isFiltered}
-							laneFilter={lane}
-							// The tab's ScrollArea scrolls; the timeline must not clip itself.
-							className="max-h-none overflow-visible"
-						/>
-					)}
+					<HistoryContent history={history} visible={visible} isFiltered={isFiltered} lane={lane} />
 				</div>
 			</ScrollArea>
 		</div>
