@@ -20,38 +20,38 @@ After importing the webhook, you can configure it using webhook parameters.
 
 The configurable parameters are intended to be changed according to the webhook setup as well as the user's preferences and environment.
 
-|Name|Value|Description|
-|----|-----|-----------|
-|opsimate_url|\<put your OpsiMate URL\>|Base URL of the OpsiMate server, for example `http://opsimate.example.com:3001`. The webhook path `/api/v1/alerts/custom/zabbix` is appended automatically (a full webhook URL is accepted as well).|
-|opsimate_token|\<put your OpsiMate API token\>|OpsiMate API token: the value of the `API_TOKEN` environment variable of the OpsiMate server (default `opsimate`). Sent as the `x-api-token` header.|
-|zabbix_url|\{$ZABBIX\.URL\}|Current Zabbix frontend URL. Used by OpsiMate to build the link back to the problem (`tr_events.php?triggerid=...&eventid=...`).|
+| Name           | Value                           | Description                                                                                                                                                                                          |
+| -------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| opsimate_url   | \<put your OpsiMate URL\>       | Base URL of the OpsiMate server, for example `http://opsimate.example.com:3001`. The webhook path `/api/v1/alerts/custom/zabbix` is appended automatically (a full webhook URL is accepted as well). |
+| opsimate_token | \<put your OpsiMate API token\> | OpsiMate API token: the value of the `API_TOKEN` environment variable of the OpsiMate server (default `opsimate`). Sent as the `x-api-token` header.                                                 |
+| zabbix_url     | \{$ZABBIX\.URL\}                | Current Zabbix frontend URL. Used by OpsiMate to build the link back to the problem (`tr_events.php?triggerid=...&eventid=...`).                                                                     |
 
 ### Internal parameters
 
 Internal parameters are reserved for predefined macros that are not meant to be changed.
 
-|Name|Value|Description|
-|----|-----|-----------|
-|alert_message|\{ALERT\.MESSAGE\}|'Default message' value from action configuration. Shown as the alert summary in OpsiMate.|
-|event_date|\{EVENT\.DATE\}|Date of the event that triggered an action.|
-|event_id|\{EVENT\.ID\}|Numeric ID of the event that triggered an action. The OpsiMate alert ID is `ZABBIX_<event_id>`.|
-|event_name|\{EVENT\.NAME\}|Name of the problem event.|
-|event_recovery_date|\{EVENT\.RECOVERY\.DATE\}|Date of the recovery event. Empty for problem notifications.|
-|event_recovery_time|\{EVENT\.RECOVERY\.TIME\}|Time of the recovery event. Empty for problem notifications.|
-|event_source|\{EVENT\.SOURCE\}|Numeric value of the event source. Supported values: 0 - Trigger, 3 - Internal.|
-|event_tags|\{EVENT\.TAGS\}|A comma-separated list of event tags (`tag:value`). Stored as alert tags in OpsiMate.|
-|event_time|\{EVENT\.TIME\}|Time of the event that triggered an action.|
-|event_update_status|\{EVENT\.UPDATE\.STATUS\}|Numeric value of the problem update status. Possible values: 0 - Webhook was called because of problem/recovery event, 1 - Update operation (not forwarded to OpsiMate).|
-|event_value|\{EVENT\.VALUE\}|Numeric value of the event that triggered an action (1 for problem, 0 for recovering).|
-|host_ip|\{HOST\.IP\}|IP address of the host. Stored as the `host_ip` alert tag.|
-|host_name|\{HOST\.NAME\}|Visible name of the host. Stored as the `host` alert tag.|
-|item_name|\{ITEM\.NAME\}|Name of the item that caused the problem.|
-|item_value|\{ITEM\.VALUE\}|Latest value of the item that caused the problem.|
-|trigger_id|\{TRIGGER\.ID\}|Numeric ID of the trigger of this action.|
-|trigger_name|\{TRIGGER\.NAME\}|Name of the trigger. Used as the alert name in OpsiMate.|
-|trigger_severity|\{TRIGGER\.SEVERITY\}|Trigger severity name. Stored as the `severity` alert tag.|
-|trigger_status|\{TRIGGER\.STATUS\}|Trigger status: PROBLEM or OK.|
-|trigger_url|\{TRIGGER\.URL\}|Trigger URL, if the trigger has one. Takes precedence over the link built from `zabbix_url`.|
+| Name                | Value                     | Description                                                                                                                                                              |
+| ------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| alert_message       | \{ALERT\.MESSAGE\}        | 'Default message' value from action configuration. Shown as the alert summary in OpsiMate.                                                                               |
+| event_date          | \{EVENT\.DATE\}           | Date of the event that triggered an action.                                                                                                                              |
+| event_id            | \{EVENT\.ID\}             | Numeric ID of the event that triggered an action. The OpsiMate alert ID is `ZABBIX_<event_id>`.                                                                          |
+| event_name          | \{EVENT\.NAME\}           | Name of the problem event.                                                                                                                                               |
+| event_recovery_date | \{EVENT\.RECOVERY\.DATE\} | Date of the recovery event. Empty for problem notifications.                                                                                                             |
+| event_recovery_time | \{EVENT\.RECOVERY\.TIME\} | Time of the recovery event. Empty for problem notifications.                                                                                                             |
+| event_source        | \{EVENT\.SOURCE\}         | Numeric value of the event source. Supported values: 0 - Trigger, 3 - Internal.                                                                                          |
+| event_tags          | \{EVENT\.TAGS\}           | A comma-separated list of event tags (`tag:value`). Stored as alert tags in OpsiMate.                                                                                    |
+| event_time          | \{EVENT\.TIME\}           | Time of the event that triggered an action.                                                                                                                              |
+| event_update_status | \{EVENT\.UPDATE\.STATUS\} | Numeric value of the problem update status. Possible values: 0 - Webhook was called because of problem/recovery event, 1 - Update operation (not forwarded to OpsiMate). |
+| event_value         | \{EVENT\.VALUE\}          | Numeric value of the event that triggered an action (1 for problem, 0 for recovering).                                                                                   |
+| host_ip             | \{HOST\.IP\}              | IP address of the host. Stored as the `host_ip` alert tag.                                                                                                               |
+| host_name           | \{HOST\.NAME\}            | Visible name of the host. Stored as the `host` alert tag.                                                                                                                |
+| item_name           | \{ITEM\.NAME\}            | Name of the item that caused the problem.                                                                                                                                |
+| item_value          | \{ITEM\.VALUE\}           | Latest value of the item that caused the problem.                                                                                                                        |
+| trigger_id          | \{TRIGGER\.ID\}           | Numeric ID of the trigger of this action.                                                                                                                                |
+| trigger_name        | \{TRIGGER\.NAME\}         | Name of the trigger. Used as the alert name in OpsiMate.                                                                                                                 |
+| trigger_severity    | \{TRIGGER\.SEVERITY\}     | Trigger severity name. Stored as the `severity` alert tag.                                                                                                               |
+| trigger_status      | \{TRIGGER\.STATUS\}       | Trigger status: PROBLEM or OK.                                                                                                                                           |
+| trigger_url         | \{TRIGGER\.URL\}          | Trigger URL, if the trigger has one. Takes precedence over the link built from `zabbix_url`.                                                                             |
 
 > Please be aware that each webhook supports an HTTP proxy. To use this feature, add a new media type parameter with the name `http_proxy` and set its value to the proxy URL.
 
@@ -73,8 +73,8 @@ The configuration consists of a _media type_ in Zabbix, which will invoke the we
 
 3. Change the values of the variables:
 
-    * `opsimate_url` (for example, `http://opsimate.example.com:3001`);
-    * `opsimate_token` (the `API_TOKEN` of the OpsiMate server).
+   - `opsimate_url` (for example, `http://opsimate.example.com:3001`);
+   - `opsimate_token` (the `API_TOKEN` of the OpsiMate server).
 
 4. Enable the media type (it is imported disabled).
 
