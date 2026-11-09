@@ -1,0 +1,1 @@
+export { AlertHistoryWall } from './AlertHistoryWall';

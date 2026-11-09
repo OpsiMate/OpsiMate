@@ -37,7 +37,7 @@ describe('alert id in the Labels section', () => {
 	});
 
 	test('an alert with no tags still gets a Labels section holding its id', () => {
-		render(<AlertDetailsBody alert={mkAlert({})} historyData={null} />);
+		render(<AlertDetailsBody alert={mkAlert({})} />);
 		const labels = screen.getByRole('button', { name: /labels/i });
 		fireEvent.click(labels);
 		expect(screen.getByText('grafana-8f3a1c-disk-full-node-7')).toBeInTheDocument();

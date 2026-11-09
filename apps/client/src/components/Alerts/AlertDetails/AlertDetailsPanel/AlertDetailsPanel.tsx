@@ -7,6 +7,7 @@ import { AlertDetailsBody } from '../AlertDetailsBody';
 import { AlertDetailsHeader } from '../AlertDetailsHeader';
 import { AlertFooterActions } from '../AlertFooterActions';
 import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from '../CollapsibleSection';
+import { AlertHistoryWall } from '../AlertHistoryWall';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
 import { PanelResizeHandle } from './PanelResizeHandle';
@@ -70,8 +71,6 @@ export const AlertDetailsPanel = ({
 						<SectionsExpandContext.Provider value={signal}>
 							<AlertDetailsBody
 								alert={alert}
-								historyData={historyData}
-								timeRange={timeRange}
 								onViewAllComments={() => setTab('comments')}
 								isResolved={!isActive}
 							/>
@@ -81,6 +80,10 @@ export const AlertDetailsPanel = ({
 
 				<TabsContent value="comments" className="flex-1 min-h-0 mt-0">
 					<CommentsWall alertId={alert.id} />
+				</TabsContent>
+
+				<TabsContent value="history" className="flex-1 min-h-0 mt-0">
+					<AlertHistoryWall historyData={historyData} timeRange={timeRange} />
 				</TabsContent>
 			</Tabs>
 

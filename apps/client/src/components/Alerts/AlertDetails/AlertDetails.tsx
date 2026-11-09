@@ -5,7 +5,6 @@ import { AlertDetailsBody } from './AlertDetailsBody';
 import { AlertDetailsHeader } from './AlertDetailsHeader';
 import { AlertFooterActions } from './AlertFooterActions';
 import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from './CollapsibleSection';
-import { useAlertHistory } from './hooks';
 
 interface AlertDetailsProps {
 	isActive: boolean;
@@ -26,7 +25,6 @@ export const AlertDetails = ({
 	onDelete,
 	className,
 }: AlertDetailsProps) => {
-	const historyData = useAlertHistory(alert?.id);
 	const { signal, broadcast } = useSectionsExpandBroadcast();
 
 	if (!alert) return null;
@@ -37,7 +35,7 @@ export const AlertDetails = ({
 
 			<ScrollArea className="flex-1">
 				<SectionsExpandContext.Provider value={signal}>
-					<AlertDetailsBody alert={alert} historyData={historyData} isResolved={!isActive} />
+					<AlertDetailsBody alert={alert} isResolved={!isActive} />
 				</SectionsExpandContext.Provider>
 			</ScrollArea>
 
