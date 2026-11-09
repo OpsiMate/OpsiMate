@@ -48,6 +48,11 @@ jobs:
       - name: Lint apps/server
         run: pnpm --filter @OpsiMate/server lint
 
+      # The repository automation (stale claims, sensitive change guard) is plain Node
+      # with unit tests; nothing else runs them.
+      - name: Test .github scripts
+        run: node --test ".github/scripts/*.test.mjs"
+
       - name: Lint packages/shared
         run: pnpm --filter @OpsiMate/shared lint
 

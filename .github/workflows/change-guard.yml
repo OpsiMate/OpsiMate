@@ -1,0 +1,46 @@
+name: Sensitive change guard
+# The action in the title is how the script tells push-triggered runs (the record of
+# when a head sha was pushed) from label-triggered ones. Keep in step with
+# PUSH_RUN_TITLE in .github/scripts/change-guard.mjs.
+run-name: "guard/${{ github.event.action }} #${{ github.event.pull_request.number }}"
+
+# Fails a contributor PR that edits files a maintainer must read by hand (workflows,
+# hooks, scripts, package manifests, lockfiles, tool configs, Dockerfiles,
+# infrastructure, index.html, shell scripts) or whose branch was force-pushed, until a
+# maintainer adds the `maintainer-reviewed` label. Member, collaborator and dependabot
+# PRs pass untouched. The label only counts if added after the latest push. Logic and
+# tests live in .github/scripts/change-guard.mjs.
+#
+# pull_request_target on purpose: the workflow and the script always come from main,
+# so a PR cannot edit its own guard, and the run needs no first-time-contributor
+# approval. The job only reads the PR through the API; it never checks out or
+# executes PR code.
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+  # To read when the head sha was pushed (its first workflow run).
+  actions: read
+
+jobs:
+  guard:
+    name: Sensitive change guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+
+      - name: Check the pull request
+        run: node .github/scripts/change-guard.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
