@@ -29,6 +29,8 @@
 - [ ] I ran the change locally: tests for what I changed pass, and Prettier is clean
 - [ ] I covered **every** item the issue lists (not just the first few)
 - [ ] I attached proof: a screenshot for UI or docs changes, or the test output for tests
+- [ ] No anonymous inline object types (tests included) and no wall-clock timing assertions
+- [ ] I will reply on every CodeRabbit thread when I push (see "How a Pull Request Gets Reviewed" in CONTRIBUTING.md)
 - [ ] This is my only open PR on a `good first issue`
 - [ ] Docs issue? The PR is in https://github.com/OpsiMate/documentation, not here
 
