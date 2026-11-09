@@ -61,7 +61,7 @@ const App: React.FC = () => {
 							<Sonner />
 							<UnsavedChangesDialogWrapper />
 
-							<BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+							<BrowserRouter>
 								<ErrorBoundary>
 									<AuthGuard>
 										<Routes>

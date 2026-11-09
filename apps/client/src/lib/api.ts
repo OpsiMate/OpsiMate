@@ -42,6 +42,7 @@ import {
 	UpdateAiConfig,
 	AlertAnalytics,
 	SecretType,
+	SecretMetadata,
 	AlertCallback,
 	AlertCallbackEvent,
 	AlertCallbackMethod,
@@ -740,9 +741,7 @@ export const secretsApi = {
 	// Get all secrets
 	getSecrets: async () => {
 		try {
-			const response = await apiRequest<{
-				secrets: Array<{ id: string; name: string; value: string }>;
-			}>('/secrets');
+			const response = await apiRequest<{ secrets: SecretMetadata[] }>('/secrets');
 			return response;
 		} catch (error) {
 			logger.error('Error getting secrets:', error);

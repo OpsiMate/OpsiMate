@@ -1,9 +1,9 @@
 import { cn } from '@/lib/utils';
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config } from 'dompurify';
 
 // Safe subset of HTML allowed in user/integration-provided text (alert summaries,
 // enrichment templates). Everything else — scripts, event handlers, iframes — is stripped.
-const SANITIZE_CONFIG: DOMPurify.Config = {
+const SANITIZE_CONFIG: Config = {
 	ALLOWED_TAGS: [
 		'a',
 		'b',

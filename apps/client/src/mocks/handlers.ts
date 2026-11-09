@@ -13,7 +13,11 @@ import {
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
+	HttpActionConfig,
+	JiraActionConfig,
 	OncallTeam,
+	SlackActionConfig,
+	TeamsActionConfig,
 	applyAlertListQuery,
 	computeAlertAnalytics,
 	computeAlertFacets,
@@ -25,6 +29,11 @@ import { http, HttpResponse } from 'msw';
 import { getPlaygroundUser, OncallTeamState, playgroundState, randomId } from './state';
 
 const API_BASE = '*/api/v1';
+
+// The preview handler reads whichever template fields the action's type carries; a
+// Partial over every config shape types that lookup without narrowing the union.
+type AnyActionConfig = Partial<SlackActionConfig & TeamsActionConfig & JiraActionConfig & HttpActionConfig>;
+
 const nowIso = () => new Date().toISOString();
 
 const PLAYGROUND_ACTOR = getPlaygroundUser().fullName;
@@ -1285,7 +1294,7 @@ export const handlers = [
 		if (!action) {
 			return HttpResponse.json({ success: false, error: 'Action not found' }, { status: 404 });
 		}
-		const cfg = action.config as Record<string, string>;
+		const cfg: AnyActionConfig = action.config;
 		const preview =
 			action.type === 'slack'
 				? {
