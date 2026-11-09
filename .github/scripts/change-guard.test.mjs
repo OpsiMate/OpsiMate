@@ -157,6 +157,26 @@ describe('reviewIsCurrent', () => {
 		assert.equal(headPushedAt(runs), Date.parse('2026-11-09T10:00:00Z'));
 		assert.equal(headPushedAt([]), null);
 	});
+
+	it('treats a force-push back to an already-run sha as a new push', () => {
+		// Push A at 09:00, push B at 10:00, label at 11:00, force-push back to A at 12:00:
+		// A's earliest run predates the label, the force-push does not.
+		const runsForA = [{ created_at: '2026-11-09T09:00:00Z' }];
+		const timeline = [
+			{ event: 'labeled', label: { name: REVIEWED_LABEL }, created_at: '2026-11-09T11:00:00Z' },
+			{ event: 'head_ref_force_pushed', created_at: '2026-11-09T12:00:00Z' },
+		];
+		const pushedAt = headPushedAt(runsForA, timeline);
+		assert.equal(pushedAt, Date.parse('2026-11-09T12:00:00Z'));
+		assert.equal(reviewIsCurrent({ labeledAt: latestReviewedLabelAt(timeline), pushedAt }), false);
+	});
+
+	it("ignores a force-push older than the head sha's first run", () => {
+		const runs = [{ created_at: '2026-11-09T10:00:00Z' }];
+		const timeline = [{ event: 'head_ref_force_pushed', created_at: '2026-11-09T09:00:00Z' }];
+		assert.equal(headPushedAt(runs, timeline), Date.parse('2026-11-09T10:00:00Z'));
+		assert.equal(headPushedAt([], timeline), null);
+	});
 });
 
 describe('renderReport', () => {

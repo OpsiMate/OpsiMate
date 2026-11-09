@@ -12,8 +12,10 @@
 // label, which re-runs the check. The label only counts if it was added after the
 // current head was pushed, so a push on top of a reviewed branch (or a force-push
 // replacing it) fails again until a maintainer re-checks and re-adds the label.
-// "Pushed" is the server time of the first workflow run for the head sha, which a
-// contributor cannot backdate the way a commit's committer date can be.
+// "Pushed" is the later of two server-side times a contributor cannot backdate the
+// way a commit's committer date can be: the first workflow run for the head sha, and
+// the newest force-push on the branch. The second matters when a branch is
+// force-pushed back to an older, already-run sha after the label was added.
 //
 // Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/repo), PR_NUMBER.
 //
@@ -95,17 +97,32 @@ export function latestReviewedLabelAt(timeline) {
 	return latest;
 }
 
-// When the current head reached GitHub: the earliest workflow run for its sha. Null
-// when there is none, which makes a stale-or-not label count as stale.
-export function headPushedAt(runs) {
-	let earliest = null;
+// When the current head reached GitHub: the earliest workflow run for its sha, or the
+// newest force-push if that is later (a force-push back to an older sha reuses that
+// sha's old runs). Null when the sha has no run at all, which makes a label count as
+// stale.
+export function headPushedAt(runs, timeline = []) {
+	let earliestRun = null;
 	for (const run of runs) {
 		const at = Date.parse(run.created_at);
-		if (earliest === null || at < earliest) {
-			earliest = at;
+		if (earliestRun === null || at < earliestRun) {
+			earliestRun = at;
 		}
 	}
-	return earliest;
+	if (earliestRun === null) {
+		return null;
+	}
+	let latestForcePush = null;
+	for (const event of timeline) {
+		if (event.event !== 'head_ref_force_pushed') {
+			continue;
+		}
+		const at = Date.parse(event.created_at);
+		if (latestForcePush === null || at > latestForcePush) {
+			latestForcePush = at;
+		}
+	}
+	return latestForcePush !== null && latestForcePush > earliestRun ? latestForcePush : earliestRun;
 }
 
 export function reviewIsCurrent({ labeledAt, pushedAt }) {
@@ -187,7 +204,7 @@ async function main() {
 		forcePushes,
 		reviewIsCurrent: reviewIsCurrent({
 			labeledAt: latestReviewedLabelAt(timeline),
-			pushedAt: headPushedAt(runs),
+			pushedAt: headPushedAt(runs, timeline),
 		}),
 	});
 
