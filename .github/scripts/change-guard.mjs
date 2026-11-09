@@ -9,7 +9,11 @@
 //
 // Pass without looking: pull requests by owners, members and collaborators, and by
 // dependabot. Pass after looking: a maintainer adds the `maintainer-reviewed`
-// label, which re-runs the check.
+// label, which re-runs the check. The label only counts if it was added after the
+// current head was pushed, so a push on top of a reviewed branch (or a force-push
+// replacing it) fails again until a maintainer re-checks and re-adds the label.
+// "Pushed" is the server time of the first workflow run for the head sha, which a
+// contributor cannot backdate the way a commit's committer date can be.
 //
 // Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/repo), PR_NUMBER.
 //
@@ -76,9 +80,41 @@ export function countForcePushes(timeline) {
 	return timeline.filter((event) => event.event === 'head_ref_force_pushed').length;
 }
 
+// When the reviewed label was last added, as a timestamp, or null if never.
+export function latestReviewedLabelAt(timeline) {
+	let latest = null;
+	for (const event of timeline) {
+		if (event.event !== 'labeled' || event.label?.name !== REVIEWED_LABEL) {
+			continue;
+		}
+		const at = Date.parse(event.created_at);
+		if (latest === null || at > latest) {
+			latest = at;
+		}
+	}
+	return latest;
+}
+
+// When the current head reached GitHub: the earliest workflow run for its sha. Null
+// when there is none, which makes a stale-or-not label count as stale.
+export function headPushedAt(runs) {
+	let earliest = null;
+	for (const run of runs) {
+		const at = Date.parse(run.created_at);
+		if (earliest === null || at < earliest) {
+			earliest = at;
+		}
+	}
+	return earliest;
+}
+
+export function reviewIsCurrent({ labeledAt, pushedAt }) {
+	return labeledAt !== null && pushedAt !== null && labeledAt >= pushedAt;
+}
+
 // The verdict for a pull request given what was found. `outcome` is 'pass' or
 // 'fail'; `reason` is what the report says.
-export function decide({ login, authorAssociation, labels, flagged, forcePushes }) {
+export function decide({ login, authorAssociation, labels, flagged, forcePushes, reviewIsCurrent }) {
 	if (TRUSTED_BOTS.has(login)) {
 		return {
 			outcome: 'pass',
@@ -95,15 +131,22 @@ export function decide({ login, authorAssociation, labels, flagged, forcePushes 
 	if (findings === 0) {
 		return { outcome: 'pass', reason: 'no sensitive files and no force-push' };
 	}
+	const summary = `${flagged.length} sensitive file(s), ${forcePushes} force-push(es)`;
 	if (labels.includes(REVIEWED_LABEL)) {
+		if (reviewIsCurrent) {
+			return {
+				outcome: 'pass',
+				reason: `a maintainer added the ${REVIEWED_LABEL} label after the latest push`,
+			};
+		}
 		return {
-			outcome: 'pass',
-			reason: `a maintainer added the ${REVIEWED_LABEL} label`,
+			outcome: 'fail',
+			reason: `the ${REVIEWED_LABEL} label predates the latest push (${summary}). Re-check the new commits, then remove and re-add the label.`,
 		};
 	}
 	return {
 		outcome: 'fail',
-		reason: `needs a maintainer's eyes: ${flagged.length} sensitive file(s), ${forcePushes} force-push(es). Check them, then add the ${REVIEWED_LABEL} label to let the PR through.`,
+		reason: `needs a maintainer's eyes: ${summary}. Check them, then add the ${REVIEWED_LABEL} label to let the PR through.`,
 	};
 }
 
@@ -131,6 +174,8 @@ async function main() {
 	const pr = await client.request(`/repos/${repository}/pulls/${number}`);
 	const files = await client.paginate(`/repos/${repository}/pulls/${number}/files`);
 	const timeline = await client.paginate(`/repos/${repository}/issues/${number}/timeline`);
+	const runs = (await client.request(`/repos/${repository}/actions/runs?head_sha=${pr.head.sha}&per_page=100`))
+		.workflow_runs;
 
 	const flagged = flagFiles(files);
 	const forcePushes = countForcePushes(timeline);
@@ -140,6 +185,10 @@ async function main() {
 		labels: pr.labels.map((label) => label.name),
 		flagged,
 		forcePushes,
+		reviewIsCurrent: reviewIsCurrent({
+			labeledAt: latestReviewedLabelAt(timeline),
+			pushedAt: headPushedAt(runs),
+		}),
 	});
 
 	await report(renderReport({ pr, flagged, forcePushes, verdict }));

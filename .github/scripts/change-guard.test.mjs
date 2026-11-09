@@ -1,7 +1,16 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { REVIEWED_LABEL, countForcePushes, decide, flagFiles, renderReport } from './change-guard.mjs';
+import {
+	REVIEWED_LABEL,
+	countForcePushes,
+	decide,
+	flagFiles,
+	headPushedAt,
+	latestReviewedLabelAt,
+	renderReport,
+	reviewIsCurrent,
+} from './change-guard.mjs';
 
 function file(filename, status = 'modified', previous_filename = undefined) {
 	return { filename, status, previous_filename };
@@ -76,83 +85,77 @@ describe('countForcePushes', () => {
 });
 
 describe('decide', () => {
-	const flagged = [
-		{
-			filename: 'pnpm-lock.yaml',
-			status: 'modified',
-			reason: 'workspace or lockfile',
-		},
-	];
+	const flagged = [{ filename: 'pnpm-lock.yaml', status: 'modified', reason: 'workspace or lockfile' }];
+	const contributor = {
+		login: 'x',
+		authorAssociation: 'CONTRIBUTOR',
+		labels: [],
+		flagged,
+		forcePushes: 0,
+		reviewIsCurrent: false,
+	};
 
 	it('passes dependabot and repository members without looking', () => {
-		assert.equal(
-			decide({
-				login: 'dependabot[bot]',
-				authorAssociation: 'CONTRIBUTOR',
-				labels: [],
-				flagged,
-				forcePushes: 0,
-			}).outcome,
-			'pass'
-		);
+		assert.equal(decide({ ...contributor, login: 'dependabot[bot]' }).outcome, 'pass');
 		for (const authorAssociation of ['OWNER', 'MEMBER', 'COLLABORATOR']) {
-			assert.equal(
-				decide({
-					login: 'x',
-					authorAssociation,
-					labels: [],
-					flagged,
-					forcePushes: 3,
-				}).outcome,
-				'pass'
-			);
+			assert.equal(decide({ ...contributor, authorAssociation, forcePushes: 3 }).outcome, 'pass');
 		}
 	});
 
 	it('passes a contributor PR with nothing flagged', () => {
-		const verdict = decide({
-			login: 'x',
-			authorAssociation: 'CONTRIBUTOR',
-			labels: [],
-			flagged: [],
-			forcePushes: 0,
-		});
-		assert.equal(verdict.outcome, 'pass');
+		assert.equal(decide({ ...contributor, flagged: [] }).outcome, 'pass');
 	});
 
 	it('fails a contributor PR with a sensitive file or a force-push', () => {
+		assert.equal(decide({ ...contributor, authorAssociation: 'FIRST_TIME_CONTRIBUTOR' }).outcome, 'fail');
 		assert.equal(
-			decide({
-				login: 'x',
-				authorAssociation: 'FIRST_TIME_CONTRIBUTOR',
-				labels: [],
-				flagged,
-				forcePushes: 0,
-			}).outcome,
-			'fail'
-		);
-		assert.equal(
-			decide({
-				login: 'x',
-				authorAssociation: 'NONE',
-				labels: [],
-				flagged: [],
-				forcePushes: 1,
-			}).outcome,
+			decide({ ...contributor, authorAssociation: 'NONE', flagged: [], forcePushes: 1 }).outcome,
 			'fail'
 		);
 	});
 
-	it(`passes once a maintainer adds the ${REVIEWED_LABEL} label`, () => {
-		const verdict = decide({
-			login: 'x',
-			authorAssociation: 'CONTRIBUTOR',
-			labels: [REVIEWED_LABEL],
-			flagged,
-			forcePushes: 1,
-		});
+	it(`passes once a maintainer adds the ${REVIEWED_LABEL} label after the latest push`, () => {
+		const verdict = decide({ ...contributor, labels: [REVIEWED_LABEL], forcePushes: 1, reviewIsCurrent: true });
 		assert.equal(verdict.outcome, 'pass');
 		assert.match(verdict.reason, new RegExp(REVIEWED_LABEL));
+	});
+
+	it('fails again when a push lands after the label was added', () => {
+		const verdict = decide({ ...contributor, labels: [REVIEWED_LABEL], reviewIsCurrent: false });
+		assert.equal(verdict.outcome, 'fail');
+		assert.match(verdict.reason, /predates the latest push/);
+		assert.match(verdict.reason, /remove and re-add/);
+	});
+});
+
+describe('reviewIsCurrent', () => {
+	const t0 = Date.parse('2026-11-09T10:00:00Z');
+
+	it('is true only when the label is newer than the head push', () => {
+		assert.equal(reviewIsCurrent({ labeledAt: t0 + 1000, pushedAt: t0 }), true);
+		assert.equal(reviewIsCurrent({ labeledAt: t0, pushedAt: t0 }), true);
+		assert.equal(reviewIsCurrent({ labeledAt: t0 - 1000, pushedAt: t0 }), false);
+	});
+
+	it('is false when either side is unknown', () => {
+		assert.equal(reviewIsCurrent({ labeledAt: null, pushedAt: t0 }), false);
+		assert.equal(reviewIsCurrent({ labeledAt: t0, pushedAt: null }), false);
+	});
+
+	it('takes the newest reviewed label and the earliest run for the head', () => {
+		const timeline = [
+			{ event: 'labeled', label: { name: 'bug' }, created_at: '2026-11-09T12:00:00Z' },
+			{ event: 'labeled', label: { name: REVIEWED_LABEL }, created_at: '2026-11-09T09:00:00Z' },
+			{ event: 'labeled', label: { name: REVIEWED_LABEL }, created_at: '2026-11-09T11:00:00Z' },
+		];
+		assert.equal(latestReviewedLabelAt(timeline), Date.parse('2026-11-09T11:00:00Z'));
+		assert.equal(
+			latestReviewedLabelAt([{ event: 'labeled', label: { name: 'bug' }, created_at: '2026-11-09T12:00:00Z' }]),
+			null
+		);
+		const runs = [{ created_at: '2026-11-09T10:30:00Z' }, { created_at: '2026-11-09T10:00:00Z' }];
+		assert.equal(headPushedAt(runs), Date.parse('2026-11-09T10:00:00Z'));
+		assert.equal(headPushedAt([]), null);
 	});
 });
 
