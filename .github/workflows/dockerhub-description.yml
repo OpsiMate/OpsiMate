@@ -1,0 +1,43 @@
+name: Docker Hub descriptions
+
+# Keeps the Docker Hub overview of each image in step with the files under
+# infrastructure/docker/dockerhub/. The Hub page is where most users first meet the
+# images (60K+ pulls each); before this it was edited by hand and had gone stale.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - infrastructure/docker/dockerhub/**
+      - .github/workflows/dockerhub-description.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    name: Sync ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: backend
+            short: "OpsiMate API: one self-hosted alert queue for Grafana, Datadog, Zabbix, Uptime Kuma and GCP"
+          - image: frontend
+            short: "OpsiMate web UI: one self-hosted alert queue for Grafana, Datadog, Zabbix, Uptime Kuma and GCP"
+          - image: mcp
+            short: "OpsiMate MCP server: let AI assistants read and act on your alerts"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Update Docker Hub description
+        uses: peter-evans/dockerhub-description@v5
+        with:
+          username: opsimate
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: opsimate/${{ matrix.image }}
+          short-description: ${{ matrix.short }}
+          readme-filepath: infrastructure/docker/dockerhub/${{ matrix.image }}.md
