@@ -8,7 +8,10 @@
 // this makes them a status instead of a habit.
 //
 // Pass without looking: pull requests by owners, members and collaborators, and by
-// dependabot. Pass after looking: a maintainer adds the `maintainer-reviewed`
+// dependabot. The PR's author_association is read with the workflow token, which only
+// says MEMBER when the org membership is public; a maintainer with private membership
+// shows up as CONTRIBUTOR. So the author's repository permission (admin, maintain or
+// write) and an explicit TRUSTED_LOGINS list count as well. Pass after looking: a maintainer adds the `maintainer-reviewed`
 // label, which re-runs the check. The label only counts if it was added after the
 // current head was pushed, so a push on top of a reviewed branch (or a force-push
 // replacing it) fails again until a maintainer re-checks and re-adds the label.
@@ -32,6 +35,22 @@ import { createClient, report } from './github-api.mjs';
 
 export const REVIEWED_LABEL = 'maintainer-reviewed';
 const TRUSTED_ASSOCIATIONS = new Set(['OWNER', 'MEMBER', 'COLLABORATOR']);
+const TRUSTED_PERMISSIONS = new Set(['admin', 'maintain', 'write']);
+
+export function parseTrustedLogins(value) {
+	return new Set(
+		(value ?? '')
+			.split(',')
+			.map((login) => login.trim().toLowerCase())
+			.filter(Boolean)
+	);
+}
+
+// Whether the author may push to the repository, read from the collaborator permission
+// endpoint. Null when the token may not ask (treated as not trusted).
+export function isTrustedPermission(permission) {
+	return typeof permission === 'string' && TRUSTED_PERMISSIONS.has(permission);
+}
 const TRUSTED_BOTS = new Set(['dependabot[bot]']);
 
 // Path patterns a maintainer reads before merging, with the reason shown in the report.
@@ -150,6 +169,7 @@ export function reviewIsCurrent({ labeledAt, pushedAt }) {
 export function decide({
 	login,
 	authorAssociation,
+	trustedLogin = false,
 	labels,
 	flagged,
 	forcePushes,
@@ -166,6 +186,12 @@ export function decide({
 		return {
 			outcome: 'pass',
 			reason: `author is a repository ${authorAssociation.toLowerCase()}`,
+		};
+	}
+	if (trustedLogin) {
+		return {
+			outcome: 'pass',
+			reason: `author ${login} has write access to the repository`,
 		};
 	}
 	const findings = flagged.length + (forcePushes > 0 ? 1 : 0);
@@ -215,6 +241,18 @@ async function main() {
 	const client = createClient(process.env.GITHUB_TOKEN);
 
 	const pr = await client.request(`/repos/${repository}/pulls/${number}`);
+	const trustedLogins = parseTrustedLogins(process.env.TRUSTED_LOGINS);
+	let trustedLogin = trustedLogins.has(pr.user.login.toLowerCase());
+	if (!trustedLogin) {
+		try {
+			const { permission } = await client.request(
+				`/repos/${repository}/collaborators/${pr.user.login}/permission`
+			);
+			trustedLogin = isTrustedPermission(permission);
+		} catch (error) {
+			console.log(`collaborator permission lookup skipped: ${error.message.split('\n')[0]}`);
+		}
+	}
 	const files = await client.paginate(`/repos/${repository}/pulls/${number}/files`);
 	const timeline = await client.paginate(`/repos/${repository}/issues/${number}/timeline`);
 	const runs = (await client.request(`/repos/${repository}/actions/runs?head_sha=${pr.head.sha}&per_page=100`))
@@ -226,6 +264,7 @@ async function main() {
 	const verdict = decide({
 		login: pr.user.login,
 		authorAssociation: pr.author_association,
+		trustedLogin,
 		labels: pr.labels.map((label) => label.name),
 		flagged,
 		forcePushes,

@@ -5,6 +5,8 @@ import {
 	REVIEWED_LABEL,
 	countForcePushes,
 	decide,
+	isTrustedPermission,
+	parseTrustedLogins,
 	flagFiles,
 	headPushedAt,
 	isPushRecord,
@@ -101,6 +103,13 @@ describe('decide', () => {
 		for (const authorAssociation of ['OWNER', 'MEMBER', 'COLLABORATOR']) {
 			assert.equal(decide({ ...contributor, authorAssociation, forcePushes: 3 }).outcome, 'pass');
 		}
+	});
+
+	it('passes a maintainer whose org membership is private, by login list or write permission', () => {
+		const privateMember = { ...contributor, authorAssociation: 'CONTRIBUTOR', forcePushes: 2 };
+		assert.equal(decide({ ...privateMember, trustedLogin: true }).outcome, 'pass');
+		assert.match(decide({ ...privateMember, trustedLogin: true }).reason, /write access/);
+		assert.equal(decide({ ...privateMember, trustedLogin: false }).outcome, 'fail');
 	});
 
 	it('passes a contributor PR with nothing flagged', () => {
@@ -272,5 +281,21 @@ describe('renderReport', () => {
 		assert.match(text, /guard: FAIL/);
 		assert.match(text, /1 force-push\(es\) on `feat\/x`/);
 		assert.match(text, /`index\.html` \(modified\): HTML entry point/);
+	});
+});
+
+describe('trust helpers', () => {
+	it('parses the TRUSTED_LOGINS list case-insensitively', () => {
+		assert.deepEqual([...parseTrustedLogins(' IdanLodzki, bob ,')], ['idanlodzki', 'bob']);
+		assert.deepEqual([...parseTrustedLogins(undefined)], []);
+	});
+
+	it('trusts admin, maintain and write permissions only', () => {
+		for (const permission of ['admin', 'maintain', 'write']) {
+			assert.equal(isTrustedPermission(permission), true, permission);
+		}
+		for (const permission of ['triage', 'read', 'none', undefined, null]) {
+			assert.equal(isTrustedPermission(permission), false, String(permission));
+		}
 	});
 });
