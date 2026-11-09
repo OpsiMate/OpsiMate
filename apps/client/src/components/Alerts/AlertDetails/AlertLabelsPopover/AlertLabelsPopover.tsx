@@ -27,7 +27,7 @@ export const AlertLabelsPopover = ({ alert }: AlertLabelsPopoverProps) => {
 						<button
 							type="button"
 							aria-label={`Labels: ${label}. Opens the alert id and labels`}
-							className="inline-flex items-center gap-0.5 shrink-0 rounded text-muted-foreground hover:text-foreground transition-colors"
+							className="inline-flex items-center gap-0.5 shrink-0 rounded text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring"
 						>
 							<Tag className="h-3.5 w-3.5" aria-hidden />
 							<span className="text-[11px] leading-none tabular-nums">{entries.length}</span>
