@@ -1,8 +1,9 @@
 import { TextWithFlags } from '@/components/shared/TextWithFlags';
 import { Badge } from '@/components/ui/badge';
 import { Alert } from '@OpsiMate/shared';
-import { useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { getAlertTagEntries } from '../../utils/alertTags.utils';
+import { SectionsExpandContext } from '../CollapsibleSection';
 
 interface AlertTagsSectionProps {
 	alert: Alert;
@@ -20,6 +21,24 @@ const chipClass = 'max-w-full rounded-md px-1.5 py-0 text-[11px] leading-5 font-
 // labelled alert never pushes the sections below it off screen.
 export const AlertTagsSection = ({ alert }: AlertTagsSectionProps) => {
 	const [showAll, setShowAll] = useState(false);
+
+	// A new alert starts folded, like the panel starts on Details: the previous alert's
+	// "show all" is not a preference, it was about that alert's labels.
+	useEffect(() => {
+		setShowAll(false);
+	}, [alert.id]);
+
+	// "Expand all" / "Collapse all" in the panel header unfold or fold the strip too, so
+	// the controls still reach every label. Only broadcasts fired after mount count.
+	const signal = useContext(SectionsExpandContext);
+	const lastToken = useRef(signal?.token);
+	useEffect(() => {
+		if (signal && signal.token !== lastToken.current) {
+			lastToken.current = signal.token;
+			setShowAll(signal.open);
+		}
+	}, [signal]);
+
 	const entries = getAlertTagEntries(alert);
 	const hidden = Math.max(0, entries.length - MAX_VISIBLE_TAGS);
 	const visible = showAll ? entries : entries.slice(0, MAX_VISIBLE_TAGS);

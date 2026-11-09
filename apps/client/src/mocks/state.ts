@@ -383,7 +383,7 @@ const createAuditLogs = (): AuditLog[] => {
 };
 
 // The diverse-alerts generator doesn't attach labels, so we add realistic, deterministic
-// tags here. This powers the filter facets, the Labels section, tag-based dashboards, and
+// tags here. This powers the filter facets, the labels strip, tag-based dashboards, and
 // enrichment/action label matching in the playground.
 const TAG_SEVERITY = ['critical', 'warning', 'info'];
 const TAG_SERVICE = ['api-gateway', 'postgres', 'redis', 'elasticsearch', 'kafka', 'nginx'];

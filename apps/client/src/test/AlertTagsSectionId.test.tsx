@@ -3,6 +3,7 @@ import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
 import { AlertDetailsBody } from '@/components/Alerts/AlertDetails/AlertDetailsBody';
 import { AlertTagsSection } from '@/components/Alerts/AlertDetails/AlertTagsSection';
+import { SectionsExpandContext, SectionsExpandSignal } from '@/components/Alerts/AlertDetails/CollapsibleSection';
 import { render } from './test-utils';
 
 // Sections that fetch or need providers are out of scope here.
@@ -11,9 +12,9 @@ vi.mock('@/components/Alerts/AlertDetails/AlertRootCauseSection', () => ({ Alert
 vi.mock('@/components/Alerts/AlertDetails/AlertLastCommentSection', () => ({ AlertLastCommentSection: () => null }));
 vi.mock('@/components/Alerts/AlertDetails/AlertActionsSection', () => ({ AlertActionsSection: () => null }));
 
-const mkAlert = (tags: Record<string, string>) =>
+const mkAlert = (tags: Record<string, string>, id = 'grafana-8f3a1c-disk-full-node-7') =>
 	({
-		id: 'grafana-8f3a1c-disk-full-node-7',
+		id,
 		alertName: 'Disk full on node 7',
 		type: 'Grafana',
 		status: 'firing',
@@ -63,5 +64,33 @@ describe('alert id and labels strip', () => {
 		const tags = Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`k${i}`, `v${i}`]));
 		render(<AlertTagsSection alert={mkAlert(tags)} />);
 		expect(screen.queryByRole('button', { name: /more/i })).not.toBeInTheDocument();
+	});
+
+	test('"show all" does not carry over to the next alert', () => {
+		const tags = Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`k${i}`, `v${i}`]));
+		const { rerender } = render(<AlertTagsSection alert={mkAlert(tags, 'a')} />);
+		fireEvent.click(screen.getByRole('button', { name: '+3 more' }));
+		expect(screen.getByText('k8')).toBeInTheDocument();
+
+		rerender(<AlertTagsSection alert={mkAlert(tags, 'b')} />);
+		expect(screen.queryByText('k8')).not.toBeInTheDocument();
+		expect(screen.getByRole('button', { name: '+3 more' })).toBeInTheDocument();
+	});
+
+	test('the panel\'s "Expand all" / "Collapse all" unfold and fold the strip', () => {
+		const tags = Object.fromEntries(Array.from({ length: 9 }, (_, i) => [`k${i}`, `v${i}`]));
+		const withSignal = (signal: SectionsExpandSignal | null) => (
+			<SectionsExpandContext.Provider value={signal}>
+				<AlertTagsSection alert={mkAlert(tags)} />
+			</SectionsExpandContext.Provider>
+		);
+		const { rerender } = render(withSignal(null));
+		expect(screen.queryByText('k8')).not.toBeInTheDocument();
+
+		rerender(withSignal({ token: 1, open: true }));
+		expect(screen.getByText('k8')).toBeInTheDocument();
+
+		rerender(withSignal({ token: 2, open: false }));
+		expect(screen.queryByText('k8')).not.toBeInTheDocument();
 	});
 });
