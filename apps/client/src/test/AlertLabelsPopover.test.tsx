@@ -2,7 +2,10 @@ import { Alert } from '@OpsiMate/shared';
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import { AlertLabelsPopover } from '@/components/Alerts/AlertDetails/AlertLabelsPopover';
-import { LABELS_CHIPS_TEST_ID } from '@/components/Alerts/AlertDetails/AlertLabelsPopover/AlertLabelsPopover.constants';
+import {
+	LABELS_CHIPS_TEST_ID,
+	POPOVER_ARIA_LABEL,
+} from '@/components/Alerts/AlertDetails/AlertLabelsPopover/AlertLabelsPopover.constants';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { render } from './test-utils';
 
@@ -39,6 +42,7 @@ describe('AlertLabelsPopover', () => {
 
 		openPopover();
 
+		expect(screen.getByRole('dialog', { name: POPOVER_ARIA_LABEL })).toBeInTheDocument();
 		expect(screen.getByText('env')).toBeInTheDocument();
 		expect(screen.getByText('team')).toBeInTheDocument();
 	});

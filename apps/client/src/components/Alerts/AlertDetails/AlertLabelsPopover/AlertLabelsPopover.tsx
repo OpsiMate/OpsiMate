@@ -7,8 +7,10 @@ import { Tag } from 'lucide-react';
 import { getAlertTagEntries } from '../../utils/alertTags.utils';
 import {
 	CHIP_CLASS,
+	ID_CHIP_KEY,
 	ID_CHIP_TITLE,
 	LABELS_CHIPS_TEST_ID,
+	POPOVER_ARIA_LABEL,
 	labelsCountText,
 	labelsTriggerAriaLabel,
 } from './AlertLabelsPopover.constants';
@@ -41,14 +43,21 @@ export const AlertLabelsPopover = ({ alert }: AlertLabelsPopoverProps) => {
 				</TooltipTrigger>
 				<TooltipContent>{label}</TooltipContent>
 			</Tooltip>
-			<PopoverContent align="end" className="w-80 max-w-[90vw] p-3">
+			{/* Named for screen readers (the trigger's label names the button, not the dialog) and
+			    capped to the space Radix reports below/above the trigger so a long label list
+			    scrolls inside the popover instead of running off screen. */}
+			<PopoverContent
+				align="end"
+				aria-label={POPOVER_ARIA_LABEL}
+				className="w-80 max-w-[90vw] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-3"
+			>
 				<div className="flex items-center gap-1 flex-wrap" data-testid={LABELS_CHIPS_TEST_ID}>
 					{/* The alert id first — what webhook senders key on to re-fire or resolve. Same
 					    look as a label, dashed so it doesn't read as a tag the source sent; one
 					    click selects the value for copying. */}
 					<Badge variant="outline" className={`${CHIP_CLASS} border-dashed`} title={ID_CHIP_TITLE}>
 						<span className="break-all">
-							<span className="font-medium text-foreground">id</span>:{' '}
+							<span className="font-medium text-foreground">{ID_CHIP_KEY}</span>:{' '}
 							<span className="select-all font-mono">{alert.id}</span>
 						</span>
 					</Badge>
