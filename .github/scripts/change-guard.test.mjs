@@ -132,10 +132,13 @@ describe('decide', () => {
 describe('reviewIsCurrent', () => {
 	const t0 = Date.parse('2026-11-09T10:00:00Z');
 
-	it('is true only when the label is newer than the head push', () => {
+	it('is true only when the label is strictly newer than the head push', () => {
 		assert.equal(reviewIsCurrent({ labeledAt: t0 + 1000, pushedAt: t0 }), true);
-		assert.equal(reviewIsCurrent({ labeledAt: t0, pushedAt: t0 }), true);
 		assert.equal(reviewIsCurrent({ labeledAt: t0 - 1000, pushedAt: t0 }), false);
+	});
+
+	it('fails closed on equal timestamps, since both have one-second precision', () => {
+		assert.equal(reviewIsCurrent({ labeledAt: t0, pushedAt: t0 }), false);
 	});
 
 	it('is false when either side is unknown', () => {

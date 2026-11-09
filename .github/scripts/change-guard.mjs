@@ -139,8 +139,10 @@ export function headPushedAt(runs, timeline = []) {
 	return latest;
 }
 
+// Strictly after: both timestamps have one-second precision, so a push in the same
+// second as the label must count as later.
 export function reviewIsCurrent({ labeledAt, pushedAt }) {
-	return labeledAt !== null && pushedAt !== null && labeledAt >= pushedAt;
+	return labeledAt !== null && pushedAt !== null && labeledAt > pushedAt;
 }
 
 // The verdict for a pull request given what was found. `outcome` is 'pass' or
