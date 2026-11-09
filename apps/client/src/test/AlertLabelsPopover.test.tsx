@@ -2,6 +2,7 @@ import { Alert } from '@OpsiMate/shared';
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, test } from 'vitest';
 import { AlertLabelsPopover } from '@/components/Alerts/AlertDetails/AlertLabelsPopover';
+import { LABELS_CHIPS_TEST_ID } from '@/components/Alerts/AlertDetails/AlertLabelsPopover/AlertLabelsPopover.constants';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { render } from './test-utils';
 
@@ -48,7 +49,7 @@ describe('AlertLabelsPopover', () => {
 
 		const value = screen.getByText('grafana-8f3a1c-disk-full-node-7');
 		expect(value).toHaveClass('select-all');
-		const chips = value.closest('div.flex')?.children ?? [];
+		const chips = screen.getByTestId(LABELS_CHIPS_TEST_ID).children;
 		expect(chips[0]).toContainElement(value);
 		expect(chips[0]).toHaveClass('border-dashed');
 		expect(chips).toHaveLength(3);
