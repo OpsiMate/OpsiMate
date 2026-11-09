@@ -12,10 +12,13 @@
 // label, which re-runs the check. The label only counts if it was added after the
 // current head was pushed, so a push on top of a reviewed branch (or a force-push
 // replacing it) fails again until a maintainer re-checks and re-adds the label.
-// "Pushed" is the later of two server-side times a contributor cannot backdate the
-// way a commit's committer date can be: the first workflow run for the head sha, and
-// the newest force-push on the branch. The second matters when a branch is
-// force-pushed back to an older, already-run sha after the label was added.
+// "Pushed" comes from server-side records a contributor cannot backdate the way a
+// commit's committer date can be: every push to a PR branch (fast-forward or force)
+// fires the `pull_request` workflows for the new head, so the newest `pull_request`
+// run for the head sha is the time that sha last became the head; the newest
+// force-push timeline event is taken too. A head with no `pull_request` run (a
+// conflicting PR, where those workflows do not fire) has no record, and the label
+// never counts until it does.
 //
 // Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/repo), PR_NUMBER.
 //
@@ -97,32 +100,31 @@ export function latestReviewedLabelAt(timeline) {
 	return latest;
 }
 
-// When the current head reached GitHub: the earliest workflow run for its sha, or the
-// newest force-push if that is later (a force-push back to an older sha reuses that
-// sha's old runs). Null when the sha has no run at all, which makes a label count as
-// stale.
+// When the current head last reached GitHub, or null when there is no record.
 export function headPushedAt(runs, timeline = []) {
-	let earliestRun = null;
+	let latest = null;
 	for (const run of runs) {
+		if (run.event !== 'pull_request') {
+			continue;
+		}
 		const at = Date.parse(run.created_at);
-		if (earliestRun === null || at < earliestRun) {
-			earliestRun = at;
+		if (latest === null || at > latest) {
+			latest = at;
 		}
 	}
-	if (earliestRun === null) {
+	if (latest === null) {
 		return null;
 	}
-	let latestForcePush = null;
 	for (const event of timeline) {
 		if (event.event !== 'head_ref_force_pushed') {
 			continue;
 		}
 		const at = Date.parse(event.created_at);
-		if (latestForcePush === null || at > latestForcePush) {
-			latestForcePush = at;
+		if (at > latest) {
+			latest = at;
 		}
 	}
-	return latestForcePush !== null && latestForcePush > earliestRun ? latestForcePush : earliestRun;
+	return latest;
 }
 
 export function reviewIsCurrent({ labeledAt, pushedAt }) {
@@ -131,7 +133,15 @@ export function reviewIsCurrent({ labeledAt, pushedAt }) {
 
 // The verdict for a pull request given what was found. `outcome` is 'pass' or
 // 'fail'; `reason` is what the report says.
-export function decide({ login, authorAssociation, labels, flagged, forcePushes, reviewIsCurrent }) {
+export function decide({
+	login,
+	authorAssociation,
+	labels,
+	flagged,
+	forcePushes,
+	reviewIsCurrent,
+	pushRecorded = true,
+}) {
 	if (TRUSTED_BOTS.has(login)) {
 		return {
 			outcome: 'pass',
@@ -158,7 +168,9 @@ export function decide({ login, authorAssociation, labels, flagged, forcePushes,
 		}
 		return {
 			outcome: 'fail',
-			reason: `the ${REVIEWED_LABEL} label predates the latest push (${summary}). Re-check the new commits, then remove and re-add the label.`,
+			reason: pushRecorded
+				? `the ${REVIEWED_LABEL} label predates the latest push (${summary}). Re-check the new commits, then remove and re-add the label.`
+				: `the head sha has no pull_request workflow run to date the push (${summary}); is the PR conflicting? Once it runs, remove and re-add the ${REVIEWED_LABEL} label.`,
 		};
 	}
 	return {
@@ -196,16 +208,15 @@ async function main() {
 
 	const flagged = flagFiles(files);
 	const forcePushes = countForcePushes(timeline);
+	const pushedAt = headPushedAt(runs, timeline);
 	const verdict = decide({
 		login: pr.user.login,
 		authorAssociation: pr.author_association,
 		labels: pr.labels.map((label) => label.name),
 		flagged,
 		forcePushes,
-		reviewIsCurrent: reviewIsCurrent({
-			labeledAt: latestReviewedLabelAt(timeline),
-			pushedAt: headPushedAt(runs, timeline),
-		}),
+		reviewIsCurrent: reviewIsCurrent({ labeledAt: latestReviewedLabelAt(timeline), pushedAt }),
+		pushRecorded: pushedAt !== null,
 	});
 
 	await report(renderReport({ pr, flagged, forcePushes, verdict }));

@@ -142,7 +142,7 @@ describe('reviewIsCurrent', () => {
 		assert.equal(reviewIsCurrent({ labeledAt: t0, pushedAt: null }), false);
 	});
 
-	it('takes the newest reviewed label and the earliest run for the head', () => {
+	it('takes the newest reviewed label, and the newest pull_request run for the head as the push time', () => {
 		const timeline = [
 			{ event: 'labeled', label: { name: 'bug' }, created_at: '2026-11-09T12:00:00Z' },
 			{ event: 'labeled', label: { name: REVIEWED_LABEL }, created_at: '2026-11-09T09:00:00Z' },
@@ -153,15 +153,21 @@ describe('reviewIsCurrent', () => {
 			latestReviewedLabelAt([{ event: 'labeled', label: { name: 'bug' }, created_at: '2026-11-09T12:00:00Z' }]),
 			null
 		);
-		const runs = [{ created_at: '2026-11-09T10:30:00Z' }, { created_at: '2026-11-09T10:00:00Z' }];
-		assert.equal(headPushedAt(runs), Date.parse('2026-11-09T10:00:00Z'));
+		const runs = [
+			{ event: 'pull_request', created_at: '2026-11-09T10:00:00Z' },
+			{ event: 'pull_request', created_at: '2026-11-09T10:30:00Z' },
+			// A labeled/unlabeled run of the guard itself is not a push.
+			{ event: 'pull_request_target', created_at: '2026-11-09T13:00:00Z' },
+		];
+		assert.equal(headPushedAt(runs), Date.parse('2026-11-09T10:30:00Z'));
 		assert.equal(headPushedAt([]), null);
+		assert.equal(headPushedAt([{ event: 'pull_request_target', created_at: '2026-11-09T13:00:00Z' }]), null);
 	});
 
 	it('treats a force-push back to an already-run sha as a new push', () => {
 		// Push A at 09:00, push B at 10:00, label at 11:00, force-push back to A at 12:00:
-		// A's earliest run predates the label, the force-push does not.
-		const runsForA = [{ created_at: '2026-11-09T09:00:00Z' }];
+		// A's only run predates the label, the force-push does not.
+		const runsForA = [{ event: 'pull_request', created_at: '2026-11-09T09:00:00Z' }];
 		const timeline = [
 			{ event: 'labeled', label: { name: REVIEWED_LABEL }, created_at: '2026-11-09T11:00:00Z' },
 			{ event: 'head_ref_force_pushed', created_at: '2026-11-09T12:00:00Z' },
@@ -171,11 +177,48 @@ describe('reviewIsCurrent', () => {
 		assert.equal(reviewIsCurrent({ labeledAt: latestReviewedLabelAt(timeline), pushedAt }), false);
 	});
 
-	it("ignores a force-push older than the head sha's first run", () => {
-		const runs = [{ created_at: '2026-11-09T10:00:00Z' }];
-		const timeline = [{ event: 'head_ref_force_pushed', created_at: '2026-11-09T09:00:00Z' }];
-		assert.equal(headPushedAt(runs, timeline), Date.parse('2026-11-09T10:00:00Z'));
-		assert.equal(headPushedAt([], timeline), null);
+	it('treats a fast-forward back to an already-run sha as a new push', () => {
+		// Push A at 09:00, push B at 10:00, force-push back to A at 10:30, label at 11:00,
+		// fast-forward to B at 12:00: B's first run and the force-push predate the label,
+		// the pull_request run fired by the fast-forward does not.
+		const runsForB = [
+			{ event: 'pull_request', created_at: '2026-11-09T10:00:00Z' },
+			{ event: 'pull_request', created_at: '2026-11-09T12:00:00Z' },
+		];
+		const timeline = [
+			{ event: 'head_ref_force_pushed', created_at: '2026-11-09T10:30:00Z' },
+			{ event: 'labeled', label: { name: REVIEWED_LABEL }, created_at: '2026-11-09T11:00:00Z' },
+		];
+		const pushedAt = headPushedAt(runsForB, timeline);
+		assert.equal(pushedAt, Date.parse('2026-11-09T12:00:00Z'));
+		assert.equal(reviewIsCurrent({ labeledAt: latestReviewedLabelAt(timeline), pushedAt }), false);
+	});
+
+	it('is current when the label follows every push and force-push', () => {
+		const runs = [{ event: 'pull_request', created_at: '2026-11-09T10:00:00Z' }];
+		const timeline = [
+			{ event: 'head_ref_force_pushed', created_at: '2026-11-09T09:00:00Z' },
+			{ event: 'labeled', label: { name: REVIEWED_LABEL }, created_at: '2026-11-09T11:00:00Z' },
+		];
+		const pushedAt = headPushedAt(runs, timeline);
+		assert.equal(pushedAt, Date.parse('2026-11-09T10:00:00Z'));
+		assert.equal(reviewIsCurrent({ labeledAt: latestReviewedLabelAt(timeline), pushedAt }), true);
+	});
+});
+
+describe('decide without a push record', () => {
+	it('fails with a message about the missing run instead of a stale label', () => {
+		const verdict = decide({
+			login: 'x',
+			authorAssociation: 'CONTRIBUTOR',
+			labels: [REVIEWED_LABEL],
+			flagged: [{ filename: 'pnpm-lock.yaml', status: 'modified', reason: 'workspace or lockfile' }],
+			forcePushes: 0,
+			reviewIsCurrent: false,
+			pushRecorded: false,
+		});
+		assert.equal(verdict.outcome, 'fail');
+		assert.match(verdict.reason, /no pull_request workflow run/);
 	});
 });
 
