@@ -108,7 +108,7 @@ Every PR goes through the same steps. Knowing them up front saves a round trip:
 
 Rules the reviews enforce, so you can apply them before pushing:
 
-- **Named types everywhere.** No anonymous inline object types, in tests included. Declare an `interface` or `type` and use it. This is checked in review, not by lint.
+- **Named interfaces everywhere.** No anonymous inline object types, in tests included. Declare an `interface` for every object shape and use it (a `type` alias is for unions and mapped types, not for object literals). This is checked in review, not by lint.
 - **No wall-clock assertions in tests.** Timing bounds flake on a loaded CI runner. Count the expensive call, assert on order or on the mocked clock, never on elapsed milliseconds.
 - **Stay inside the issue.** A PR that touches unrelated files, reformats code it does not change, or bundles a second fix gets a request to split it.
 - **Proof in the PR.** A screenshot for UI or docs changes (light and dark if the change is visual), the test output for tests.
