@@ -1,5 +1,5 @@
 import { Alert as SharedAlert } from '@OpsiMate/shared';
-import { FileText, Link2, PhoneCall, Tag } from 'lucide-react';
+import { FileText, Link2, PhoneCall } from 'lucide-react';
 import { AlertActionsSection } from '../AlertActionsSection';
 import { AlertInfoSection } from '../AlertInfoSection';
 import { AlertLastCommentSection } from '../AlertLastCommentSection';
@@ -20,14 +20,18 @@ interface AlertDetailsBodyProps {
 }
 
 // The Details-tab body, shared by all alert-detail containers. Identity stays pinned at the
-// top; everything else lives in collapsible sections (summary, latest comment, labels,
-// links) followed by the custom-actions section. History has its own tab (AlertHistoryWall)
+// top with the id + label chips right under it; everything else lives in collapsible
+// sections (summary, team, root cause, latest comment, links) followed by the
+// custom-actions section. History has its own tab (AlertHistoryWall)
 // and the silence/resolve buttons are NOT part of the body — containers pin them at the
 // bottom via AlertFooterActions.
 export const AlertDetailsBody = ({ alert, onViewAllComments, isResolved }: AlertDetailsBodyProps) => {
 	return (
 		<div className="p-4 space-y-2">
 			<AlertInfoSection alert={alert} isResolved={isResolved} />
+
+			{/* Always present: the alert id is listed here even when the alert has no tags. */}
+			<AlertTagsSection alert={alert} />
 
 			{alert.summary && (
 				<CollapsibleSection title="Summary" icon={<FileText className="h-3.5 w-3.5" />} defaultOpen>
@@ -44,11 +48,6 @@ export const AlertDetailsBody = ({ alert, onViewAllComments, isResolved }: Alert
 			<AlertRootCauseSection alertId={alert.id} />
 
 			<AlertLastCommentSection alertId={alert.id} onViewAll={onViewAllComments} />
-
-			{/* Always present: the alert id is listed here even when the alert has no tags. */}
-			<CollapsibleSection title="Labels" icon={<Tag className="h-3.5 w-3.5" />} defaultOpen={false}>
-				<AlertTagsSection alert={alert} />
-			</CollapsibleSection>
 
 			{getAlertLinks(alert).length > 0 && (
 				<CollapsibleSection title="Links" icon={<Link2 className="h-3.5 w-3.5" />} defaultOpen={false}>
