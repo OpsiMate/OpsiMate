@@ -1,4 +1,5 @@
-import { Alert, AlertHistory, AlertStatus } from '@OpsiMate/shared';
+import { AlertHistoryQueryState } from '@/components/Alerts/AlertDetails/hooks';
+import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
 import { AlertDetailsPanel } from '@/components/Alerts/AlertDetails/AlertDetailsPanel/AlertDetailsPanel';
@@ -32,15 +33,19 @@ vi.mock('@/components/Alerts/AlertDetails/CommentsWall', () => ({
 // The history stub echoes the alert id its data carries, proving the tab is fed the
 // history of the selected alert (the panel owns the query and hands the result down).
 interface MockAlertHistoryWallProps {
-	historyData: AlertHistory | null;
+	history: AlertHistoryQueryState;
 }
 vi.mock('@/components/Alerts/AlertDetails/AlertHistoryWall', () => ({
-	AlertHistoryWall: ({ historyData }: MockAlertHistoryWallProps) => (
-		<div>{`history-wall:${historyData?.alertId ?? 'loading'}`}</div>
+	AlertHistoryWall: ({ history }: MockAlertHistoryWallProps) => (
+		<div>{`history-wall:${history.data?.alertId ?? 'loading'}`}</div>
 	),
 }));
 vi.mock('@/components/Alerts/AlertDetails/hooks', () => ({
-	useAlertHistory: (alertId: string): AlertHistory => ({ alertId, data: [] }),
+	useAlertHistory: (alertId: string): AlertHistoryQueryState => ({
+		data: { alertId, data: [] },
+		isLoading: false,
+		isError: false,
+	}),
 }));
 
 const mkAlert = (id: string): Alert =>

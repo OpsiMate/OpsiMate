@@ -6,11 +6,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { AlertHistory } from '@OpsiMate/shared';
+import { AlertHistoryData } from '@OpsiMate/shared';
 import { Download, History } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { AlertHistoryTimeline } from '../AlertHistoryTimeline';
+import { AlertHistoryQueryState } from '../hooks';
 import {
 	filterHistoryByLane,
 	HistoryLaneFilter,
@@ -20,8 +21,7 @@ import {
 } from '../AlertHistoryTimeline/alertHistory.utils';
 
 interface AlertHistoryWallProps {
-	// null while the history query is still loading (or failed).
-	historyData: AlertHistory | null;
+	history: AlertHistoryQueryState;
 	// The active time-range filter (the "All time" button). History is filtered to match it.
 	timeRange?: TimeRange | null;
 }
@@ -39,6 +39,9 @@ const LANE_OPTIONS: LaneOption[] = [
 	{ value: 'activity', label: 'Activity' },
 ];
 
+// Stable empty list so the memos below don't recompute on every render while loading.
+const NO_ENTRIES: AlertHistoryData[] = [];
+
 const triggerDownload = (filename: string, mimeType: string, content: string) => {
 	const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
 	const a = document.createElement('a');
@@ -51,7 +54,8 @@ const triggerDownload = (filename: string, mimeType: string, content: string) =>
 // The History tab of the details panel (sibling of CommentsWall): a header with the entry
 // count, a lane filter and CSV/JSON export, over a git-style two-branch timeline. Filtered
 // by the active time range so it mirrors what the "All time" button shows for the list.
-export const AlertHistoryWall = ({ historyData, timeRange }: AlertHistoryWallProps) => {
+export const AlertHistoryWall = ({ history, timeRange }: AlertHistoryWallProps) => {
+	const historyData = history.data;
 	const [lane, setLane] = useState<HistoryLaneFilter>('all');
 
 	// Quick presets carry only `preset` (from/to stay null), so checking the dates
@@ -60,7 +64,7 @@ export const AlertHistoryWall = ({ historyData, timeRange }: AlertHistoryWallPro
 		timeRange &&
 		(timeRange.from || timeRange.to || (timeRange.preset && timeRange.preset !== 'custom'))
 	);
-	const entries = historyData?.data ?? [];
+	const entries = historyData?.data ?? NO_ENTRIES;
 	const timeFiltered = useMemo(() => selectHistoryEntries(entries, timeRange), [entries, timeRange]);
 	const visible = useMemo(() => filterHistoryByLane(timeFiltered, lane), [timeFiltered, lane]);
 
@@ -135,9 +139,13 @@ export const AlertHistoryWall = ({ historyData, timeRange }: AlertHistoryWallPro
 
 			<ScrollArea className="flex-1">
 				<div className="p-3">
-					{historyData === null ? (
+					{history.isLoading ? (
 						<div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
 							Loading history...
+						</div>
+					) : history.isError ? (
+						<div className="flex items-center justify-center py-8 text-sm text-destructive">
+							Couldn't load history. Try again later.
 						</div>
 					) : (
 						<AlertHistoryTimeline

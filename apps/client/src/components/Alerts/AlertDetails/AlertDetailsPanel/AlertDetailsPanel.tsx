@@ -36,7 +36,7 @@ export const AlertDetailsPanel = ({
 	onDelete,
 	onUnresolve,
 }: AlertDetailsPanelProps) => {
-	const historyData = useAlertHistory(alert.id);
+	const history = useAlertHistory(alert.id);
 	const [tab, setTab] = useState('details');
 	const { width, panelRef, startResizing, resetWidth } = useResizablePanelWidth();
 	const { signal, broadcast } = useSectionsExpandBroadcast();
@@ -83,7 +83,7 @@ export const AlertDetailsPanel = ({
 				</TabsContent>
 
 				<TabsContent value="history" className="flex-1 min-h-0 mt-0">
-					<AlertHistoryWall historyData={historyData} timeRange={timeRange} />
+					<AlertHistoryWall history={history} timeRange={timeRange} />
 				</TabsContent>
 			</Tabs>
 
