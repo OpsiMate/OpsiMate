@@ -1,0 +1,300 @@
+zabbix_export:
+  version: '7.0'
+  media_types:
+    - name: OpsiMate
+      type: WEBHOOK
+      parameters:
+        - name: alert_message
+          value: '{ALERT.MESSAGE}'
+        - name: event_date
+          value: '{EVENT.DATE}'
+        - name: event_id
+          value: '{EVENT.ID}'
+        - name: event_name
+          value: '{EVENT.NAME}'
+        - name: event_recovery_date
+          value: '{EVENT.RECOVERY.DATE}'
+        - name: event_recovery_time
+          value: '{EVENT.RECOVERY.TIME}'
+        - name: event_source
+          value: '{EVENT.SOURCE}'
+        - name: event_tags
+          value: '{EVENT.TAGS}'
+        - name: event_time
+          value: '{EVENT.TIME}'
+        - name: event_update_status
+          value: '{EVENT.UPDATE.STATUS}'
+        - name: event_value
+          value: '{EVENT.VALUE}'
+        - name: host_ip
+          value: '{HOST.IP}'
+        - name: host_name
+          value: '{HOST.NAME}'
+        - name: item_name
+          value: '{ITEM.NAME}'
+        - name: item_value
+          value: '{ITEM.VALUE}'
+        - name: opsimate_token
+          value: '<put your OpsiMate API token>'
+        - name: opsimate_url
+          value: '<put your OpsiMate URL>'
+        - name: trigger_id
+          value: '{TRIGGER.ID}'
+        - name: trigger_name
+          value: '{TRIGGER.NAME}'
+        - name: trigger_severity
+          value: '{TRIGGER.SEVERITY}'
+        - name: trigger_status
+          value: '{TRIGGER.STATUS}'
+        - name: trigger_url
+          value: '{TRIGGER.URL}'
+        - name: zabbix_url
+          value: '{$ZABBIX.URL}'
+      status: DISABLED
+      script: |
+        var OpsiMate = {
+            name: 'OpsiMate',
+            endpoint: '/api/v1/alerts/custom/zabbix',
+            params: {},
+            url: '',
+            proxy: '',
+
+            // Parameters forwarded to OpsiMate as-is. The names are the fields of the
+            // OpsiMate Zabbix webhook schema (POST /api/v1/alerts/custom/zabbix).
+            fields: [
+                'event_id',
+                'event_name',
+                'host_name',
+                'host_ip',
+                'trigger_id',
+                'trigger_name',
+                'trigger_severity',
+                'trigger_status',
+                'event_date',
+                'event_time',
+                'event_value',
+                'event_tags',
+                'item_name',
+                'item_value',
+                'alert_message',
+                'event_recovery_date',
+                'event_recovery_time',
+                'zabbix_url',
+                'trigger_url'
+            ],
+
+            log: function (level, message) {
+                Zabbix.log(level, '[ ' + OpsiMate.name + ' Webhook ] ' + message);
+            },
+
+            // A macro that Zabbix could not expand is passed through literally
+            // (for example "{EVENT.RECOVERY.DATE}" in a problem notification, or
+            // "{$ZABBIX.URL}" when the global macro is not defined) or as "*UNKNOWN*".
+            // Such values must not reach OpsiMate.
+            isResolved: function (value) {
+                if (typeof value !== 'string') {
+                    return false;
+                }
+
+                value = value.trim();
+
+                return value !== '' && value !== '*UNKNOWN*' && !/^\{[$#]?[A-Z][A-Z0-9_.]*(:.*)?\}$/.test(value);
+            },
+
+            setParams: function (params) {
+                if (typeof params !== 'object') {
+                    throw 'Webhook parameters are not an object.';
+                }
+
+                ['opsimate_url', 'opsimate_token'].forEach(function (field) {
+                    if (typeof params[field] !== 'string' || params[field].trim() === ''
+                            || params[field].indexOf('<put your') === 0) {
+                        throw 'Required ' + OpsiMate.name + ' parameter is not set: "' + field + '".';
+                    }
+                });
+
+                OpsiMate.params = params;
+
+                var url = params.opsimate_url.trim().replace(/\/+$/, '');
+
+                if (!/^https?:\/\//i.test(url)) {
+                    throw 'Parameter "opsimate_url" must start with http:// or https://, got: ' + url;
+                }
+
+                // Accept both the server base URL and the full webhook URL.
+                if (url.length < OpsiMate.endpoint.length
+                        || url.substring(url.length - OpsiMate.endpoint.length) !== OpsiMate.endpoint) {
+                    url += OpsiMate.endpoint;
+                }
+
+                OpsiMate.url = url;
+            },
+
+            setProxy: function (params) {
+                var proxy = params.http_proxy || params.HTTPProxy;
+
+                if (typeof proxy === 'string' && proxy.trim() !== '') {
+                    OpsiMate.proxy = proxy.trim();
+                }
+            },
+
+            buildPayload: function () {
+                var payload = {};
+
+                OpsiMate.fields.forEach(function (field) {
+                    if (OpsiMate.isResolved(OpsiMate.params[field])) {
+                        payload[field] = OpsiMate.params[field];
+                    }
+                });
+
+                return payload;
+            },
+
+            send: function (payload) {
+                var request = new HttpRequest(),
+                    data = JSON.stringify(payload),
+                    response,
+                    status,
+                    message;
+
+                request.addHeader('Content-Type: application/json');
+                request.addHeader('x-api-token: ' + OpsiMate.params.opsimate_token.trim());
+
+                if (OpsiMate.proxy !== '') {
+                    request.setProxy(OpsiMate.proxy);
+                }
+
+                OpsiMate.log(4, 'Sending request: ' + OpsiMate.url + '\n' + data);
+
+                response = request.post(OpsiMate.url, data);
+                status = request.getStatus();
+
+                OpsiMate.log(4, 'Received response with status code ' + status + '\n' + response);
+
+                if (status === 200) {
+                    return response;
+                }
+
+                message = 'Request failed with status code ' + status;
+
+                switch (status) {
+                    case 401:
+                    case 403:
+                        message += ': OpsiMate rejected the API token. Check the "opsimate_token" parameter (API_TOKEN on the OpsiMate server).';
+                        break;
+
+                    case 404:
+                        message += ': the webhook endpoint was not found. Check the "opsimate_url" parameter and the OpsiMate version.';
+                        break;
+
+                    case 400:
+                        message += ': OpsiMate could not validate the payload';
+                        break;
+
+                    default:
+                        break;
+                }
+
+                if (response !== null && typeof response === 'string' && response !== '') {
+                    try {
+                        var body = JSON.parse(response);
+
+                        if (typeof body.error === 'string') {
+                            message += ': ' + body.error;
+                        }
+                        if (typeof body.details !== 'undefined') {
+                            message += ' (' + JSON.stringify(body.details) + ')';
+                        }
+                    }
+                    catch (error) {
+                        OpsiMate.log(4, 'Failed to parse the response body.');
+                    }
+                }
+
+                throw message + '. Check debug log for more information.';
+            }
+        };
+
+        try {
+            var params = JSON.parse(value),
+                event_source = OpsiMate.isResolved(params.event_source) ? params.event_source : '0',
+                event_update_status = OpsiMate.isResolved(params.event_update_status) ? params.event_update_status : '0';
+
+            OpsiMate.setParams(params);
+            OpsiMate.setProxy(params);
+
+            // 0 - trigger, 3 - internal: the only sources that carry a problem/recovery pair.
+            if (event_source !== '0' && event_source !== '3') {
+                throw 'Incorrect "event_source" parameter given: "' + event_source + '". ' +
+                    OpsiMate.name + ' supports trigger-based and internal events only.';
+            }
+
+            if (OpsiMate.isResolved(params.event_value) && params.event_value !== '0' && params.event_value !== '1') {
+                throw 'Incorrect "event_value" parameter given: "' + params.event_value + '". Must be 0 or 1.';
+            }
+
+            // Update operations (acknowledge, message, severity change) have no
+            // counterpart in OpsiMate; sending them would overwrite the alert summary.
+            if (event_update_status === '1') {
+                OpsiMate.log(4, 'Update operation skipped: OpsiMate receives problem and recovery notifications only.');
+
+                return 'OK';
+            }
+
+            OpsiMate.send(OpsiMate.buildPayload());
+
+            return 'OK';
+        }
+        catch (error) {
+            Zabbix.log(3, '[ OpsiMate Webhook ] ERROR: ' + error);
+            throw 'Sending failed: ' + error;
+        }
+      timeout: 10s
+      description: |
+        Sends Zabbix problem and recovery notifications to OpsiMate (https://opsimate.dev).
+        Please refer to the setup guide: https://github.com/OpsiMate/OpsiMate and https://docs.opsimate.dev/docs/integrations/zabbix
+
+        Set the parameters:
+          opsimate_url - the OpsiMate server base URL (for example, http://opsimate.example.com:3001);
+          opsimate_token - the OpsiMate API token (API_TOKEN environment variable of the OpsiMate server).
+        Set the global macro {$ZABBIX.URL} with your Zabbix frontend URL so that alerts in OpsiMate link back to the Zabbix problem.
+        Add a dedicated user with the media type "OpsiMate".
+      message_templates:
+        - event_source: TRIGGERS
+          operation_mode: PROBLEM
+          subject: 'Problem: {EVENT.NAME}'
+          message: |
+            Problem started at {EVENT.TIME} on {EVENT.DATE}
+            Problem name: {EVENT.NAME}
+            Host: {HOST.NAME}
+            Severity: {EVENT.SEVERITY}
+            Operational data: {EVENT.OPDATA}
+            Original problem ID: {EVENT.ID}
+            {TRIGGER.URL}
+        - event_source: TRIGGERS
+          operation_mode: RECOVERY
+          subject: 'Resolved in {EVENT.DURATION}: {EVENT.NAME}'
+          message: |
+            Problem has been resolved at {EVENT.RECOVERY.TIME} on {EVENT.RECOVERY.DATE}
+            Problem name: {EVENT.NAME}
+            Problem duration: {EVENT.DURATION}
+            Host: {HOST.NAME}
+            Severity: {EVENT.SEVERITY}
+            Original problem ID: {EVENT.ID}
+            {TRIGGER.URL}
+        - event_source: INTERNAL
+          operation_mode: PROBLEM
+          subject: '[{EVENT.STATUS}] {EVENT.NAME}'
+          message: |
+            Problem started at {EVENT.TIME} on {EVENT.DATE}
+            Problem name: {EVENT.NAME}
+            Host: {HOST.NAME}
+            Original problem ID: {EVENT.ID}
+        - event_source: INTERNAL
+          operation_mode: RECOVERY
+          subject: '[{EVENT.STATUS}] {EVENT.NAME}'
+          message: |
+            Problem has been resolved at {EVENT.RECOVERY.TIME} on {EVENT.RECOVERY.DATE}
+            Problem name: {EVENT.NAME}
+            Host: {HOST.NAME}
+            Original problem ID: {EVENT.ID}
