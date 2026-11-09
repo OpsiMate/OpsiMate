@@ -7,6 +7,7 @@ import {
 	decide,
 	flagFiles,
 	headPushedAt,
+	isPushRecord,
 	latestReviewedLabelAt,
 	renderReport,
 	reviewIsCurrent,
@@ -157,11 +158,40 @@ describe('reviewIsCurrent', () => {
 			{ event: 'pull_request', created_at: '2026-11-09T10:00:00Z' },
 			{ event: 'pull_request', created_at: '2026-11-09T10:30:00Z' },
 			// A labeled/unlabeled run of the guard itself is not a push.
-			{ event: 'pull_request_target', created_at: '2026-11-09T13:00:00Z' },
+			{ event: 'pull_request_target', display_title: 'guard/labeled #7', created_at: '2026-11-09T13:00:00Z' },
+			{ event: 'pull_request_target', display_title: 'Auto Label PRs', created_at: '2026-11-09T13:00:00Z' },
 		];
 		assert.equal(headPushedAt(runs), Date.parse('2026-11-09T10:30:00Z'));
 		assert.equal(headPushedAt([]), null);
-		assert.equal(headPushedAt([{ event: 'pull_request_target', created_at: '2026-11-09T13:00:00Z' }]), null);
+		assert.equal(headPushedAt([runs[2]]), null);
+	});
+
+	it("counts the guard's own push-triggered runs as push records", () => {
+		assert.equal(isPushRecord({ event: 'pull_request_target', display_title: 'guard/synchronize #7' }), true);
+		assert.equal(isPushRecord({ event: 'pull_request_target', display_title: 'guard/opened #7' }), true);
+		assert.equal(isPushRecord({ event: 'pull_request_target', display_title: 'guard/reopened #7' }), true);
+		assert.equal(isPushRecord({ event: 'pull_request_target', display_title: 'guard/labeled #7' }), false);
+		assert.equal(isPushRecord({ event: 'pull_request_target', display_title: 'guard/unlabeled #7' }), false);
+		assert.equal(isPushRecord({ event: 'pull_request_target' }), false);
+		assert.equal(isPushRecord({ event: 'pull_request' }), true);
+		assert.equal(isPushRecord({ event: 'push', display_title: 'guard/synchronize #7' }), false);
+	});
+
+	it("dates a fast-forward to a conflicting sha from the guard's own synchronize run", () => {
+		// Push A, push B (one old pull_request run), force-push back to A at 10:30, label at
+		// 11:00, fast-forward to B at 12:00 while B conflicts with main: no pull_request
+		// workflow fires, but the guard's pull_request_target synchronize run does.
+		const runsForB = [
+			{ event: 'pull_request', created_at: '2026-11-09T10:00:00Z' },
+			{ event: 'pull_request_target', display_title: 'guard/synchronize #7', created_at: '2026-11-09T12:00:00Z' },
+		];
+		const timeline = [
+			{ event: 'head_ref_force_pushed', created_at: '2026-11-09T10:30:00Z' },
+			{ event: 'labeled', label: { name: REVIEWED_LABEL }, created_at: '2026-11-09T11:00:00Z' },
+		];
+		const pushedAt = headPushedAt(runsForB, timeline);
+		assert.equal(pushedAt, Date.parse('2026-11-09T12:00:00Z'));
+		assert.equal(reviewIsCurrent({ labeledAt: latestReviewedLabelAt(timeline), pushedAt }), false);
 	});
 
 	it('treats a force-push back to an already-run sha as a new push', () => {
@@ -218,7 +248,7 @@ describe('decide without a push record', () => {
 			pushRecorded: false,
 		});
 		assert.equal(verdict.outcome, 'fail');
-		assert.match(verdict.reason, /no pull_request workflow run/);
+		assert.match(verdict.reason, /no workflow run records when the head sha was pushed/);
 	});
 });
 

@@ -1,4 +1,8 @@
 name: Sensitive change guard
+# The action in the title is how the script tells push-triggered runs (the record of
+# when a head sha was pushed) from label-triggered ones. Keep in step with
+# PUSH_RUN_TITLE in .github/scripts/change-guard.mjs.
+run-name: "guard/${{ github.event.action }} #${{ github.event.pull_request.number }}"
 
 # Fails a contributor PR that edits files a maintainer must read by hand (workflows,
 # hooks, scripts, package manifests, lockfiles, tool configs, Dockerfiles,

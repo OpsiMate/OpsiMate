@@ -13,12 +13,14 @@
 // current head was pushed, so a push on top of a reviewed branch (or a force-push
 // replacing it) fails again until a maintainer re-checks and re-adds the label.
 // "Pushed" comes from server-side records a contributor cannot backdate the way a
-// commit's committer date can be: every push to a PR branch (fast-forward or force)
-// fires the `pull_request` workflows for the new head, so the newest `pull_request`
-// run for the head sha is the time that sha last became the head; the newest
-// force-push timeline event is taken too. A head with no `pull_request` run (a
-// conflicting PR, where those workflows do not fire) has no record, and the label
-// never counts until it does.
+// commit's committer date can be. The primary record is this workflow's own runs:
+// every push to a PR branch (fast-forward or force, conflicting or not) fires a
+// pull_request_target `synchronize` run for the new head, and the workflow's
+// run-name carries the triggering action, so the newest run for the head sha whose
+// title says opened/synchronize/reopened is when that sha last became the head.
+// Label-triggered runs are not pushes. `pull_request` runs and force-push timeline
+// events are folded in as well. A head with no record at all (a PR opened before the
+// guard existed) never counts as reviewed until its next push.
 //
 // Env: GITHUB_TOKEN, GITHUB_REPOSITORY (owner/repo), PR_NUMBER.
 //
@@ -100,11 +102,21 @@ export function latestReviewedLabelAt(timeline) {
 	return latest;
 }
 
+// Must match run-name in .github/workflows/change-guard.yml.
+export const PUSH_RUN_TITLE = /^guard\/(opened|synchronize|reopened)\b/;
+
+export function isPushRecord(run) {
+	if (run.event === 'pull_request') {
+		return true;
+	}
+	return run.event === 'pull_request_target' && PUSH_RUN_TITLE.test(run.display_title ?? '');
+}
+
 // When the current head last reached GitHub, or null when there is no record.
 export function headPushedAt(runs, timeline = []) {
 	let latest = null;
 	for (const run of runs) {
-		if (run.event !== 'pull_request') {
+		if (!isPushRecord(run)) {
 			continue;
 		}
 		const at = Date.parse(run.created_at);
@@ -170,7 +182,7 @@ export function decide({
 			outcome: 'fail',
 			reason: pushRecorded
 				? `the ${REVIEWED_LABEL} label predates the latest push (${summary}). Re-check the new commits, then remove and re-add the label.`
-				: `the head sha has no pull_request workflow run to date the push (${summary}); is the PR conflicting? Once it runs, remove and re-add the ${REVIEWED_LABEL} label.`,
+				: `no workflow run records when the head sha was pushed (${summary}); the branch predates the guard. Push again, then remove and re-add the ${REVIEWED_LABEL} label.`,
 		};
 	}
 	return {
