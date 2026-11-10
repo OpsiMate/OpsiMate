@@ -1,17 +1,17 @@
 import { ActionTypeIcon } from '@/components/Actions/ActionTypeIcon';
 import { Button } from '@/components/ui/button';
 import { useActions } from '@/hooks/queries/actions';
+import { ROUTES } from '@/lib/routes';
 import { Action, Alert, criteriaMatchesAlert } from '@OpsiMate/shared';
-import { ChevronDown, ChevronRight, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { CollapsibleSection } from '../CollapsibleSection';
 import { ActionSendDialog } from './ActionSendDialog';
-import { ROUTES } from '@/lib/routes';
+import { ACTIONS_SECTION_TITLE, MANAGE_ACTIONS_LABEL } from './AlertActions.constants';
 
 interface AlertActionsProps {
 	alert: Alert;
-	// Open on first render (the pinned bottom block); the header still folds it.
-	defaultExpanded?: boolean;
 }
 
 // An action is offered on an alert when the shared matcher says so (see
@@ -21,78 +21,66 @@ interface AlertActionsProps {
 const actionMatchesAlert = (action: Action, alert: Alert): boolean =>
 	criteriaMatchesAlert(action, alert, { emptyCriteriaMatches: true });
 
-export const AlertActions = ({ alert, defaultExpanded = true }: AlertActionsProps) => {
+// The custom-actions section: a CollapsibleSection like the others, so the header's
+// expand/collapse-all controls fold it too. Open by default — it sits in the pinned
+// block above the footer, where the buttons should be one click away.
+export const AlertActions = ({ alert }: AlertActionsProps) => {
 	const { data: allActions = [], isLoading } = useActions();
 	const [selected, setSelected] = useState<Action | null>(null);
-	const [expanded, setExpanded] = useState(defaultExpanded);
 
 	const actions = allActions.filter((a) => actionMatchesAlert(a, alert));
 
 	if (isLoading) return null;
 
 	return (
-		<div className="space-y-2">
-			<div className="flex items-center justify-between">
-				<button
-					type="button"
-					onClick={() => setExpanded((v) => !v)}
-					className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors"
-					aria-expanded={expanded}
+		<CollapsibleSection
+			title={ACTIONS_SECTION_TITLE}
+			icon={<Zap className="h-3.5 w-3.5" />}
+			defaultOpen
+			badge={actions.length > 0 ? `(${actions.length})` : undefined}
+			headerRight={
+				<Link
+					to={ROUTES.actions}
+					className="text-xs text-muted-foreground hover:text-foreground hover:underline"
 				>
-					{expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
-					<Zap className="h-3.5 w-3.5" />
-					<h3 className="text-xs font-semibold uppercase tracking-wide">Actions</h3>
-					{actions.length > 0 && (
-						<span className="text-xs font-normal normal-case text-muted-foreground">
-							({actions.length})
-						</span>
-					)}
-				</button>
-				{expanded && (
-					<Link
-						to={ROUTES.actions}
-						className="text-xs text-muted-foreground hover:text-foreground hover:underline"
-					>
-						Manage
-					</Link>
-				)}
-			</div>
-
-			{expanded &&
-				(actions.length === 0 ? (
-					allActions.length > 0 ? (
-						<p className="text-xs text-muted-foreground">
-							No actions apply to this alert.{' '}
-							<Link to={ROUTES.actions} className="underline hover:text-foreground">
-								Manage actions
-							</Link>
-						</p>
-					) : (
-						<p className="text-xs text-muted-foreground">
-							No actions configured.{' '}
-							<Link to={ROUTES.actions} className="underline hover:text-foreground">
-								Create one
-							</Link>{' '}
-							to notify Slack, Teams, Jira, or call a webhook.
-						</p>
-					)
+					{MANAGE_ACTIONS_LABEL}
+				</Link>
+			}
+		>
+			{actions.length === 0 ? (
+				allActions.length > 0 ? (
+					<p className="text-xs text-muted-foreground">
+						No actions apply to this alert.{' '}
+						<Link to={ROUTES.actions} className="underline hover:text-foreground">
+							Manage actions
+						</Link>
+					</p>
 				) : (
-					<div className="flex flex-wrap gap-2">
-						{actions.map((action) => (
-							<Button
-								key={action.id}
-								variant="outline"
-								size="sm"
-								className="gap-2"
-								onClick={() => setSelected(action)}
-								title={`Preview and send "${action.name}" for this alert`}
-							>
-								<ActionTypeIcon type={action.type} />
-								<span className="max-w-[140px] truncate">{action.name}</span>
-							</Button>
-						))}
-					</div>
-				))}
+					<p className="text-xs text-muted-foreground">
+						No actions configured.{' '}
+						<Link to={ROUTES.actions} className="underline hover:text-foreground">
+							Create one
+						</Link>{' '}
+						to notify Slack, Teams, Jira, or call a webhook.
+					</p>
+				)
+			) : (
+				<div className="flex flex-wrap gap-2">
+					{actions.map((action) => (
+						<Button
+							key={action.id}
+							variant="outline"
+							size="sm"
+							className="gap-2"
+							onClick={() => setSelected(action)}
+							title={`Preview and send "${action.name}" for this alert`}
+						>
+							<ActionTypeIcon type={action.type} />
+							<span className="max-w-[140px] truncate">{action.name}</span>
+						</Button>
+					))}
+				</div>
+			)}
 
 			<ActionSendDialog
 				open={!!selected}
@@ -102,6 +90,6 @@ export const AlertActions = ({ alert, defaultExpanded = true }: AlertActionsProp
 				action={selected}
 				alert={alert}
 			/>
-		</div>
+		</CollapsibleSection>
 	);
 };

@@ -1,13 +1,11 @@
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Alert } from '@OpsiMate/shared';
 import { useEffect, useState } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
-import { AlertDetailsBody } from '../AlertDetailsBody';
-import { AlertDetailsBottomSections } from '../AlertDetailsBottomSections';
+import { AlertDetailsTab } from '../AlertDetailsTab';
 import { AlertDetailsHeader } from '../AlertDetailsHeader';
 import { AlertFooterActions } from '../AlertFooterActions';
-import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from '../CollapsibleSection';
+import { SectionsExpandControls, useSectionsExpandBroadcast } from '../CollapsibleSection';
 import { AlertHistoryWall } from '../AlertHistoryWall';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
@@ -68,17 +66,12 @@ export const AlertDetailsPanel = ({
 				<PanelTabsList />
 
 				<TabsContent value="details" className="flex-1 min-h-0 mt-0 flex flex-col">
-					<SectionsExpandContext.Provider value={signal}>
-						<ScrollArea className="flex-1 min-h-0">
-							<AlertDetailsBody
-								alert={alert}
-								onViewAllComments={() => setTab('comments')}
-								isResolved={!isActive}
-							/>
-						</ScrollArea>
-						{/* Links and actions stay in reach while the body scrolls. */}
-						<AlertDetailsBottomSections alert={alert} />
-					</SectionsExpandContext.Provider>
+					<AlertDetailsTab
+						alert={alert}
+						isResolved={!isActive}
+						onViewAllComments={() => setTab('comments')}
+						signal={signal}
+					/>
 				</TabsContent>
 
 				<TabsContent value="comments" className="flex-1 min-h-0 mt-0">

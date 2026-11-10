@@ -13,21 +13,26 @@ interface AlertDetailsBottomSectionsProps {
 // The Details tab's bottom block: the alert's links and its custom actions, pinned above
 // the silence/resolve footer rather than scrolling with the body — they are what you
 // reach for after reading, so they sit where the hand already is. Links stay folded;
-// actions open, so the buttons are one click away. Bounded: many matching actions must
-// not push the body (or the footer) out of the panel — the block scrolls instead.
-export const AlertDetailsBottomSections = ({ alert }: AlertDetailsBottomSectionsProps) => (
-	<div
-		className={`shrink-0 overflow-y-auto border-t bg-background px-4 py-2 space-y-2 ${BOTTOM_SECTIONS_MAX_HEIGHT_CLASS}`}
-	>
-		{getAlertLinks(alert).length > 0 && (
-			<CollapsibleSection
-				title={LINKS_SECTION_TITLE}
-				icon={<Link2 className="h-3.5 w-3.5" />}
-				defaultOpen={false}
-			>
-				<AlertLinksSection alert={alert} />
-			</CollapsibleSection>
-		)}
-		<AlertActions alert={alert} />
-	</div>
-);
+// actions open, so the buttons are one click away. Each section draws its own top rule
+// (CollapsibleSection), so with nothing to show the block has no chrome and no height.
+// Bounded: many matching actions must not push the body (or the footer) out of the panel
+// — past half the tab the block scrolls instead.
+export const AlertDetailsBottomSections = ({ alert }: AlertDetailsBottomSectionsProps) => {
+	const links = getAlertLinks(alert);
+	return (
+		<div
+			className={`shrink-0 overflow-y-auto bg-background px-4 pb-2 space-y-2 empty:hidden ${BOTTOM_SECTIONS_MAX_HEIGHT_CLASS}`}
+		>
+			{links.length > 0 && (
+				<CollapsibleSection
+					title={LINKS_SECTION_TITLE}
+					icon={<Link2 className="h-3.5 w-3.5" />}
+					defaultOpen={false}
+				>
+					<AlertLinksSection alert={alert} links={links} />
+				</CollapsibleSection>
+			)}
+			<AlertActions alert={alert} />
+		</div>
+	);
+};

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { AlertStatus, AlertSeverity, type Action, type Alert } from '@OpsiMate/shared';
 import { AlertActions } from '@/components/Alerts/AlertDetails/AlertActionsSection/AlertActions';
+import { SectionsExpandContext } from '@/components/Alerts/AlertDetails/CollapsibleSection';
 import { render, screen, fireEvent } from './test-utils';
 
 const query = vi.hoisted(() => ({ data: [] as Action[], isLoading: false }));
@@ -92,9 +93,25 @@ describe('AlertActions header', () => {
 		expect(screen.queryByRole('button', { name: /Notify on-call/ })).toBeNull();
 	});
 
-	test('can start folded', () => {
+	test("folds and unfolds with the header's collapse-all / expand-all broadcast", () => {
 		query.data = [action()];
-		render(<AlertActions alert={alert} defaultExpanded={false} />);
+		const { rerender } = render(
+			<SectionsExpandContext.Provider value={{ token: 0, open: true }}>
+				<AlertActions alert={alert} />
+			</SectionsExpandContext.Provider>
+		);
+		expect(screen.getByRole('button', { name: /Notify on-call/ })).toBeInTheDocument();
+		rerender(
+			<SectionsExpandContext.Provider value={{ token: 1, open: false }}>
+				<AlertActions alert={alert} />
+			</SectionsExpandContext.Provider>
+		);
 		expect(screen.queryByRole('button', { name: /Notify on-call/ })).toBeNull();
+		rerender(
+			<SectionsExpandContext.Provider value={{ token: 2, open: true }}>
+				<AlertActions alert={alert} />
+			</SectionsExpandContext.Provider>
+		);
+		expect(screen.getByRole('button', { name: /Notify on-call/ })).toBeInTheDocument();
 	});
 });
