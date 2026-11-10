@@ -54,6 +54,7 @@ export const AlertLastCommentSection = ({ alertId, onViewAll }: AlertLastComment
 			badge={comments.length || undefined}
 			headerRight={viewAll}
 			defaultOpen
+			className="shrink-0"
 		>
 			{latest ? (
 				<div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
