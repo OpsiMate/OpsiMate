@@ -6,6 +6,7 @@ import { Alert } from '@OpsiMate/shared';
 import { Sparkle } from 'lucide-react';
 import { IntegrationAvatar, resolveAlertIntegration } from '../../IntegrationAvatar';
 import { AlertLabelsPopover } from '../AlertLabelsPopover';
+import { AlertTeamPopover } from '../AlertTeamPopover';
 import { FixBadge } from '../../FixBadge';
 import { SeverityBadge } from '../../SeverityBadge';
 import { StatusBadge } from '../../StatusBadge';
@@ -49,6 +50,7 @@ export const AlertInfoSection = ({ alert, isResolved = false }: AlertInfoSection
 			<div className="flex items-center gap-2 flex-wrap">
 				<span className="text-sm text-muted-foreground">Owner:</span>
 				<PersonPicker selectedUserId={alert.ownerId} onSelect={handleOwnerChange} users={users} />
+				{alert.team && <AlertTeamPopover team={alert.team} onAssignOwner={handleOwnerChange} />}
 				{/* Icon-only indicators (labels, severity, status, enriched) — names live in
 				    tooltips so the owner row stays compact even in a narrow panel. */}
 				<div className="ml-auto flex items-center gap-2">
