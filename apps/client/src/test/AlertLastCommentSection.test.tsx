@@ -27,4 +27,12 @@ describe('AlertLastCommentSection', () => {
 		expect(screen.getByText('Idan QA')).toBeInTheDocument();
 		expect(screen.queryByText('older note')).toBeNull();
 	});
+
+	test('renders nothing when the alert has no comments', () => {
+		comments.data = [];
+		render(<AlertLastCommentSection alertId="a" />);
+		// Neither the section header nor the old "No comments yet" prompt.
+		expect(screen.queryByRole('button', { name: /Latest comment/ })).toBeNull();
+		expect(screen.queryByText(/No comments yet/)).toBeNull();
+	});
 });
