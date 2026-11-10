@@ -20,6 +20,8 @@
 import { createClient, report } from './github-api.mjs';
 
 export const HOLD_LABEL = 'keep-assigned';
+// Marks the release comment, so a rerun after a failed unassign does not post it again.
+export const RELEASE_MARKER = '_Automated: a claim is released';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 export function parseExemptAssignees(value) {
@@ -75,8 +77,31 @@ export function releaseComment(issue, staleDays) {
 	return [
 		`Hi ${mentions}, this has been quiet for ${quietDays(issue, Date.now())} days with no PR, so I'm opening it back up for anyone who wants it. No hard feelings at all. If you still want to finish it, say so here and a maintainer will reassign it to you.`,
 		'',
-		`_Automated: a claim is released after ${staleDays} days without activity or an open PR. Maintainers can add the \`${HOLD_LABEL}\` label to hold one._`,
+		`${RELEASE_MARKER} after ${staleDays} days without activity or an open PR. Maintainers can add the \`${HOLD_LABEL}\` label to hold one._`,
 	].join('\n');
+}
+
+// True unless the newest comment is already this script's release comment: an earlier
+// run posted it and then failed to unassign (a deleted account stays listed as an
+// assignee but cannot be removed by login), so only the unassign is retried.
+export function needsReleaseComment(comments) {
+	const last = comments[comments.length - 1];
+	return !(last && last.user?.type === 'Bot' && last.body.includes(RELEASE_MARKER));
+}
+
+// Removes every assignee. DELETE by login is the documented way; when it fails (a
+// login that no longer resolves) fall back to setting the list to empty.
+async function unassignAll(client, repository, issue) {
+	const path = `/repos/${repository}/issues/${issue.number}`;
+	try {
+		await client.request(`${path}/assignees`, {
+			method: 'DELETE',
+			body: { assignees: issue.assignees.map((assignee) => assignee.login) },
+		});
+	} catch (error) {
+		console.warn(`#${issue.number}: ${error.message}; setting assignees to [] instead`);
+		await client.request(path, { method: 'PATCH', body: { assignees: [] } });
+	}
 }
 
 async function main() {
@@ -99,6 +124,7 @@ async function main() {
 
 	const released = [];
 	const held = [];
+	const failed = [];
 	for (const issue of assigned) {
 		const cheapHold = holdReason(issue, {
 			now,
@@ -125,14 +151,20 @@ async function main() {
 		if (dryRun) {
 			continue;
 		}
-		await client.request(`/repos/${repository}/issues/${issue.number}/comments`, {
-			method: 'POST',
-			body: { body: releaseComment(issue, staleDays) },
-		});
-		await client.request(`/repos/${repository}/issues/${issue.number}/assignees`, {
-			method: 'DELETE',
-			body: { assignees: issue.assignees.map((assignee) => assignee.login) },
-		});
+		// One issue failing (a deleted assignee account, a transient 5xx) must not stop
+		// the others; it is reported and fails the run at the end.
+		try {
+			const comments = await client.paginate(`/repos/${repository}/issues/${issue.number}/comments`);
+			if (needsReleaseComment(comments)) {
+				await client.request(`/repos/${repository}/issues/${issue.number}/comments`, {
+					method: 'POST',
+					body: { body: releaseComment(issue, staleDays) },
+				});
+			}
+			await unassignAll(client, repository, issue);
+		} catch (error) {
+			failed.push(`- #${issue.number}: ${error.message}`);
+		}
 	}
 
 	await report(
@@ -144,11 +176,17 @@ async function main() {
 			released.length ? `### ${dryRun ? 'Would release' : 'Released'}` : '',
 			...released,
 			'',
+			failed.length ? '### Failed (needs a maintainer: remove the assignee by hand)' : '',
+			...failed,
+			'',
 			held.length ? '<details><summary>Kept</summary>\n' : '',
 			...held,
 			held.length ? '\n</details>' : '',
 		].join('\n')
 	);
+	if (failed.length > 0) {
+		process.exit(1);
+	}
 }
 
 if (process.argv[1] && import.meta.url === new URL(`file://${process.argv[1]}`).href) {

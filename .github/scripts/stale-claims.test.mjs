@@ -3,7 +3,9 @@ import { describe, it } from 'node:test';
 
 import {
 	HOLD_LABEL,
+	RELEASE_MARKER,
 	holdReason,
+	needsReleaseComment,
 	openLinkedPullRequests,
 	parseExemptAssignees,
 	quietDays,
@@ -102,10 +104,43 @@ describe('parseExemptAssignees', () => {
 });
 
 describe('releaseComment', () => {
-	it('mentions every assignee and names the hold label', () => {
+	it('mentions every assignee, names the hold label and carries the marker', () => {
 		const text = releaseComment(issue({ assignees: ['a', 'b'] }), 14);
 		assert.match(text, /^Hi @a @b,/);
 		assert.match(text, new RegExp(`\`${HOLD_LABEL}\``));
+		assert.ok(text.includes(RELEASE_MARKER));
+	});
+});
+
+describe('needsReleaseComment', () => {
+	const bot = { type: 'Bot', login: 'github-actions[bot]' };
+	const human = { type: 'User', login: 'someone' };
+	const release = releaseComment(issue(), 14);
+
+	it('posts on an issue with no comments or with a human comment last', () => {
+		assert.equal(needsReleaseComment([]), true);
+		assert.equal(needsReleaseComment([{ user: human, body: 'I will do it' }]), true);
+		assert.equal(
+			needsReleaseComment([
+				{ user: bot, body: release },
+				{ user: human, body: 'still here' },
+			]),
+			true
+		);
+	});
+
+	it('does not post again when the newest comment is already the release comment', () => {
+		assert.equal(
+			needsReleaseComment([
+				{ user: human, body: 'hi' },
+				{ user: bot, body: release },
+			]),
+			false
+		);
+	});
+
+	it('still posts after an unrelated bot comment', () => {
+		assert.equal(needsReleaseComment([{ user: bot, body: 'Welcome! Join our Slack' }]), true);
 	});
 });
 
