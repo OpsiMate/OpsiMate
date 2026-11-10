@@ -1,0 +1,1 @@
+export { AlertTeamPopover } from './AlertTeamPopover';

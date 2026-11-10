@@ -1,10 +1,9 @@
 import { Alert as SharedAlert } from '@OpsiMate/shared';
-import { FileText, PhoneCall } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { AlertInfoSection } from '../AlertInfoSection';
 import { AlertLastCommentSection } from '../AlertLastCommentSection';
 import { AlertRootCauseSection } from '../AlertRootCauseSection';
 import { AlertSummarySection } from '../AlertSummarySection';
-import { AlertTeamSection } from '../AlertTeamSection';
 import { CollapsibleSection } from '../CollapsibleSection';
 
 interface AlertDetailsBodyProps {
@@ -17,7 +16,8 @@ interface AlertDetailsBodyProps {
 
 // The Details-tab body, shared by all alert-detail containers. Identity stays pinned at the
 // top (labels and the id live behind its tag icon); everything else lives in collapsible
-// sections (summary, team, root cause, latest comment). Links and custom actions are NOT
+// sections (summary, root cause, latest comment); the owning team is a chip in the owner
+// row (AlertTeamPopover). Links and custom actions are NOT
 // part of the body either: containers pin them under it (AlertDetailsBottomSections),
 // above the silence/resolve footer (AlertFooterActions). History has its own tab.
 export const AlertDetailsBody = ({ alert, onViewAllComments, isResolved }: AlertDetailsBodyProps) => {
@@ -28,12 +28,6 @@ export const AlertDetailsBody = ({ alert, onViewAllComments, isResolved }: Alert
 			{alert.summary && (
 				<CollapsibleSection title="Summary" icon={<FileText className="h-3.5 w-3.5" />} defaultOpen>
 					<AlertSummarySection summary={alert.summary} />
-				</CollapsibleSection>
-			)}
-
-			{alert.team && (
-				<CollapsibleSection title="Team" icon={<PhoneCall className="h-3.5 w-3.5" />} defaultOpen={false}>
-					<AlertTeamSection team={alert.team} />
 				</CollapsibleSection>
 			)}
 
