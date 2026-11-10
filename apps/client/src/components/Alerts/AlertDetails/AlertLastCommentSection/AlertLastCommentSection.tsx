@@ -21,7 +21,8 @@ const initials = (name: string): string =>
 		.toUpperCase() || '?';
 
 // Shows the most recent comment as a preview in the Details tab, with a count and a link to
-// the full Comments tab.
+// the full Comments tab. Open by default: the latest comment is often the most useful line
+// in the panel (what the last responder found).
 export const AlertLastCommentSection = ({ alertId, onViewAll }: AlertLastCommentSectionProps) => {
 	const { data: comments = [] } = useAlertComments(alertId);
 	const { data: users = [] } = useUsers();
@@ -52,7 +53,7 @@ export const AlertLastCommentSection = ({ alertId, onViewAll }: AlertLastComment
 			icon={<MessageSquare className="h-3.5 w-3.5" />}
 			badge={comments.length || undefined}
 			headerRight={viewAll}
-			defaultOpen={false}
+			defaultOpen
 		>
 			{latest ? (
 				<div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
