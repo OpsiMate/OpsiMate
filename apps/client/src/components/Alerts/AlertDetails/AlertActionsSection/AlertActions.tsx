@@ -10,6 +10,8 @@ import { ROUTES } from '@/lib/routes';
 
 interface AlertActionsProps {
 	alert: Alert;
+	// Open on first render (the pinned bottom block); the header still folds it.
+	defaultExpanded?: boolean;
 }
 
 // An action is offered on an alert when the shared matcher says so (see
@@ -19,10 +21,10 @@ interface AlertActionsProps {
 const actionMatchesAlert = (action: Action, alert: Alert): boolean =>
 	criteriaMatchesAlert(action, alert, { emptyCriteriaMatches: true });
 
-export const AlertActions = ({ alert }: AlertActionsProps) => {
+export const AlertActions = ({ alert, defaultExpanded = true }: AlertActionsProps) => {
 	const { data: allActions = [], isLoading } = useActions();
 	const [selected, setSelected] = useState<Action | null>(null);
-	const [expanded, setExpanded] = useState(false);
+	const [expanded, setExpanded] = useState(defaultExpanded);
 
 	const actions = allActions.filter((a) => actionMatchesAlert(a, alert));
 

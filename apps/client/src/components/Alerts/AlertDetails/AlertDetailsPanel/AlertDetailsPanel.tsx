@@ -4,6 +4,7 @@ import { Alert } from '@OpsiMate/shared';
 import { useEffect, useState } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { AlertDetailsBody } from '../AlertDetailsBody';
+import { AlertDetailsBottomSections } from '../AlertDetailsBottomSections';
 import { AlertDetailsHeader } from '../AlertDetailsHeader';
 import { AlertFooterActions } from '../AlertFooterActions';
 import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from '../CollapsibleSection';
@@ -66,16 +67,18 @@ export const AlertDetailsPanel = ({
 			<Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
 				<PanelTabsList />
 
-				<TabsContent value="details" className="flex-1 min-h-0 mt-0">
-					<ScrollArea className="h-full">
-						<SectionsExpandContext.Provider value={signal}>
+				<TabsContent value="details" className="flex-1 min-h-0 mt-0 flex flex-col">
+					<SectionsExpandContext.Provider value={signal}>
+						<ScrollArea className="flex-1 min-h-0">
 							<AlertDetailsBody
 								alert={alert}
 								onViewAllComments={() => setTab('comments')}
 								isResolved={!isActive}
 							/>
-						</SectionsExpandContext.Provider>
-					</ScrollArea>
+						</ScrollArea>
+						{/* Links and actions stay in reach while the body scrolls. */}
+						<AlertDetailsBottomSections alert={alert} />
+					</SectionsExpandContext.Provider>
 				</TabsContent>
 
 				<TabsContent value="comments" className="flex-1 min-h-0 mt-0">
