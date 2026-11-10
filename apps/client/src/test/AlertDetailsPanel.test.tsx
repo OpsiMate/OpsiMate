@@ -71,6 +71,21 @@ const noop = () => {};
 const openComments = () => fireEvent.mouseDown(screen.getByRole('tab', { name: /comments/i }));
 const openHistory = () => fireEvent.mouseDown(screen.getByRole('tab', { name: /history/i }));
 
+describe('AlertDetailsPanel bottom sections', () => {
+	test('stay outside the body scroll area and before the footer', () => {
+		render(<AlertDetailsPanel alert={mkAlert('a')} isActive onClose={noop} />);
+		const body = screen.getByText('details-body');
+		const bottomSections = screen.getByText('bottom-sections');
+		const footer = screen.getByText('footer-actions');
+		// The body's scroll viewport wraps the body only; the block sits after it, before the footer.
+		const viewport = body.closest('[data-radix-scroll-area-viewport]');
+		expect(viewport).not.toBeNull();
+		expect(viewport).not.toContainElement(bottomSections);
+		expect(body.compareDocumentPosition(bottomSections) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+		expect(bottomSections.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+	});
+});
+
 describe('AlertDetailsPanel tab reset', () => {
 	test('selecting a different alert returns to Details', () => {
 		const { rerender } = render(<AlertDetailsPanel alert={mkAlert('a')} isActive onClose={noop} />);
