@@ -1,14 +1,16 @@
 import { Button } from '@/components/ui/button';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, AlertLink } from '@OpsiMate/shared';
 import { AlertLinkIcon } from '../../AlertLinkIcon';
 import { getAlertLinks } from '../../utils/links.utils';
 
 interface AlertLinksSectionProps {
 	alert: Alert;
+	// The alert's links, when the caller already derived them (to decide whether to
+	// render the section at all); derived here otherwise.
+	links?: AlertLink[];
 }
 
-export const AlertLinksSection = ({ alert }: AlertLinksSectionProps) => {
-	const links = getAlertLinks(alert);
+export const AlertLinksSection = ({ alert, links = getAlertLinks(alert) }: AlertLinksSectionProps) => {
 	if (links.length === 0) {
 		return null;
 	}

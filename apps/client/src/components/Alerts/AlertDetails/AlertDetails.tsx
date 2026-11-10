@@ -1,11 +1,9 @@
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { AlertDetailsBody } from './AlertDetailsBody';
-import { AlertDetailsBottomSections } from './AlertDetailsBottomSections';
+import { AlertDetailsTab } from './AlertDetailsTab';
 import { AlertDetailsHeader } from './AlertDetailsHeader';
 import { AlertFooterActions } from './AlertFooterActions';
-import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from './CollapsibleSection';
+import { SectionsExpandControls, useSectionsExpandBroadcast } from './CollapsibleSection';
 
 interface AlertDetailsProps {
 	isActive: boolean;
@@ -34,13 +32,7 @@ export const AlertDetails = ({
 		<div className={cn('h-full flex flex-col bg-background border-l', className)}>
 			<AlertDetailsHeader onClose={onClose} actions={<SectionsExpandControls onBroadcast={broadcast} />} />
 
-			<SectionsExpandContext.Provider value={signal}>
-				<ScrollArea className="flex-1 min-h-0">
-					<AlertDetailsBody alert={alert} isResolved={!isActive} />
-				</ScrollArea>
-				{/* Links and actions stay in reach while the body scrolls. */}
-				<AlertDetailsBottomSections alert={alert} />
-			</SectionsExpandContext.Provider>
+			<AlertDetailsTab alert={alert} isResolved={!isActive} signal={signal} />
 
 			{/* Primary actions pinned at the bottom, outside the scroll area. */}
 			<div className="border-t p-3 shrink-0">
