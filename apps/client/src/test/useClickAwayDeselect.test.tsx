@@ -34,6 +34,9 @@ describe('isClickAway', () => {
 		expect(isClickAway(byId('in-dialog'))).toBe(false);
 		expect(isClickAway(byId('toast'))).toBe(false);
 		expect(isClickAway(null)).toBe(false);
+		// Unmounted by the press itself (React can remove a menu item on mousedown).
+		const detached = document.createElement('div');
+		expect(isClickAway(detached)).toBe(false);
 	});
 });
 

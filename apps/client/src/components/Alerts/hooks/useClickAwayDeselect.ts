@@ -12,7 +12,9 @@ interface UseClickAwayDeselectOptions {
 // primary button counts: a right-click opens a menu for what is under it.
 export const isClickAway = (target: EventTarget | null): boolean => {
 	const el = target as Element | null;
-	if (!el?.closest) return false;
+	// A node already unmounted by the press (a menu item that closes its menu, a row action)
+	// has lost its ancestors, so it cannot be judged — and it was a click on something.
+	if (!el?.closest || !el.isConnected) return false;
 	return !el.closest(SELECTION_SCOPE_SELECTOR) && !el.closest(KEEP_SELECTION_SELECTOR);
 };
 
