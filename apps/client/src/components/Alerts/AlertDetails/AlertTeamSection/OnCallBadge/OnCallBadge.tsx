@@ -15,7 +15,7 @@ export const OnCallBadge = ({ member }: OnCallBadgeProps) => (
 		className="inline-flex items-center gap-1.5 rounded-full border border-primary bg-primary/10 px-2.5 py-0.5 text-xs font-semibold"
 	>
 		<Badge variant="default" className="h-4 min-w-4 justify-center rounded-full px-1 text-[10px]">
-			1
+			{member.priority}
 		</Badge>
 		{member.fullName}
 		{member.phoneNumber ? (

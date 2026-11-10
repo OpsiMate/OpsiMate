@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button';
 import { useOncallTeams } from '@/hooks/queries/oncall';
 import { UserCheck } from 'lucide-react';
 import { useMemo } from 'react';
-import { ASSIGN_ON_CALL_LABEL, NO_SCHEDULE_TEXT } from './AlertTeamSection.constants';
+import { ASSIGN_ON_CALL_LABEL, NO_SCHEDULE_TEXT, ON_CALL_PRIORITY } from './AlertTeamSection.constants';
 import { OnCallBadge } from './OnCallBadge';
 
 interface AlertTeamSectionProps {
@@ -23,7 +23,7 @@ export const AlertTeamSection = ({ team, onAssignOnCall }: AlertTeamSectionProps
 		() => teams.find((t) => t.name.toLowerCase() === team.toLowerCase()) ?? null,
 		[teams, team]
 	);
-	const onCallNow = oncallTeam?.members.find((m) => m.priority === 1) ?? null;
+	const onCallNow = oncallTeam?.members.find((m) => m.priority === ON_CALL_PRIORITY) ?? null;
 
 	return (
 		<div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm">
