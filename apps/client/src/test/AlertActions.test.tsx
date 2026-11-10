@@ -33,7 +33,7 @@ const action = (overrides: Partial<Action> = {}): Action => ({
 	updatedAt: new Date(0).toISOString(),
 	...overrides,
 });
-const expand = () => fireEvent.click(screen.getByRole('button', { name: /^Actions/ }));
+const toggle = () => fireEvent.click(screen.getByRole('button', { name: /^Actions/ }));
 
 beforeEach(() => {
 	query.data = [];
@@ -43,8 +43,6 @@ beforeEach(() => {
 describe('AlertActions empty states', () => {
 	test('keeps the create prompt when no actions are configured', () => {
 		render(<AlertActions alert={alert} />);
-		expect(screen.queryByText(/No actions configured/)).not.toBeInTheDocument();
-		expand();
 		expect(screen.getByText(/No actions configured/)).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/actions');
 		expect(screen.queryByText(/No actions apply/)).not.toBeInTheDocument();
@@ -52,7 +50,6 @@ describe('AlertActions empty states', () => {
 	test('explains a name-filter mismatch and links to manage existing actions', () => {
 		query.data = [action({ name: 'Database runbook', nameContainsAny: ['Database'] })];
 		render(<AlertActions alert={alert} />);
-		expand();
 		expect(screen.getByText(/No actions apply to this alert/)).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Manage actions' })).toHaveAttribute('href', '/actions');
 		expect(screen.queryByText(/No actions configured/)).not.toBeInTheDocument();
@@ -61,21 +58,18 @@ describe('AlertActions empty states', () => {
 	test('uses the same state for a label-filter mismatch', () => {
 		query.data = [action({ labelMatchers: [{ key: 'environment', value: 'staging' }] })];
 		render(<AlertActions alert={alert} />);
-		expand();
 		expect(screen.getByText(/No actions apply to this alert/)).toBeInTheDocument();
 		expect(screen.queryByText(/No actions configured/)).not.toBeInTheDocument();
 	});
 	test('shows an unfiltered action without either empty message', () => {
 		query.data = [action()];
 		render(<AlertActions alert={alert} />);
-		expand();
 		expect(screen.getByRole('button', { name: 'Notify on-call' })).toBeInTheDocument();
 		expect(screen.queryByText(/No actions configured|No actions apply/)).not.toBeInTheDocument();
 	});
 	test('lists only matching actions when matching and nonmatching actions coexist', () => {
 		query.data = [action(), action({ id: 2, name: 'Database runbook', nameContainsAny: ['Database'] })];
 		render(<AlertActions alert={alert} />);
-		expand();
 		expect(screen.getByRole('button', { name: 'Notify on-call' })).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Database runbook' })).not.toBeInTheDocument();
 		expect(screen.queryByText(/No actions configured|No actions apply/)).not.toBeInTheDocument();
@@ -85,5 +79,22 @@ describe('AlertActions empty states', () => {
 		render(<AlertActions alert={alert} />);
 		expect(screen.queryByRole('button', { name: /^Actions/ })).not.toBeInTheDocument();
 		expect(screen.queryByText(/No actions configured|No actions apply/)).not.toBeInTheDocument();
+	});
+});
+
+describe('AlertActions header', () => {
+	test('is open by default and folds on the header', () => {
+		query.data = [action()];
+		render(<AlertActions alert={alert} />);
+		expect(screen.getByRole('button', { name: /^Actions/ })).toHaveAttribute('aria-expanded', 'true');
+		expect(screen.getByRole('button', { name: /Notify on-call/ })).toBeInTheDocument();
+		toggle();
+		expect(screen.queryByRole('button', { name: /Notify on-call/ })).toBeNull();
+	});
+
+	test('can start folded', () => {
+		query.data = [action()];
+		render(<AlertActions alert={alert} defaultExpanded={false} />);
+		expect(screen.queryByRole('button', { name: /Notify on-call/ })).toBeNull();
 	});
 });

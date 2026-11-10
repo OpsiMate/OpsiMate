@@ -24,6 +24,9 @@ vi.mock('@/components/Alerts/AlertDetails/AlertDetailsBody', () => ({
 		<div>{isResolved ? 'details-body:resolved' : 'details-body'}</div>
 	),
 }));
+vi.mock('@/components/Alerts/AlertDetails/AlertDetailsBottomSections', () => ({
+	AlertDetailsBottomSections: () => <div>bottom-sections</div>,
+}));
 vi.mock('@/components/Alerts/AlertDetails/AlertFooterActions', () => ({
 	AlertFooterActions: () => <div>footer-actions</div>,
 }));
