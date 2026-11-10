@@ -16,9 +16,11 @@ export const useScrollOverflowHint = (ref: RefObject<HTMLElement | null>, deps: 
 		};
 		update();
 		el.addEventListener('scroll', update, { passive: true });
-		// Content and width changes (panel resize, fonts loading) move the fold.
+		// Content and width changes (panel resize, fonts loading) move the fold. The box
+		// itself is capped, so a reflow inside it only shows on its children — observe those too.
 		const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(update);
 		observer?.observe(el);
+		Array.from(el.children).forEach((child) => observer?.observe(child));
 		return () => {
 			el.removeEventListener('scroll', update);
 			observer?.disconnect();
