@@ -1,8 +1,8 @@
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert } from '@OpsiMate/shared';
 import { AlertDetailsBody } from '../AlertDetailsBody';
 import { AlertDetailsBottomSections } from '../AlertDetailsBottomSections';
 import { SectionsExpandContext, SectionsExpandSignal } from '../CollapsibleSection';
+import { DETAILS_BODY_SCROLL_TEST_ID } from './AlertDetailsTab.constants';
 
 interface AlertDetailsTabProps {
 	alert: Alert;
@@ -14,12 +14,14 @@ interface AlertDetailsTabProps {
 }
 
 // The Details tab, shared by both containers (the tabbed panel and the plain details
-// view): the body scrolls, the links/actions block stays pinned under it.
+// view): the body fills the room above the pinned links/actions block, its sections
+// sharing the height (see AlertDetailsBody); only when even their floors do not fit (a
+// very short window) does the body scroll as a whole.
 export const AlertDetailsTab = ({ alert, isResolved, onViewAllComments, signal }: AlertDetailsTabProps) => (
 	<SectionsExpandContext.Provider value={signal}>
-		<ScrollArea className="flex-1 min-h-0">
+		<div data-testid={DETAILS_BODY_SCROLL_TEST_ID} className="flex min-h-0 flex-1 flex-col overflow-y-auto">
 			<AlertDetailsBody alert={alert} onViewAllComments={onViewAllComments} isResolved={isResolved} />
-		</ScrollArea>
+		</div>
 		<AlertDetailsBottomSections alert={alert} />
 	</SectionsExpandContext.Provider>
 );

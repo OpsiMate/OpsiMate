@@ -1,10 +1,23 @@
 import { RefObject, useEffect, useState } from 'react';
 
-// Whether a capped, scrollable block still has content below its fold — true while it
-// overflows and is not scrolled to the bottom. Drives the fade that tells the reader
-// "there is more": without it a capped block reads as if the text simply ended.
-export const useScrollOverflowHint = (ref: RefObject<HTMLElement | null>, deps: unknown[] = []): boolean => {
-	const [hasMoreBelow, setHasMoreBelow] = useState(false);
+export interface ScrollOverflowState {
+	// The content is taller than the box.
+	overflowing: boolean;
+	// Overflowing and not scrolled to the bottom: there is text below the fold.
+	hasMoreBelow: boolean;
+}
+
+const NOT_OVERFLOWING: ScrollOverflowState = { overflowing: false, hasMoreBelow: false };
+
+// Whether a capped, scrollable block overflows, and whether content still sits below its
+// fold. Drives the fade that tells the reader "there is more" (without it a capped block
+// reads as if the text simply ended) and lets a block keep a floor height only when it
+// actually has more to show.
+export const useScrollOverflowHint = (
+	ref: RefObject<HTMLElement | null>,
+	deps: unknown[] = []
+): ScrollOverflowState => {
+	const [state, setState] = useState<ScrollOverflowState>(NOT_OVERFLOWING);
 
 	useEffect(() => {
 		const el = ref.current;
@@ -12,7 +25,11 @@ export const useScrollOverflowHint = (ref: RefObject<HTMLElement | null>, deps: 
 		const update = () => {
 			const overflowing = el.scrollHeight > el.clientHeight + 1;
 			const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-			setHasMoreBelow(overflowing && !atBottom);
+			setState((prev) =>
+				prev.overflowing === overflowing && prev.hasMoreBelow === (overflowing && !atBottom)
+					? prev
+					: { overflowing, hasMoreBelow: overflowing && !atBottom }
+			);
 		};
 		update();
 		el.addEventListener('scroll', update, { passive: true });
@@ -28,5 +45,5 @@ export const useScrollOverflowHint = (ref: RefObject<HTMLElement | null>, deps: 
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [ref, ...deps]);
 
-	return hasMoreBelow;
+	return state;
 };

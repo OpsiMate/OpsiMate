@@ -12,7 +12,7 @@ const geometry = (el: HTMLElement, scrollHeight: number, clientHeight: number) =
 describe('AlertSummarySection scroll hint', () => {
 	test('a summary that fits shows no hint', () => {
 		render(<AlertSummarySection summary="short" />);
-		expect(screen.queryByTestId('summary-scroll-hint')).toBeNull();
+		expect(screen.queryByTestId('scroll-hint')).toBeNull();
 	});
 
 	test('an overflowing summary shows the hint until scrolled to the bottom', () => {
@@ -21,16 +21,16 @@ describe('AlertSummarySection scroll hint', () => {
 		geometry(box, 1200, 400);
 		// A new summary re-measures.
 		rerender(<AlertSummarySection summary="long" />);
-		expect(screen.getByTestId('summary-scroll-hint')).toBeInTheDocument();
+		expect(screen.getByTestId('scroll-hint')).toBeInTheDocument();
 		act(() => {
 			box.scrollTop = 800;
 			fireEvent.scroll(box);
 		});
-		expect(screen.queryByTestId('summary-scroll-hint')).toBeNull();
+		expect(screen.queryByTestId('scroll-hint')).toBeNull();
 		act(() => {
 			box.scrollTop = 100;
 			fireEvent.scroll(box);
 		});
-		expect(screen.getByTestId('summary-scroll-hint')).toBeInTheDocument();
+		expect(screen.getByTestId('scroll-hint')).toBeInTheDocument();
 	});
 });

@@ -77,8 +77,8 @@ describe('AlertDetailsPanel bottom sections', () => {
 		const body = screen.getByText('details-body');
 		const bottomSections = screen.getByText('bottom-sections');
 		const footer = screen.getByText('footer-actions');
-		// The body's scroll viewport wraps the body only; the block sits after it, before the footer.
-		const viewport = body.closest('[data-radix-scroll-area-viewport]');
+		// The body's scroll container wraps the body only; the block sits after it, before the footer.
+		const viewport = body.closest('[data-testid="alert-details-body-scroll"]');
 		expect(viewport).not.toBeNull();
 		expect(viewport).not.toContainElement(bottomSections);
 		expect(body.compareDocumentPosition(bottomSections) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
