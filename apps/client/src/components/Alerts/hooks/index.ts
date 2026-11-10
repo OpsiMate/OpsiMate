@@ -6,3 +6,4 @@ export { useColumnManagement } from './useColumnManagement';
 export { useExpandRows } from './useExpandRows';
 export { useFilterPanelCollapsed } from './useFilterPanelCollapsed';
 export { useIncidentActions } from './useIncidentActions';
+export { useClickAwayDeselect } from './useClickAwayDeselect';

@@ -472,7 +472,10 @@ export const AlertsTable = ({
 								<div className="border-b bg-background">
 									<table className="table-fixed w-full text-sm">
 										<TableHeader>
-											<TableRow className={`h-8 ${COLUMN_SEPARATOR_CLASSES}`}>
+											<TableRow
+												className={`h-8 ${COLUMN_SEPARATOR_CLASSES}`}
+												data-selection-scope
+											>
 												{onSelectAlerts && (
 													<TableHead
 														className={TABLE_HEAD_CLASSES}
