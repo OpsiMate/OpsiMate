@@ -485,6 +485,35 @@ const sendHttp = (
 	return cfg.fireAndForget ? sendHttpWithoutWaiting(parts, action.name) : sendHttpAndWait(parts);
 };
 
+// A failed request's reason is usually one level down. fetch's own TypeError says only
+// "fetch failed"; the socket layer's ECONNREFUSED, ENOTFOUND or TLS detail sits on `cause`.
+// That message is a host:port and an errno — never a header or a token — so it is safe to
+// show, unlike the raw error, which still stays out of the log.
+const messageOfThrown = (value: unknown): string => {
+	if (value instanceof Error) {
+		if (value.message) return value.message;
+		// Every address refused (or a lookup that failed per address) arrives as an
+		// AggregateError whose own message is empty and whose members carry the detail.
+		const aggregate = value as { errors?: unknown };
+		if (Array.isArray(aggregate.errors)) {
+			const nested = aggregate.errors.map(messageOfThrown).filter((message) => message.length > 0);
+			if (nested.length > 0) return [...new Set(nested)].join('; ');
+		}
+		const code = (value as NodeJS.ErrnoException).code;
+		return typeof code === 'string' ? code : '';
+	}
+	return '';
+};
+
+// The message a failed action reports: the timeout text is unchanged, and anything else
+// keeps its own message with the cause appended when there is one.
+export const describeActionError = (error: unknown): string => {
+	if (!(error instanceof Error)) return 'Unknown error';
+	if (error.name === 'AbortError') return 'Request timed out after 10s.';
+	const cause = messageOfThrown(error.cause);
+	return cause ? `${error.message}: ${cause}` : error.message;
+};
+
 export const executeAction = async (
 	action: ExecutableAction,
 	ctx: Record<string, string>,
@@ -510,12 +539,7 @@ export const executeAction = async (
 				return { ok: false, message: `Unsupported action type: ${String(action.type)}` };
 		}
 	} catch (error) {
-		const errMessage =
-			error instanceof Error
-				? error.name === 'AbortError'
-					? 'Request timed out after 10s.'
-					: error.message
-				: 'Unknown error';
+		const errMessage = describeActionError(error);
 		// Log only the message, not the raw error object, to avoid leaking config secrets
 		// (webhook URLs, Jira tokens) that may be embedded in the error/request context.
 		logger.error(`Failed to execute action '${action.name}': ${errMessage}`);
