@@ -2,7 +2,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vit
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { Role } from '@OpsiMate/shared';
+import { AlertStatus } from '@OpsiMate/shared';
+import { AlertBL, IncomingAlert } from '../src/bl/alerts/alert.bl';
 import { AuditBL } from '../src/bl/audit/audit.bl';
+import { AlertRepository } from '../src/dal/alertRepository';
+import { AlertCommentsRepository } from '../src/dal/alertCommentsRepository';
+import { AlertHistoryRepository } from '../src/dal/alertHistoryRepository';
+import { ResolvedAlertRepository } from '../src/dal/resolvedAlertRepository';
 import { WebhookOwnerResolver } from '../src/bl/alerts/webhookOwnerResolver';
 import { LdapAuthenticator, LdapIdentity, LdapUnavailableError } from '../src/bl/users/ldapAuthenticator';
 import { UserBL } from '../src/bl/users/user.bl';
@@ -191,6 +197,46 @@ describe('owner from the webhook (API)', () => {
 		expect(res.status).toBe(200);
 		expect(res.body.data.owners).toEqual({ 'g-3': 'unassigned' });
 		expect((await alertById('g-3')).ownerId).toBeNull();
+	});
+
+	test('owner decisions for one alert run in arrival order: a slow assignment cannot overtake a later removal', async () => {
+		const userRepo = new UserRepository(db);
+		const bl = new AlertBL(
+			new AlertRepository(db),
+			new ResolvedAlertRepository(db),
+			new AlertCommentsRepository(db),
+			new AlertHistoryRepository(db),
+			userRepo
+		);
+		const dana = await userRepo.getUserByEmail('dana@example.com');
+		let release: () => void = () => undefined;
+		const directory = new Promise<void>((resolve) => (release = resolve));
+		const slow = { resolve: async () => (await directory, dana) } as unknown as WebhookOwnerResolver;
+		bl.setWebhookOwnerResolver(slow);
+		const now = new Date().toISOString();
+		const incoming = (owner: string): IncomingAlert => ({
+			id: 'w-race',
+			type: 'Custom',
+			status: AlertStatus.FIRING,
+			tags: {},
+			startsAt: now,
+			updatedAt: now,
+			alertUrl: '',
+			alertName: 'race',
+			summary: '',
+			owner,
+		});
+		// The assignment is waiting on the directory when the removal arrives.
+		const assign = bl.insertOrUpdateAlert(incoming('dana@example.com'));
+		const clear = bl.insertOrUpdateAlert(incoming(''));
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		expect((await alertById('w-race')).ownerId).toBeNull();
+		release();
+		expect((await assign).owner).toBe('assigned');
+		expect((await clear).owner).toBe('unassigned');
+		// Last message wins: the removal applied after the assignment, not before it.
+		expect((await alertById('w-race')).ownerId).toBeNull();
+		expect(await historyOf('w-race')).toContain('Owner removed');
 	});
 
 	test('a resolve payload ignores owner', async () => {

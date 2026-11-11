@@ -650,12 +650,32 @@ export class AlertBL {
 			const sent = alert.owner !== undefined ? alert.owner : alert.tags?.['owner'];
 			if (sent === undefined) return result;
 			const requested = sent?.trim() ?? '';
-			if (requested === '') return { ...result, owner: await this.applyWebhookUnassign(alert) };
-			return { ...result, owner: await this.applyWebhookOwner(alert, requested) };
+			const decide =
+				requested === ''
+					? () => this.applyWebhookUnassign(alert)
+					: () => this.applyWebhookOwner(alert, requested);
+			return { ...result, owner: await this.serializeOwnerDecision(alert.id, decide) };
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
 		}
+	}
+
+	// Webhook owner decisions for one alert run in arrival order. The resolver can take a
+	// while (a directory lookup), and a later "owner removed" must not be overtaken by an
+	// earlier assignment that finishes after it — the last message wins, as the sender
+	// expects. Keyed by alert id; an entry is dropped once its chain has drained.
+	private ownerDecisions = new Map<string, Promise<unknown>>();
+
+	private serializeOwnerDecision<T>(alertId: string, decide: () => Promise<T>): Promise<T> {
+		const previous = this.ownerDecisions.get(alertId) ?? Promise.resolve();
+		const next = previous.then(decide, decide);
+		this.ownerDecisions.set(alertId, next);
+		const drop = () => {
+			if (this.ownerDecisions.get(alertId) === next) this.ownerDecisions.delete(alertId);
+		};
+		void next.then(drop, drop);
+		return next;
 	}
 
 	// The owner a webhook named, applied once the row is committed. A default, not an

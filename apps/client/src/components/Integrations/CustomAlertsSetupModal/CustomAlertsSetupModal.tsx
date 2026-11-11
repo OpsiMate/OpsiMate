@@ -221,10 +221,11 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 												their first login. A name fills an empty owner only — it never replaces
 												an owner someone set by hand. Send it <strong>empty</strong> (
 												<code>""</code> or <code>null</code>) to <strong>remove</strong> the
-												owner, which also takes the alert out of its incident; omit the field to
-												leave the owner alone. The response says what happened: assigned / kept
-												/ unassigned / not_found. An <code>owner</code> tag does the same for
-												the other integrations.
+												owner, which also takes the alert out of its incident (a no-op on an
+												alert nobody owns); omit it — field and tag — to leave the owner alone.
+												The response says what happened: assigned / kept / unassigned /
+												not_found. An <code>owner</code> tag does the same for the other
+												integrations.
 											</td>
 										</tr>
 										<tr>

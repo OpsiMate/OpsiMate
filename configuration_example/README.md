@@ -94,8 +94,8 @@ It holds no credentials of its own: each MCP client authenticates with the API t
 A source can say who owns an alert: the generic webhook (`POST /api/v1/alerts/custom`) takes a top-level `owner`, and every integration (Grafana, Datadog, Zabbix, GCP, Uptime Kuma) reads an `owner` label/tag. The value is a user's email, or a bare name when `login.default_email_domain` is set (`dana` → `dana@company.com`).
 
 - Local users are matched by email. With LDAP on, a directory user who has never logged in is looked up with the service account and, when in a mapped group, provisioned on the spot — exactly as their first login would.
-- The owner is a default, not an authority: a name fills an **empty** owner only. A re-send with another name never replaces an owner a person set by hand, and leaving the field out leaves the owner alone.
-- Sending `owner` **empty** (`""` or `null`, or an empty `owner` label) **removes** the owner — also one a person set by hand — and takes the alert out of its incident. The response says `unassigned`, the history reads "Owner removed", and the `owner_unassigned` callback fires.
+- The owner is a default, not an authority: a name fills an **empty** owner only. A re-send with another name never replaces an owner a person set by hand, and leaving it out — field and `owner` label alike — leaves the owner alone.
+- Sending `owner` **empty** (`""` or `null`, or an empty `owner` label) **removes** the owner — also one a person set by hand — and takes the alert out of its incident. The response says `unassigned`; when there was an owner to remove, the history reads "Owner removed" and the `owner_unassigned` callback fires (on an alert nobody owns it is a no-op). Two webhooks for the same alert apply their `owner` in arrival order, so the last one sent wins even when a directory lookup is slow.
 - Nobody matching, or the directory being down, never fails the webhook: the alert is stored unassigned and the response's `owner` field says `not_found` (otherwise `assigned`, `kept` or `unassigned`). No `owner_assigned` callback fires for a webhook owner — that is for a person's decision.
 
 ## Login with a Short Name
