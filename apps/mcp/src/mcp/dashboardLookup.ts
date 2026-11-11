@@ -89,8 +89,9 @@ export interface DashboardScopeOptions {
 	window?: ResolvedTimeWindow;
 }
 
-// The dashboard's rolling window right now, coarse to the minute like the client's. A
-// stored absolute range is kept exactly.
+// The dashboard's rolling window right now, coarse to the minute like the client's and,
+// like the client's, with no end (see resolveDashboardTimeRange). A stored absolute range
+// is kept exactly.
 export const resolveDashboardWindow = (dashboard: Dashboard, timeZone: string | undefined): ResolvedTimeWindow => {
 	const range = dashboard.timeRange;
 	if (!range || !isQuickTimePreset(range.preset)) return resolveDashboardTimeRange(range, { timeZone });
@@ -129,7 +130,7 @@ export const describeDashboardScope = (dashboard: Dashboard, window: ResolvedTim
 	const preset = dashboard.timeRange?.preset;
 	if (isQuickTimePreset(preset)) {
 		const label = QUICK_TIME_PRESETS.find((config) => config.value === preset)?.label ?? preset;
-		parts.push(`time: ${label.toLowerCase()} (${window.from ?? '…'} to ${window.to ?? 'now'})`);
+		parts.push(`time: ${label.toLowerCase()} (since ${window.from ?? '…'})`);
 	} else if (window.from || window.to) {
 		parts.push(`time: ${window.from ?? 'the beginning'} to ${window.to ?? 'now'}`);
 	}

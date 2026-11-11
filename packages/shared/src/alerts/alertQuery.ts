@@ -317,18 +317,24 @@ export interface ResolvedTimeWindow {
 // episode current as of the window's end — the LATEST transition into firing at or
 // before the window closes. An alert that fired at 18:00, resolved at 19:00 and re-fired
 // at 20:00 shows 20:00; transitions after the window's end belong to a later episode.
+//
+// A missing end is OPEN, not "now": rolling presets ("Last 1 hour", "Today") are
+// from-only, and an alert stamped a little ahead of this machine's clock — a browser or
+// MCP host running slow next to the server or Grafana — must still show. Nothing
+// legitimately starts in the future, so the open end hides nothing and the list stops
+// depending on the reader's clock.
 export const applyTimeWindow = (alerts: Alert[], window: ResolvedTimeWindow): Alert[] => {
 	const from = window.from ? new Date(window.from) : null;
 	const to = window.to ? new Date(window.to) : null;
 	if (!from && !to) return alerts;
 
 	const filterStart = from || new Date(0);
-	const filterEnd = to || new Date();
+	const filterEndMs = to ? to.getTime() : Number.POSITIVE_INFINITY;
 
 	const result = alerts.filter((alert) => {
-		const alertStartDate = new Date(alert.startsAt);
+		const alertStartMs = new Date(alert.startsAt).getTime();
 		const alertEndDate = new Date(alert.updatedAt);
-		return alertStartDate <= filterEnd && alertEndDate >= filterStart;
+		return alertStartMs <= filterEndMs && alertEndDate >= filterStart;
 	});
 
 	return result.map((alert) => {
@@ -337,7 +343,7 @@ export const applyTimeWindow = (alerts: Alert[], window: ResolvedTimeWindow): Al
 		// formats.
 		const candidates = [alert.startsAt, ...(alert.firingTimes ?? [])]
 			.map((iso) => ({ iso, epoch: new Date(iso).getTime() }))
-			.filter(({ epoch }) => !isNaN(epoch) && epoch <= filterEnd.getTime());
+			.filter(({ epoch }) => !isNaN(epoch) && epoch <= filterEndMs);
 		if (candidates.length === 0) return alert;
 		const episodeStart = candidates.reduce((latest, c) => (c.epoch > latest.epoch ? c : latest));
 		return episodeStart.iso === alert.startsAt ? alert : { ...alert, startsAt: episodeStart.iso };
@@ -553,7 +559,8 @@ export const applyAlertListQuery = (alerts: Alert[], users: AlertOwnerInfo[], qu
 	const to = query.to ? new Date(query.to).getTime() : null;
 	const hasWindow = from !== null || to !== null;
 	const windowStart = from ?? 0;
-	const windowEnd = to ?? Date.now();
+	// Open end when none is given — see applyTimeWindow.
+	const windowEnd = to ?? Number.POSITIVE_INFINITY;
 	const resolved = query.filters ? resolveFilters(sorted, query.filters, users) : [];
 	const search = query.search?.trim().toLowerCase() ?? '';
 	const searchTexts = search ? searchTextColumn(sorted) : null;

@@ -35,8 +35,9 @@ export const toCoarseWindow = (from: Date | null, to: Date | null): ResolvedTime
 });
 
 // `from`/`to` are taken as given (an explicit timestamp is already a stable key);
-// `lastMinutes` becomes a coarse rolling window. Both at once is a contradiction the
-// caller must resolve.
+// `lastMinutes` becomes a coarse rolling window with an OPEN end, like the UI's quick
+// presets: bounding it at this host's "now" would hide alerts the server stamped a few
+// seconds ahead of a slow clock. Both at once is a contradiction the caller must resolve.
 export const resolveWindowArgs = (args: TimeWindowArgs, now: Date = new Date()): WindowResolution => {
 	if (args.lastMinutes !== undefined) {
 		if (args.from !== undefined || args.to !== undefined) {
@@ -47,7 +48,7 @@ export const resolveWindowArgs = (args: TimeWindowArgs, now: Date = new Date()):
 		}
 		return {
 			ok: true,
-			window: toCoarseWindow(new Date(now.getTime() - args.lastMinutes * MINUTE_MS), now),
+			window: toCoarseWindow(new Date(now.getTime() - args.lastMinutes * MINUTE_MS), null),
 		};
 	}
 	if (args.from !== undefined && args.to !== undefined && Date.parse(args.from) > Date.parse(args.to)) {
