@@ -181,12 +181,31 @@ describe('ActionFormDialog: required fields', () => {
 				expect(actionButtons().submit).toBeEnabled();
 				expect(actionButtons().sendTest).toBeEnabled();
 			}
-		}
+		},
+		// These interaction-heavy cases need headroom on the two-core CI runner.
+		15_000
 	);
+
+	test.each(requiredCases)('$typeLabel rejects a whitespace-only Name', async (testCase) => {
+		const user = userEvent.setup();
+		render(<ActionFormDialog open onOpenChange={vi.fn()} />);
+		await switchType(user, testCase.typeLabel);
+		for (const field of testCase.fields) {
+			const input = screen.getByLabelText(field.label);
+			await user.clear(input);
+			await user.click(input);
+			await user.paste(field.value);
+		}
+		await user.type(screen.getByLabelText('Name'), '   ');
+		expect(actionButtons().submit).toBeDisabled();
+		expect(actionButtons().sendTest).toBeDisabled();
+		expect(createMutateAsync).not.toHaveBeenCalled();
+		expect(testMutateAsync).not.toHaveBeenCalled();
+	});
 });
 
 describe('ActionFormDialog: exact create payloads', () => {
-	test('trims the Slack fields and sends empty optional values as null', async () => {
+	test('trims the Slack name, webhook, channel, and message template', async () => {
 		const user = userEvent.setup();
 		createMutateAsync.mockResolvedValue(slackAction());
 		render(<ActionFormDialog open onOpenChange={vi.fn()} />);
@@ -437,6 +456,30 @@ describe('ActionFormDialog: loading and reset', () => {
 		expect(screen.getByLabelText('Alert name contains')).toHaveValue('');
 	});
 
+	test('New after an HTTP Edit clears headers and restores JSON body defaults', async () => {
+		const user = userEvent.setup();
+		const action = httpAction({
+			headers: { 'X-Token': 'old-token' },
+			bodyTemplate: 'old body',
+			bodyFormat: 'text',
+		});
+		const { rerender } = render(<ActionFormDialog open onOpenChange={vi.fn()} action={action} />);
+		expect(screen.getByLabelText('Header 1 name')).toHaveValue('X-Token');
+		expect(screen.getByLabelText('Header 1 value')).toHaveValue('old-token');
+		expect(screen.getByRole('checkbox', { name: 'Body is JSON' })).not.toBeChecked();
+		rerender(<ActionFormDialog open={false} onOpenChange={vi.fn()} action={action} />);
+		rerender(<ActionFormDialog open onOpenChange={vi.fn()} action={null} />);
+
+		await switchType(user, 'HTTP request');
+		expect(screen.getByLabelText('Name')).toHaveValue('');
+		expect(screen.getByLabelText(/^URL/)).toHaveValue('');
+		expect(screen.getByText('No headers. Add e.g. Authorization or Content-Type.')).toBeInTheDocument();
+		expect(screen.queryByLabelText('Header 1 name')).not.toBeInTheDocument();
+		expect(screen.queryByLabelText('Header 1 value')).not.toBeInTheDocument();
+		expect(screen.getByLabelText('Request body template (optional)')).toHaveValue('');
+		expect(screen.getByRole('checkbox', { name: 'Body is JSON' })).toBeChecked();
+	});
+
 	test('legacy name and label matchers load as the new list and group shapes', async () => {
 		const user = userEvent.setup();
 		const legacyAction = slackAction(
@@ -514,6 +557,26 @@ describe('ActionFormDialog: save and test results', () => {
 		expect(onOpenChange).not.toHaveBeenCalled();
 	});
 
+	test('a non-Error create rejection shows Unknown error and stays open', async () => {
+		const user = userEvent.setup();
+		const onOpenChange = vi.fn();
+		createMutateAsync.mockRejectedValue('not an Error');
+		render(<ActionFormDialog open onOpenChange={onOpenChange} />);
+		await fillRequiredFields(user, requiredCases[0]);
+
+		await user.click(actionButtons().submit);
+		await waitFor(() =>
+			expect(toastMock).toHaveBeenCalledWith({
+				title: 'Failed to create action',
+				description: 'Unknown error',
+				variant: 'destructive',
+			})
+		);
+		expect(createMutateAsync).toHaveBeenCalledTimes(1);
+		expect(onOpenChange).not.toHaveBeenCalled();
+		expect(screen.getByRole('dialog')).toBeInTheDocument();
+	});
+
 	test('a successful test sends the same payload and reports its message', async () => {
 		const user = userEvent.setup();
 		testMutateAsync.mockResolvedValue({ ok: true, message: 'Posted' });
@@ -534,6 +597,7 @@ describe('ActionFormDialog: save and test results', () => {
 			},
 		});
 		expect(toastMock).toHaveBeenCalledWith({ title: 'Test succeeded', description: 'Posted', variant: undefined });
+		expect(createMutateAsync).not.toHaveBeenCalled();
 	});
 
 	test('a failed test result and a thrown test error stay destructive', async () => {
@@ -551,6 +615,7 @@ describe('ActionFormDialog: save and test results', () => {
 				variant: 'destructive',
 			})
 		);
+		expect(createMutateAsync).not.toHaveBeenCalled();
 		await user.click(actionButtons(true).sendTest);
 		await waitFor(() =>
 			expect(toastMock).toHaveBeenCalledWith({
@@ -559,6 +624,8 @@ describe('ActionFormDialog: save and test results', () => {
 				variant: 'destructive',
 			})
 		);
+		expect(testMutateAsync).toHaveBeenCalledTimes(2);
+		expect(createMutateAsync).not.toHaveBeenCalled();
 	});
 
 	test('Cancel closes without creating or testing', async () => {
