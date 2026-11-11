@@ -3,7 +3,9 @@ import { describe, it } from 'node:test';
 
 import {
 	HOLD_LABEL,
+	RELEASE_MARKER,
 	holdReason,
+	needsReleaseComment,
 	openLinkedPullRequests,
 	parseExemptAssignees,
 	quietDays,
@@ -66,31 +68,30 @@ describe('holdReason', () => {
 });
 
 describe('openLinkedPullRequests', () => {
-	it('collects open PRs from cross-references, across repositories, without duplicates', () => {
+	const pr = (html_url, state, login) => ({
+		event: 'cross-referenced',
+		source: { issue: { pull_request: {}, state, html_url, user: { login } } },
+	});
+
+	it("collects the assignees' open PRs from cross-references, across repositories, without duplicates", () => {
 		const timeline = [
 			{ event: 'assigned' },
+			pr('a', 'open', 'someone'),
+			pr('a', 'open', 'someone'),
+			pr('b', 'closed', 'someone'),
 			{
 				event: 'cross-referenced',
-				source: { issue: { pull_request: {}, state: 'open', html_url: 'a' } },
+				source: { issue: { state: 'open', html_url: 'plain-issue', user: { login: 'someone' } } },
 			},
-			{
-				event: 'cross-referenced',
-				source: { issue: { pull_request: {}, state: 'open', html_url: 'a' } },
-			},
-			{
-				event: 'cross-referenced',
-				source: { issue: { pull_request: {}, state: 'closed', html_url: 'b' } },
-			},
-			{
-				event: 'cross-referenced',
-				source: { issue: { state: 'open', html_url: 'plain-issue' } },
-			},
-			{
-				event: 'cross-referenced',
-				source: { issue: { pull_request: {}, state: 'open', html_url: 'c' } },
-			},
+			pr('c', 'open', 'SomeOne'),
 		];
-		assert.deepEqual(openLinkedPullRequests(timeline), ['a', 'c']);
+		assert.deepEqual(openLinkedPullRequests(timeline, [{ login: 'someone' }]), ['a', 'c']);
+	});
+
+	it("ignores other people's open PRs, so a maintainer's PR mentioning the issue does not hold the claim", () => {
+		const timeline = [pr('theirs', 'open', 'maintainer'), pr('mine', 'open', 'someone')];
+		assert.deepEqual(openLinkedPullRequests(timeline, [{ login: 'someone' }]), ['mine']);
+		assert.deepEqual(openLinkedPullRequests(timeline, [{ login: 'nobody' }]), []);
 	});
 });
 
@@ -102,10 +103,43 @@ describe('parseExemptAssignees', () => {
 });
 
 describe('releaseComment', () => {
-	it('mentions every assignee and names the hold label', () => {
+	it('mentions every assignee, names the hold label and carries the marker', () => {
 		const text = releaseComment(issue({ assignees: ['a', 'b'] }), 14);
 		assert.match(text, /^Hi @a @b,/);
 		assert.match(text, new RegExp(`\`${HOLD_LABEL}\``));
+		assert.ok(text.includes(RELEASE_MARKER));
+	});
+});
+
+describe('needsReleaseComment', () => {
+	const bot = { type: 'Bot', login: 'github-actions[bot]' };
+	const human = { type: 'User', login: 'someone' };
+	const release = releaseComment(issue(), 14);
+
+	it('posts on an issue with no comments or with a human comment last', () => {
+		assert.equal(needsReleaseComment([]), true);
+		assert.equal(needsReleaseComment([{ user: human, body: 'I will do it' }]), true);
+		assert.equal(
+			needsReleaseComment([
+				{ user: bot, body: release },
+				{ user: human, body: 'still here' },
+			]),
+			true
+		);
+	});
+
+	it('does not post again when the newest comment is already the release comment', () => {
+		assert.equal(
+			needsReleaseComment([
+				{ user: human, body: 'hi' },
+				{ user: bot, body: release },
+			]),
+			false
+		);
+	});
+
+	it('still posts after an unrelated bot comment', () => {
+		assert.equal(needsReleaseComment([{ user: bot, body: 'Welcome! Join our Slack' }]), true);
 	});
 });
 

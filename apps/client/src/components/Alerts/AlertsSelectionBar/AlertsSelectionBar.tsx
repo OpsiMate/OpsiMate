@@ -88,7 +88,7 @@ export const AlertsSelectionBar = ({
 		// Actions on the left: the checkboxes are the leftmost column, so the cursor is
 		// already there when selecting. The count is informational, not interactive, so it
 		// sits out of the way on the right.
-		<div className="mt-4 p-3 bg-muted rounded-lg flex items-center justify-between gap-4">
+		<div className="mt-4 p-3 bg-muted rounded-lg flex items-center justify-between gap-4" data-selection-scope>
 			<div className="flex flex-wrap items-center gap-2">
 				{onAssignOwnerAll && (
 					<PersonPicker

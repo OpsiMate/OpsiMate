@@ -53,6 +53,7 @@ export const AlertDetailsPanel = ({
 			ref={panelRef}
 			style={{ width }}
 			className="relative shrink-0 border-l bg-background flex flex-col h-full overflow-hidden"
+			data-selection-scope
 		>
 			<PanelResizeHandle onPointerDown={startResizing} onDoubleClick={resetWidth} />
 
