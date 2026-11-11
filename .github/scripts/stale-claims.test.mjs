@@ -68,31 +68,30 @@ describe('holdReason', () => {
 });
 
 describe('openLinkedPullRequests', () => {
-	it('collects open PRs from cross-references, across repositories, without duplicates', () => {
+	const pr = (html_url, state, login) => ({
+		event: 'cross-referenced',
+		source: { issue: { pull_request: {}, state, html_url, user: { login } } },
+	});
+
+	it("collects the assignees' open PRs from cross-references, across repositories, without duplicates", () => {
 		const timeline = [
 			{ event: 'assigned' },
+			pr('a', 'open', 'someone'),
+			pr('a', 'open', 'someone'),
+			pr('b', 'closed', 'someone'),
 			{
 				event: 'cross-referenced',
-				source: { issue: { pull_request: {}, state: 'open', html_url: 'a' } },
+				source: { issue: { state: 'open', html_url: 'plain-issue', user: { login: 'someone' } } },
 			},
-			{
-				event: 'cross-referenced',
-				source: { issue: { pull_request: {}, state: 'open', html_url: 'a' } },
-			},
-			{
-				event: 'cross-referenced',
-				source: { issue: { pull_request: {}, state: 'closed', html_url: 'b' } },
-			},
-			{
-				event: 'cross-referenced',
-				source: { issue: { state: 'open', html_url: 'plain-issue' } },
-			},
-			{
-				event: 'cross-referenced',
-				source: { issue: { pull_request: {}, state: 'open', html_url: 'c' } },
-			},
+			pr('c', 'open', 'SomeOne'),
 		];
-		assert.deepEqual(openLinkedPullRequests(timeline), ['a', 'c']);
+		assert.deepEqual(openLinkedPullRequests(timeline, [{ login: 'someone' }]), ['a', 'c']);
+	});
+
+	it("ignores other people's open PRs, so a maintainer's PR mentioning the issue does not hold the claim", () => {
+		const timeline = [pr('theirs', 'open', 'maintainer'), pr('mine', 'open', 'someone')];
+		assert.deepEqual(openLinkedPullRequests(timeline, [{ login: 'someone' }]), ['mine']);
+		assert.deepEqual(openLinkedPullRequests(timeline, [{ login: 'nobody' }]), []);
 	});
 });
 

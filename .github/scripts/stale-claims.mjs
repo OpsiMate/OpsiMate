@@ -37,15 +37,19 @@ export function quietDays(issue, now) {
 	return Math.floor((now - Date.parse(issue.updated_at)) / DAY_MS);
 }
 
-// Open pull requests that mention the issue, from any repository.
-export function openLinkedPullRequests(timeline) {
+// Open pull requests by one of the assignees that mention the issue, from any
+// repository. Other people's PRs do not hold a claim: a maintainer's PR that lists
+// the issue in passing, or a drive-by PR for a claimed issue, must not keep the
+// assignee's clock from running.
+export function openLinkedPullRequests(timeline, assignees) {
+	const logins = new Set(assignees.map((assignee) => assignee.login.toLowerCase()));
 	const urls = new Set();
 	for (const event of timeline) {
 		if (event.event !== 'cross-referenced') {
 			continue;
 		}
 		const source = event.source?.issue;
-		if (source?.pull_request && source.state === 'open') {
+		if (source?.pull_request && source.state === 'open' && logins.has(source.user?.login?.toLowerCase())) {
 			urls.add(source.html_url);
 		}
 	}
@@ -138,7 +142,7 @@ async function main() {
 					now,
 					staleDays,
 					exemptAssignees,
-					linkedPullRequests: openLinkedPullRequests(timeline),
+					linkedPullRequests: openLinkedPullRequests(timeline, issue.assignees),
 				});
 			}
 			if (reason) {
