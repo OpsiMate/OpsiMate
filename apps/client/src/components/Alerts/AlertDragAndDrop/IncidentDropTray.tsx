@@ -20,6 +20,7 @@ export const IncidentDropTray = ({ dragging, incidents }: IncidentDropTrayProps)
 		<div
 			role="toolbar"
 			aria-label="Drop targets"
+			data-selection-scope
 			className="fixed bottom-6 left-1/2 z-50 flex max-w-[90vw] -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-lg border border-border bg-background/95 p-2 shadow-xl backdrop-blur"
 		>
 			<DropChip id={dropId.trayNew} icon={<FolderPlus className="h-3.5 w-3.5" />} label="New incident" />

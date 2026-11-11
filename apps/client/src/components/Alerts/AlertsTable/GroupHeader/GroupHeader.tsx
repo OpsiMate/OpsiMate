@@ -53,6 +53,7 @@ export const GroupHeader = ({
 				selectionState === undefined && 'pl-2'
 			)}
 			onClick={() => onToggle(item.key)}
+			data-selection-scope
 		>
 			{selectionState !== undefined && (
 				<MemberCheckbox

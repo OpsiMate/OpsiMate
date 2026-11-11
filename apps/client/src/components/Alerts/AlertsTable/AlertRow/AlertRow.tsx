@@ -233,6 +233,7 @@ export const AlertRow = ({
 				<TableRow
 					ref={setRowRef}
 					data-alert-id={alert.id}
+					data-selection-scope
 					{...(dragAndDrop ? dragListeners : {})}
 					className={cn(
 						'h-8 cursor-pointer hover:bg-muted/50',

@@ -76,9 +76,10 @@ import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
 import { SaveDashboardAsDialog, SaveDashboardAsValues } from './SaveDashboardAsDialog';
 import {
 	useAlertActions,
+	useAlertTagKeys,
 	useAlertsFiltering,
 	useAlertsRefresh,
-	useAlertTagKeys,
+	useClickAwayDeselect,
 	useColumnManagement,
 	useExpandRows,
 	useFilterPanelCollapsed,
@@ -379,6 +380,15 @@ const Alerts = () => {
 		setAllMatchingSelected(false);
 	}, [activeTab, dashboardState.filters, dashboardState.query, dashboardState.timeRange]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+	// A press on empty space lets the selection go (and closes the details), like a plain
+	// click took it: see useClickAwayDeselect for what counts as "away".
+	useClickAwayDeselect({
+		active: selectedAlerts.length > 0 || selectedAlert !== null,
+		onClickAway: () => {
+			handleSelectAlerts([]);
+			setSelectedAlert(null);
+		},
+	});
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [showSaveAs, setShowSaveAs] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);

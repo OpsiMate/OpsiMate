@@ -71,6 +71,7 @@ export const IncidentRow = ({
 			)}
 			onClick={() => onToggle(incident.id)}
 			role="row"
+			data-selection-scope
 		>
 			{selectionState !== undefined && (
 				<MemberCheckbox
