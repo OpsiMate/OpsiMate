@@ -13,13 +13,14 @@ describe('UptimeKumaSetupModal', () => {
 		render(<UptimeKumaSetupModal open={true} onOpenChange={() => undefined} />);
 
 		expect(screen.getByText(/Uptime Kuma 3\.0 and later:/)).toBeInTheDocument();
-		expect(screen.getByText(/built-in/)).toBeInTheDocument();
+		expect(screen.getByText(/the provider appends the endpoint path itself/)).toBeInTheDocument();
 		expect(screen.getByText(/The webhook steps are for Uptime Kuma 2\.x\./)).toBeInTheDocument();
 	});
 
 	test('keeps the webhook steps for Uptime Kuma 2.x', () => {
 		render(<UptimeKumaSetupModal open={true} onOpenChange={() => undefined} />);
 
+		expect(screen.getByText(/Copy Your Webhook URL \(Uptime Kuma 2\.x\)/)).toBeInTheDocument();
 		expect(screen.getByText(/Notification Type/)).toBeInTheDocument();
 		expect(screen.getByText('"Webhook"', { exact: false })).toBeInTheDocument();
 	});
