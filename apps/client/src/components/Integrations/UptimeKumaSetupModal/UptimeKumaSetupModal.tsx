@@ -75,6 +75,15 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 							<h3 className="text-lg font-semibold mb-2 text-foreground">
 								2. Configure Notification in Uptime Kuma
 							</h3>
+							<div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-3">
+								<p className="text-sm text-green-900 dark:text-green-100">
+									<strong>Uptime Kuma 3.0 and later:</strong> pick the built-in{' '}
+									<strong>OpsiMate</strong> notification type instead of Webhook. It asks for the
+									OpsiMate server URL (port 3001, not the web UI) and the API token, and sends the
+									same payload to the same endpoint, so the notes below apply. The webhook steps are
+									for Uptime Kuma 2.x.
+								</p>
+							</div>
 							<ol className="list-decimal list-inside space-y-3 text-sm text-foreground">
 								<li className="space-y-2">
 									<span>Open your Uptime Kuma dashboard</span>
