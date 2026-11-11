@@ -145,10 +145,10 @@ describe('resolveQuickPreset', () => {
 });
 
 describe('resolveDashboardTimeRange', () => {
-	test('materializes a quick preset as ISO strings', () => {
+	test('materializes a quick preset as an ISO start with an open end ("since X")', () => {
 		expect(resolveDashboardTimeRange({ from: null, to: null, preset: 'last1h' }, { now })).toEqual({
 			from: '2024-06-15T11:00:00.000Z',
-			to: '2024-06-15T12:00:00.000Z',
+			to: null,
 		});
 	});
 
@@ -156,7 +156,7 @@ describe('resolveDashboardTimeRange', () => {
 		const stale = { from: '2020-01-01T00:00:00.000Z', to: '2020-01-02T00:00:00.000Z', preset: 'last24h' };
 		expect(resolveDashboardTimeRange(stale, { now })).toEqual({
 			from: '2024-06-14T12:00:00.000Z',
-			to: '2024-06-15T12:00:00.000Z',
+			to: null,
 		});
 	});
 

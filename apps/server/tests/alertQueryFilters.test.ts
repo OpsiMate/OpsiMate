@@ -49,13 +49,18 @@ describe('applyTimeWindow', () => {
 		expect(applyTimeWindow(alerts, { from: null, to: null })).toBe(alerts);
 	});
 
-	test('from-only drops expired spans and uses the current time as the end', () => {
+	test('from-only drops expired spans and has NO end: an alert stamped ahead of this clock still shows', () => {
 		vi.useFakeTimers();
 		vi.setSystemTime(new Date(to));
 		const expired = makeAlert({ updatedAt: '2026-10-01T11:59:59.999Z' });
 		const boundary = makeAlert({ updatedAt: from });
-		const future = makeAlert({ startsAt: '2026-10-01T18:00:00.001Z' });
-		expect(applyTimeWindow([expired, boundary, future], { from, to: null })).toEqual([boundary]);
+		// Stamped 40s "in the future" by a server whose clock runs ahead of this one — the
+		// case that hid new alerts on a PC with a slow clock when the end defaulted to now.
+		const aheadOfClock = makeAlert({ startsAt: '2026-10-01T18:00:40.000Z', updatedAt: '2026-10-01T18:00:40.000Z' });
+		expect(applyTimeWindow([expired, boundary, aheadOfClock], { from, to: null })).toEqual([
+			boundary,
+			aheadOfClock,
+		]);
 	});
 
 	test('to-only drops future spans and defaults the start to the epoch', () => {

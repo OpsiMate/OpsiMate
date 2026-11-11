@@ -2,7 +2,13 @@ import { afterAll, beforeAll, beforeEach, describe, expect, test, vi } from 'vit
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { Role } from '@OpsiMate/shared';
+import { AlertStatus } from '@OpsiMate/shared';
+import { AlertBL, IncomingAlert } from '../src/bl/alerts/alert.bl';
 import { AuditBL } from '../src/bl/audit/audit.bl';
+import { AlertRepository } from '../src/dal/alertRepository';
+import { AlertCommentsRepository } from '../src/dal/alertCommentsRepository';
+import { AlertHistoryRepository } from '../src/dal/alertHistoryRepository';
+import { ResolvedAlertRepository } from '../src/dal/resolvedAlertRepository';
 import { WebhookOwnerResolver } from '../src/bl/alerts/webhookOwnerResolver';
 import { LdapAuthenticator, LdapIdentity, LdapUnavailableError } from '../src/bl/users/ldapAuthenticator';
 import { UserBL } from '../src/bl/users/user.bl';
@@ -14,7 +20,9 @@ import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 
 // A webhook names the alert's owner. The value becomes an assignment when it names a
 // user; a directory user who never logged in is provisioned for it; it fills an empty
-// owner only and never unassigns; and nothing about it can fail the webhook.
+// owner only and a changed name never replaces one; sent EMPTY ("" or null) it removes
+// the owner — also one set by hand — and takes the alert out of its incident; absent, it
+// is silence. Nothing about it can fail the webhook.
 
 describe('owner from the webhook (API)', () => {
 	let app: SuperTest<Test>;
@@ -26,6 +34,7 @@ describe('owner from the webhook (API)', () => {
 	const post = (path: string, body: object) => app.post(`${path}?api_token=${API_TOKEN}`).send(body);
 	interface OwnedAlert {
 		ownerId: string | null;
+		incidentId?: number | null;
 	}
 	const alertById = async (id: string): Promise<OwnedAlert> => {
 		const res = await app.get(`/api/v1/alerts/${id}`).set('Authorization', `Bearer ${jwt}`);
@@ -125,6 +134,109 @@ describe('owner from the webhook (API)', () => {
 		expect(res.body.data.owners).toEqual({ 'g-1': 'assigned' });
 		expect((await alertById('g-1')).ownerId).not.toBeNull();
 		expect((await alertById('g-2')).ownerId).toBeNull();
+	});
+
+	test('an EMPTY owner ("" or null) removes the owner — also one set by hand — with a history line', async () => {
+		await post('/api/v1/alerts/custom', custom('w-10', { owner: 'dana@example.com' }));
+		expect((await alertById('w-10')).ownerId).not.toBeNull();
+		const cleared = await post('/api/v1/alerts/custom', custom('w-10', { owner: '' }));
+		expect(cleared.status).toBe(200);
+		expect(cleared.body.data.owner).toBe('unassigned');
+		expect((await alertById('w-10')).ownerId).toBeNull();
+		expect(await historyOf('w-10')).toContain('Owner removed');
+		// A manual assignment goes the same way when the sender says so explicitly.
+		await app
+			.post('/api/v1/alerts/bulk')
+			.set('Authorization', `Bearer ${jwt}`)
+			.send({ action: 'assignOwner', ids: ['w-10'], ownerId: adminId });
+		expect((await alertById('w-10')).ownerId).toBe(adminId);
+		const viaNull = await post('/api/v1/alerts/custom', custom('w-10', { owner: null }));
+		expect(viaNull.status).toBe(200);
+		expect(viaNull.body.data.owner).toBe('unassigned');
+		expect((await alertById('w-10')).ownerId).toBeNull();
+	});
+
+	test('an empty owner on an alert nobody owns is a no-op, still reported as unassigned; absent stays silent', async () => {
+		await post('/api/v1/alerts/custom', custom('w-11'));
+		const empty = await post('/api/v1/alerts/custom', custom('w-11', { owner: '' }));
+		expect(empty.body.data.owner).toBe('unassigned');
+		expect((await alertById('w-11')).ownerId).toBeNull();
+		expect(await historyOf('w-11')).not.toContain('Owner removed');
+		const absent = await post('/api/v1/alerts/custom', custom('w-11'));
+		expect(absent.body.data.owner).toBeUndefined();
+	});
+
+	test('removing the owner takes the alert out of its incident', async () => {
+		await post('/api/v1/alerts/custom', custom('w-12', { owner: 'dana@example.com' }));
+		const incident = await app
+			.post('/api/v1/incidents')
+			.set('Authorization', `Bearer ${jwt}`)
+			.send({ name: 'Webhook owner', alertIds: ['w-12'] });
+		expect(incident.status).toBe(201);
+		expect((await alertById('w-12')).incidentId).not.toBeNull();
+		await post('/api/v1/alerts/custom', custom('w-12', { owner: '' }));
+		const after = await alertById('w-12');
+		expect(after.ownerId).toBeNull();
+		expect(after.incidentId ?? null).toBeNull();
+	});
+
+	test('an empty owner tag clears too — Grafana labels here', async () => {
+		const grafana = (owner: string) => ({
+			alerts: [
+				{
+					status: 'firing',
+					fingerprint: 'g-3',
+					labels: { alertname: 'CPU', owner },
+					annotations: { summary: 'cpu' },
+				},
+			],
+		});
+		await post('/api/v1/alerts/custom/grafana', grafana('dana@example.com'));
+		expect((await alertById('g-3')).ownerId).not.toBeNull();
+		const res = await post('/api/v1/alerts/custom/grafana', grafana(''));
+		expect(res.status).toBe(200);
+		expect(res.body.data.owners).toEqual({ 'g-3': 'unassigned' });
+		expect((await alertById('g-3')).ownerId).toBeNull();
+	});
+
+	test('owner decisions for one alert run in arrival order: a slow assignment cannot overtake a later removal', async () => {
+		const userRepo = new UserRepository(db);
+		const bl = new AlertBL(
+			new AlertRepository(db),
+			new ResolvedAlertRepository(db),
+			new AlertCommentsRepository(db),
+			new AlertHistoryRepository(db),
+			userRepo
+		);
+		const dana = await userRepo.getUserByEmail('dana@example.com');
+		let release: () => void = () => undefined;
+		const directory = new Promise<void>((resolve) => (release = resolve));
+		const slow = { resolve: async () => (await directory, dana) } as unknown as WebhookOwnerResolver;
+		bl.setWebhookOwnerResolver(slow);
+		const now = new Date().toISOString();
+		const incoming = (owner: string): IncomingAlert => ({
+			id: 'w-race',
+			type: 'Custom',
+			status: AlertStatus.FIRING,
+			tags: {},
+			startsAt: now,
+			updatedAt: now,
+			alertUrl: '',
+			alertName: 'race',
+			summary: '',
+			owner,
+		});
+		// The assignment is waiting on the directory when the removal arrives.
+		const assign = bl.insertOrUpdateAlert(incoming('dana@example.com'));
+		const clear = bl.insertOrUpdateAlert(incoming(''));
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		expect((await alertById('w-race')).ownerId).toBeNull();
+		release();
+		expect((await assign).owner).toBe('assigned');
+		expect((await clear).owner).toBe('unassigned');
+		// Last message wins: the removal applied after the assignment, not before it.
+		expect((await alertById('w-race')).ownerId).toBeNull();
+		expect(await historyOf('w-race')).toContain('Owner removed');
 	});
 
 	test('a resolve payload ignores owner', async () => {

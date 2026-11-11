@@ -166,17 +166,20 @@ export const resolveQuickPreset = (
 	return { from: new Date(now.getTime() - durationMs), to: new Date(now) };
 };
 
-// A stored dashboard time range as the alerts query engine wants it. Quick presets are
-// materialized from "now"; 'custom' (and any preset this build does not know) keeps the
-// absolute dates that were saved with it, which may be none at all.
+// A stored dashboard time range as the alerts query engine wants it. A quick preset
+// means "since X" with no end: its start is materialized from "now", the end stays open
+// so an alert stamped ahead of this clock (the server's or the monitor's clock running
+// a little fast of ours) is never hidden until our clock catches up. 'custom' (and any
+// preset this build does not know) keeps the absolute dates that were saved with it,
+// which may be none at all.
 export const resolveDashboardTimeRange = (
 	range: DashboardTimeRange | null | undefined,
 	options: ResolveTimePresetOptions = {}
 ): ResolvedTimeWindow => {
 	if (!range) return { from: null, to: null };
 	if (isQuickTimePreset(range.preset)) {
-		const { from, to } = resolveQuickPreset(range.preset, options);
-		return { from: from.toISOString(), to: to.toISOString() };
+		const { from } = resolveQuickPreset(range.preset, options);
+		return { from: from.toISOString(), to: null };
 	}
 	return { from: range.from ?? null, to: range.to ?? null };
 };

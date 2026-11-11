@@ -117,7 +117,8 @@ const GROUP_LOAD_ALL_MAX = 5000;
 // Rolling presets re-anchor to "now" continuously; a raw resolved window in the query
 // would mint a new cache key every tick. Rounding the window OUTWARD to the minute keeps
 // the key stable for a minute at a time while the server window stays a superset — the
-// client pipeline narrows to the exact rolling window on top.
+// client pipeline narrows to the exact rolling window on top. A preset has no end
+// (resolveTimeRange), so only `from` is ever rounded for one; `to` is a custom range's.
 const toCoarseWindow = (timeRange: TimeRange | undefined) => {
 	if (!timeRange) return { from: null, to: null };
 	const resolved = resolveTimeRange(timeRange);

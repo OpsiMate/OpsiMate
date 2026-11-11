@@ -10,8 +10,14 @@ export interface ResolvedTimeRange {
 // Quick presets are stored as the preset alone (from/to null) and materialized here at
 // FILTER time, so "Last 1 hour" / "Today" are rolling windows anchored to now — not
 // snapshots of the moment the preset was clicked. Only 'custom' carries absolute dates.
+//
+// A preset's window is "since X" with NO end. Bounding it at this browser's "now" hid
+// every alert stamped ahead of this machine's clock — a PC running 40 seconds slow saw a
+// new alert 40 seconds after the next desk did — and nothing legitimately starts in the
+// future, so the open end costs nothing. (The custom tab prefills its pickers from the
+// concrete window via resolveQuickPreset directly.)
 export const resolveTimeRange = (range: TimeRange): ResolvedTimeRange => {
-	if (isQuickTimePreset(range.preset)) return resolveQuickPreset(range.preset);
+	if (isQuickTimePreset(range.preset)) return { from: resolveQuickPreset(range.preset).from, to: null };
 	return { from: range.from, to: range.to };
 };
 
