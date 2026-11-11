@@ -136,12 +136,13 @@ export type IncomingAlert = Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'>
 	severity?: string;
 	// Who the source says owns this alert: an email, or a bare name the default login
 	// domain completes. The generic webhook's top-level `owner`; every source also reads
-	// an `owner` tag. Applied only when the alert has no owner yet — never unassigns.
+	// an `owner` tag. A name fills an empty owner only; sent empty ("" or null) it removes
+	// the owner; absent, the owner is left alone (see applyWebhookOwner / applyWebhookUnassign).
 	owner?: string | null;
 };
 
 // What became of a webhook's `owner`, reported back to the sender.
-export type WebhookOwnerOutcome = 'assigned' | 'kept' | 'not_found';
+export type WebhookOwnerOutcome = 'assigned' | 'kept' | 'not_found' | 'unassigned';
 
 // What a webhook knows about an alert it reports as resolved (see resolveFromSource).
 export interface SourceResolvedEpisode {
@@ -645,20 +646,44 @@ export class AlertBL {
 			// any resolved copy of this id — a re-firing alert must never show as both
 			// firing and resolved.
 			const result = await this.ingestQueue.enqueue(this.normalizeIncoming(alert));
-			const requested = (alert.owner ?? alert.tags?.['owner'])?.trim();
-			if (!requested) return result;
-			return { ...result, owner: await this.applyWebhookOwner(alert, requested) };
+			// The field beats the tag; either one PRESENT is an instruction, absent is silence.
+			const sent = alert.owner !== undefined ? alert.owner : alert.tags?.['owner'];
+			if (sent === undefined) return result;
+			const requested = sent?.trim() ?? '';
+			const decide =
+				requested === ''
+					? () => this.applyWebhookUnassign(alert)
+					: () => this.applyWebhookOwner(alert, requested);
+			return { ...result, owner: await this.serializeOwnerDecision(alert.id, decide) };
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
 		}
 	}
 
+	// Webhook owner decisions for one alert run in arrival order. The resolver can take a
+	// while (a directory lookup), and a later "owner removed" must not be overtaken by an
+	// earlier assignment that finishes after it — the last message wins, as the sender
+	// expects. Keyed by alert id; an entry is dropped once its chain has drained.
+	private ownerDecisions = new Map<string, Promise<unknown>>();
+
+	private serializeOwnerDecision<T>(alertId: string, decide: () => Promise<T>): Promise<T> {
+		const previous = this.ownerDecisions.get(alertId) ?? Promise.resolve();
+		const next = previous.then(decide, decide);
+		this.ownerDecisions.set(alertId, next);
+		const drop = () => {
+			if (this.ownerDecisions.get(alertId) === next) this.ownerDecisions.delete(alertId);
+		};
+		void next.then(drop, drop);
+		return next;
+	}
+
 	// The owner a webhook named, applied once the row is committed. A default, not an
 	// authority: it fills an empty owner and never replaces one — a person's manual
-	// assignment survives every re-fire, and a missing or changed value unassigns nobody.
-	// Writes the history line the UI shows; fires no owner_assigned callback (that is for
-	// a person's decision — and the receiver is often the monitor that sent this).
+	// assignment survives every re-fire, and a changed value unassigns nobody (an EMPTY
+	// value does: applyWebhookUnassign). Writes the history line the UI shows; fires no
+	// owner_assigned callback (that is for a person's decision — and the receiver is often
+	// the monitor that sent this).
 	private async applyWebhookOwner(alert: IncomingAlert, requested: string): Promise<WebhookOwnerOutcome> {
 		if (!this.webhookOwnerResolver) return 'not_found';
 		try {
@@ -681,6 +706,22 @@ export class AlertBL {
 		} catch (error) {
 			logger.error(`Alert ${alert.id}: applying the webhook owner failed`, error);
 			return 'not_found';
+		}
+	}
+
+	// The webhook sent `owner` empty ("" or null): the source says nobody owns this now.
+	// Goes through setAlertOwner like a person's unassign, so the alert leaves its incident,
+	// the history says who did it, and owner_unassigned fires — an incident left without an
+	// owner is something downstream wants to hear about. Idempotent on an unowned alert.
+	private async applyWebhookUnassign(alert: IncomingAlert): Promise<WebhookOwnerOutcome> {
+		try {
+			const current = await this.alertRepo.getAlert(alert.id);
+			if (!current?.ownerId) return 'unassigned';
+			await this.setAlertOwner(alert.id, null, false, `${alert.type} webhook`, null);
+			return 'unassigned';
+		} catch (error) {
+			logger.error(`Alert ${alert.id}: removing the owner for the webhook failed`, error);
+			return 'kept';
 		}
 	}
 

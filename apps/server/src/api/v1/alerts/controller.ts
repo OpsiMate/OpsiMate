@@ -867,7 +867,7 @@ export class AlertController {
 			const { owner } = await this.alertBL.insertOrUpdateAlert(
 				AlertController.customToIncoming(alert, alert.startsAt || new Date().toISOString())
 			);
-			// `owner` says what became of the one sent: assigned, kept (already owned), not_found.
+			// `owner` says what became of the one sent: assigned, kept (already owned), unassigned (sent empty), not_found.
 			return res
 				.status(200)
 				.json({ success: true, data: { alertId: alert.id, status: 'firing', ...(owner ? { owner } : {}) } });
