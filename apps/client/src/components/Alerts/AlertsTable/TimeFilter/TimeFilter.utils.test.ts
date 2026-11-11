@@ -10,10 +10,11 @@ describe('TimeFilter.utils', () => {
 		vi.useRealTimers();
 	});
 
-	test('resolveTimeRange materializes rolling preset windows from now', () => {
+	test('resolveTimeRange materializes a rolling preset as "since X" — a start from now, no end', () => {
 		const { from, to } = resolveTimeRange({ from: null, to: null, preset: 'last1h' });
-		expect(to?.toISOString()).toBe('2024-06-15T12:00:00.000Z');
 		expect(from?.toISOString()).toBe('2024-06-15T11:00:00.000Z');
+		// No end: an alert the server stamps ahead of this browser's clock must not be hidden.
+		expect(to).toBeNull();
 	});
 
 	test('resolveTimeRange passes custom from/to through', () => {

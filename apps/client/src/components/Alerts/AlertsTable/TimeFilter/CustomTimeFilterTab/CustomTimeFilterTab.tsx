@@ -1,3 +1,4 @@
+import { isQuickTimePreset, resolveQuickPreset } from '@OpsiMate/shared';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Input } from '@/components/ui/input';
@@ -16,7 +17,7 @@ import {
 	TO_LABEL,
 } from './CustomTimeFilterTab.constants';
 import { TimeRange } from '../TimeFilter.types';
-import { resolveTimeRange } from '../TimeFilter.utils';
+import { ResolvedTimeRange } from '../TimeFilter.utils';
 
 interface CustomTimeFilterTabProps {
 	value: TimeRange;
@@ -26,11 +27,14 @@ interface CustomTimeFilterTabProps {
 
 export const CustomTimeFilterTab = ({ value, onApply, onClear }: CustomTimeFilterTabProps) => {
 	const id = useId();
-	// Prefill from the resolved window so switching from a quick preset (stored without
+	// Prefill from the concrete window so switching from a quick preset (stored without
 	// dates) starts the pickers at the preset's current from/to instead of empty — the
 	// time inputs included, or applying "Custom" right after "Last 1 hour" would silently
-	// widen the range to the full day.
-	const initial = resolveTimeRange(value);
+	// widen the range to the full day. resolveQuickPreset, not resolveTimeRange: the
+	// filter window of a preset has no end, but a picker needs a date to start from.
+	const initial: ResolvedTimeRange = isQuickTimePreset(value.preset)
+		? resolveQuickPreset(value.preset)
+		: { from: value.from, to: value.to };
 	const toTimeInput = (date: Date): string =>
 		`${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
 	const [customFrom, setCustomFrom] = useState<Date | undefined>(initial.from ?? undefined);

@@ -48,6 +48,15 @@ describe('useAlertsFiltering rolling time presets', () => {
 		expect(result.current.map((a) => a.id)).toEqual([]);
 	});
 
+	test("a preset has no end: an alert stamped ahead of this browser's clock shows at once", () => {
+		// The server (or Grafana) stamped it by a correct clock; this PC runs 40s slow, so
+		// to this browser the alert starts "in the future". It used to stay hidden for 40s.
+		const aheadOfClock = mkAlert('ahead', -40_000);
+		const options = { filters: {}, timeRange: { from: null, to: null, preset: 'last1h' as const } };
+		const { result } = renderHook(() => useAlertsFiltering([aheadOfClock], options), { wrapper });
+		expect(result.current.map((a) => a.id)).toEqual(['ahead']);
+	});
+
 	test('a custom range stays absolute and does not roll', () => {
 		const alert = mkAlert('inside', 30_000);
 		const from = new Date(Date.now() - 60_000);
