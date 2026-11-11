@@ -131,8 +131,13 @@ export const describeDashboardScope = (dashboard: Dashboard, window: ResolvedTim
 	if (isQuickTimePreset(preset)) {
 		const label = QUICK_TIME_PRESETS.find((config) => config.value === preset)?.label ?? preset;
 		parts.push(`time: ${label.toLowerCase()} (since ${window.from ?? '…'})`);
-	} else if (window.from || window.to) {
-		parts.push(`time: ${window.from ?? 'the beginning'} to ${window.to ?? 'now'}`);
+	} else if (window.from && window.to) {
+		parts.push(`time: ${window.from} to ${window.to}`);
+	} else if (window.from) {
+		// No end means open (see applyTimeWindow), not "now".
+		parts.push(`time: since ${window.from}`);
+	} else if (window.to) {
+		parts.push(`time: until ${window.to}`);
 	}
 	return parts.length > 0 ? `Shows alerts where ${parts.join('; ')}.` : 'Shows every alert (no filters).';
 };
