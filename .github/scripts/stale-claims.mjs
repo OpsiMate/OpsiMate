@@ -126,44 +126,40 @@ async function main() {
 	const held = [];
 	const failed = [];
 	for (const issue of assigned) {
-		const cheapHold = holdReason(issue, {
-			now,
-			staleDays,
-			exemptAssignees,
-			linkedPullRequests: [],
-		});
-		let reason = cheapHold;
-		if (!reason) {
-			const timeline = await client.paginate(`/repos/${repository}/issues/${issue.number}/timeline`);
-			reason = holdReason(issue, {
-				now,
-				staleDays,
-				exemptAssignees,
-				linkedPullRequests: openLinkedPullRequests(timeline),
-			});
-		}
-		if (reason) {
-			held.push(`- #${issue.number} (${issue.assignees.map((a) => a.login).join(', ')}): ${reason}`);
-			continue;
-		}
-
-		released.push(`- #${issue.number} ${issue.title} (${issue.assignees.map((a) => a.login).join(', ')})`);
-		if (dryRun) {
-			continue;
-		}
-		// One issue failing (a deleted assignee account, a transient 5xx) must not stop
-		// the others; it is reported and fails the run at the end.
+		const who = issue.assignees.map((a) => a.login).join(', ');
+		// One issue failing anywhere on its path (a timeline fetch, a deleted assignee
+		// account, a transient 5xx) must not stop the others; it is reported under
+		// "Failed" and fails the run at the end.
 		try {
-			const comments = await client.paginate(`/repos/${repository}/issues/${issue.number}/comments`);
-			if (needsReleaseComment(comments)) {
-				await client.request(`/repos/${repository}/issues/${issue.number}/comments`, {
-					method: 'POST',
-					body: { body: releaseComment(issue, staleDays) },
+			let reason = holdReason(issue, { now, staleDays, exemptAssignees, linkedPullRequests: [] });
+			if (!reason) {
+				const timeline = await client.paginate(`/repos/${repository}/issues/${issue.number}/timeline`);
+				reason = holdReason(issue, {
+					now,
+					staleDays,
+					exemptAssignees,
+					linkedPullRequests: openLinkedPullRequests(timeline),
 				});
 			}
-			await unassignAll(client, repository, issue);
+			if (reason) {
+				held.push(`- #${issue.number} (${who}): ${reason}`);
+				continue;
+			}
+			if (!dryRun) {
+				const comments = await client.paginate(`/repos/${repository}/issues/${issue.number}/comments`);
+				if (needsReleaseComment(comments)) {
+					await client.request(`/repos/${repository}/issues/${issue.number}/comments`, {
+						method: 'POST',
+						body: { body: releaseComment(issue, staleDays) },
+					});
+				}
+				await unassignAll(client, repository, issue);
+			}
+			// Listed only once everything for it succeeded (or, in a dry run, once it
+			// qualified), so the report never counts a failure as a release.
+			released.push(`- #${issue.number} ${issue.title} (${who})`);
 		} catch (error) {
-			failed.push(`- #${issue.number}: ${error.message}`);
+			failed.push(`- #${issue.number} (${who}): ${error.message}`);
 		}
 	}
 
