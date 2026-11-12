@@ -100,7 +100,7 @@
 		"globals": "^17.14.0",
 		"jsdom": "^30.1.3",
 		"lovable-tagger": "^1.3.5",
-		"msw": "^2.15.0",
+		"msw": "^3.0.3",
 		"postcss": "^8.5.32",
 		"prettier": "^3.9.10",
 		"tailwindcss": "^4.3.4",
