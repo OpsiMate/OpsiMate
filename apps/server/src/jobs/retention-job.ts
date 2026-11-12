@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-misused-promises */
 import { Logger } from '@OpsiMate/shared';
 import { RetentionBL } from '../bl/retention/retention.bl';
 import { MS_PER_MINUTE } from '../utils/time';
@@ -19,8 +18,10 @@ export class RetentionJob {
 		// Check once on startup, then on every tick.
 		this.tick().catch((err) => logger.error('[Job] Initial retention run failed:', err));
 
-		setInterval(async () => {
-			await this.tick();
+		// Interval callbacks cannot be async (no-misused-promises), so the
+		// rejection is carried to the logger here instead of inside tick.
+		setInterval(() => {
+			this.tick().catch((err) => logger.error('[Job] Retention run failed:', err));
 		}, TICK_MS);
 	};
 
