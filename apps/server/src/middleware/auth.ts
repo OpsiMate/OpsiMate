@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { Role, User } from '@OpsiMate/shared';
@@ -44,8 +45,25 @@ function authenticate(req: AuthenticatedRequest, res: Response, next: NextFuncti
 		return authenticateApiToken(apiToken, res, next);
 	}
 
+	// The instance API token is also accepted as Bearer credentials. Some senders can
+	// only keep a secret in the Authorization header: Grafana stores a webhook's URL and
+	// extra headers in plain text but encrypts and masks "Authentication Header
+	// Credentials". A signed JWT never equals the configured token, so this cannot
+	// shadow a user session; like x-api-token, it carries no user and admin routes
+	// still refuse it.
+	if (isInstanceApiToken(bearerToken.slice('Bearer '.length))) {
+		return next();
+	}
+
 	// Otherwise, use JWT
 	return authenticateUserJWT(bearerToken, req, res, next, options);
+}
+
+function isInstanceApiToken(candidate: string): boolean {
+	const expected = getSecurityConfig().api_token;
+	const a = Buffer.from(candidate.trim());
+	const b = Buffer.from(expected);
+	return a.length === b.length && a.length > 0 && timingSafeEqual(a, b);
 }
 
 /**
