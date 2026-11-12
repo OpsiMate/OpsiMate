@@ -26,7 +26,7 @@ interface ViewNoticeProps {
 // as two unrelated warnings when they describe one narrowed view.
 export const ViewNotice = ({ icon, children, title, actions }: ViewNoticeProps) => {
 	return (
-		<div className="mt-2 flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm">
+		<div className="mt-2 flex items-center gap-2 mb-3 rounded-md border border-primary/30 bg-primary/5 px-3 py-1.5 text-sm">
 			<span className="shrink-0 text-primary">{icon}</span>
 			{/* min-w-0 is what lets truncate actually bite inside a flex row. */}
 			<span className="min-w-0 flex-1 truncate" title={title}>
