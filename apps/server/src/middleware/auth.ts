@@ -59,8 +59,14 @@ function authenticate(req: AuthenticatedRequest, res: Response, next: NextFuncti
 	return authenticateUserJWT(bearerToken, req, res, next, options);
 }
 
+// False, never a throw, when no token is configured: a config file may omit
+// security.api_token (then API-token auth is simply off), and this runs in front of
+// every JWT check.
 function isInstanceApiToken(candidate: string): boolean {
 	const expected = getSecurityConfig().api_token;
+	if (typeof expected !== 'string' || expected.length === 0) {
+		return false;
+	}
 	const a = Buffer.from(candidate.trim());
 	const b = Buffer.from(expected);
 	return a.length === b.length && a.length > 0 && timingSafeEqual(a, b);
