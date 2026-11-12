@@ -64,8 +64,15 @@ describe('a failed action reports the underlying cause', () => {
 
 	test('a host that cannot resolve reports the lookup failure', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => undefined);
-		// .invalid is reserved by RFC 2606 and never resolves; an offline machine fails the
-		// lookup with EAI_AGAIN instead of ENOTFOUND.
+		// Stub the lookup failure instead of relying on the real resolver: where DNS answers
+		// are dropped or delayed, the lookup can outlive REQUEST_TIMEOUT_MS and the message
+		// becomes the timeout text instead of the lookup failure.
+		const lookupFailure = new TypeError('fetch failed', {
+			cause: Object.assign(new Error('getaddrinfo ENOTFOUND opsimate-does-not-exist.invalid'), {
+				code: 'ENOTFOUND',
+			}),
+		});
+		vi.spyOn(globalThis, 'fetch').mockRejectedValue(lookupFailure);
 		const result = await executeAction(
 			httpAction('http://opsimate-does-not-exist.invalid/hook'),
 			buildSampleContext()
