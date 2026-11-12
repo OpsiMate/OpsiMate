@@ -85,7 +85,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 	};
 
 	return (
-		<div className="relative flex-1 max-w-md">
+		<div className="relative min-w-0 flex-1 max-w-md">
 			<div
 				className={cn(
 					'flex items-center rounded-md border transition-colors',
@@ -114,7 +114,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 					onChange={(e) => (aiMode ? setAiQuery(e.target.value) : setValue(e.target.value))}
 					onKeyDown={handleKeyDown}
 					className={cn(
-						'flex-1 h-7 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground',
+						'min-w-0 flex-1 h-7 bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground',
 						aiMode && 'placeholder:text-violet-400/70'
 					)}
 				/>
@@ -124,7 +124,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 						type="button"
 						onClick={clearSearch}
 						aria-label="Clear"
-						className="mr-1 rounded-sm p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted"
+						className="mr-1 shrink-0 rounded-sm p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted"
 					>
 						<X className="h-3.5 w-3.5" />
 					</button>
