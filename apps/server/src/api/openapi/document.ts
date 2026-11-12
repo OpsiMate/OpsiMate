@@ -20,7 +20,7 @@ const DESCRIPTION = `The OpsiMate REST API.
 
 Two ways to call protected routes:
 
-- **API token** — the instance token from your config (\`security.api_token\`). Send it as the \`x-api-token\` header (or \`?api_token=\` for senders that can only call a URL). Meant for webhooks, scripts and automation.
+- **API token** — the instance token from your config (\`security.api_token\`). Send it as the \`x-api-token\` header, as \`Authorization: Bearer <api token>\` for senders that can only keep a secret in the Authorization header (Grafana contact points), or as \`?api_token=\` for senders that can only call a URL. Meant for webhooks, scripts and automation.
 - **Bearer JWT** — the token returned by \`POST /api/v1/users/login\`, as \`Authorization: Bearer <token>\`. Acts as that user, with their role; admin-only routes need it.
 
 Every JSON response is \`{ "success": true, "data": … }\` or \`{ "success": false, "error": "…" }\`.`;

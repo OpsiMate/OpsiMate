@@ -9,9 +9,10 @@ interface UseAlertKeyboardNavOptions {
 	activeAlertId: string | null;
 	onAlertClick?: (alert: Alert) => void;
 	// The checkbox follows the cursor: a plain arrow selects just the row it lands on
-	// (like a plain click); Cmd/Ctrl+arrow adds that row to the selection instead.
+	// (like a plain click); Cmd/Ctrl+arrow extends the selection instead — `from` is
+	// the row the cursor left, so backing up over an already-selected row can drop it.
 	onSelectOnly?: (alert: Alert) => void;
-	onExtendSelection?: (alert: Alert) => void;
+	onExtendSelection?: (alert: Alert, from: Alert | null) => void;
 	virtualizer: Virtualizer<HTMLDivElement, Element>;
 	scrollerRef: RefObject<HTMLDivElement | null>;
 }
@@ -33,6 +34,26 @@ interface NavInstance {
 	// extend: Cmd/Ctrl held — the row joins the selection instead of replacing it.
 	navigate: (delta: 1 | -1, extend: boolean) => void;
 }
+
+// One keyboard step, as the checkbox sees it: the row landed on, the position the
+// cursor left (-1 when nothing was active), and whether Cmd/Ctrl was held.
+interface CheckboxStep extends Pick<UseAlertKeyboardNavOptions, 'onSelectOnly' | 'onExtendSelection'> {
+	extend: boolean;
+	landed: Alert;
+	rows: IndexedAlertRow[];
+	leftPos: number;
+}
+
+// The checkbox's move for one step. A plain arrow selects just the row landed on; with
+// Cmd/Ctrl the selection extends from the row the cursor left (null on the very first
+// press), which is how backing up over the trail un-selects.
+const followWithCheckbox = ({ extend, landed, rows, leftPos, onSelectOnly, onExtendSelection }: CheckboxStep) => {
+	if (!extend) {
+		onSelectOnly?.(landed);
+		return;
+	}
+	onExtendSelection?.(landed, leftPos === -1 ? null : rows[leftPos].alert);
+};
 
 // Arrows must not fire while the user is typing or inside any overlay that has its own
 // arrow-key semantics (Radix menus/selects/dialogs render in portals with these roles;
@@ -244,7 +265,14 @@ export const useAlertKeyboardNav = ({
 				// boundary (where the step clamps in place) would close the sidebar; the
 				// checkbox likewise only moves when the cursor does.
 				if (alert.id === id) return;
-				(extend ? extendSelection : selectOnly)?.(alert);
+				followWithCheckbox({
+					extend,
+					landed: alert,
+					rows: alertRows,
+					leftPos: currentPos,
+					onSelectOnly: selectOnly,
+					onExtendSelection: extendSelection,
+				});
 				open(alert);
 			},
 		};

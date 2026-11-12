@@ -143,6 +143,24 @@ describe('useAlertKeyboardNav', () => {
 		h.unmount();
 	});
 
+	test('Cmd/Ctrl+arrow hands over the row the cursor left, so backing up can un-select it', () => {
+		const h = setup([leaf('a'), leaf('b'), leaf('c')], 'c');
+		press('ArrowUp', { metaKey: true });
+		expect(h.onExtendSelection).toHaveBeenCalledTimes(1);
+		const [landedOn, leftBehind] = h.onExtendSelection.mock.calls[0];
+		expect(landedOn.id).toBe('b');
+		expect(leftBehind.id).toBe('c');
+		h.unmount();
+	});
+
+	test('the first Cmd/Ctrl+arrow with nothing active has no row left behind', () => {
+		const h = setup([leaf('a'), leaf('b')]);
+		press('ArrowDown', { metaKey: true });
+		expect(h.onExtendSelection.mock.calls[0][0].id).toBe('a');
+		expect(h.onExtendSelection.mock.calls[0][1]).toBeNull();
+		h.unmount();
+	});
+
 	test('a boundary press moves neither the cursor nor the checkbox', () => {
 		const h = setup([leaf('a'), leaf('b')], 'b');
 		press('ArrowDown');

@@ -71,11 +71,20 @@ export const useAlertSelection = ({
 		onSelectAlerts([alert]);
 	};
 
-	// Cmd/Ctrl+arrow: the row the cursor moved to joins the selection; nothing is dropped
-	// (unlike a Cmd/Ctrl+click, which toggles).
-	const handleExtendSelection = (alert: Alert) => {
+	// Cmd/Ctrl+arrow from `from` onto `alert`. Landing on an unselected row adds it.
+	// Landing on a row that is ALREADY selected means the cursor is backing up over its
+	// own trail, so the row it just left is dropped — Cmd+Down four times then Cmd+Up
+	// once leaves three selected, as in Finder or a spreadsheet. Only the row left
+	// behind ever leaves; a Cmd/Ctrl+click is the gesture that toggles the row itself.
+	const handleExtendSelection = (alert: Alert, from: Alert | null = null) => {
 		if (!onSelectAlerts) return;
 		anchorIdRef.current = alert.id;
+		if (selectedIds.has(alert.id)) {
+			if (from && from.id !== alert.id && selectedIds.has(from.id)) {
+				onSelectAlerts(selectedAlerts.filter((a) => a.id !== from.id));
+			}
+			return;
+		}
 		addToSelection([alert]);
 	};
 
