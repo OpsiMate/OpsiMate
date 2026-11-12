@@ -7,9 +7,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { LabeledField } from '@/components/ui/labeled-field';
 import { useToast } from '@/hooks/use-toast';
 import { usePreviewAction, useRunAction } from '@/hooks/queries/actions';
 import { Action, ActionOverrides, ActionPreview, Alert, HttpActionConfig } from '@OpsiMate/shared';
@@ -179,15 +177,14 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 								<DestinationRow label="Destination">
 									Slack{preview.channel ? ` · ${preview.channel}` : ''} ({hostOf(preview.webhookUrl)})
 								</DestinationRow>
-								<div className="space-y-2">
-									<Label htmlFor="send-message">Message</Label>
-									<Textarea
-										id="send-message"
-										value={message}
-										onChange={(e) => setMessage(e.target.value)}
-										rows={6}
-									/>
-								</div>
+								<LabeledField
+									as="textarea"
+									id="send-message"
+									label="Message"
+									value={message}
+									onChange={(e) => setMessage(e.target.value)}
+									rows={6}
+								/>
 							</>
 						)}
 
@@ -196,19 +193,20 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 								<DestinationRow label="Destination">
 									Microsoft Teams ({hostOf(preview.webhookUrl)})
 								</DestinationRow>
-								<div className="space-y-2">
-									<Label htmlFor="send-title">Title</Label>
-									<Input id="send-title" value={title} onChange={(e) => setTitle(e.target.value)} />
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="send-message">Message</Label>
-									<Textarea
-										id="send-message"
-										value={message}
-										onChange={(e) => setMessage(e.target.value)}
-										rows={6}
-									/>
-								</div>
+								<LabeledField
+									id="send-title"
+									label="Title"
+									value={title}
+									onChange={(e) => setTitle(e.target.value)}
+								/>
+								<LabeledField
+									as="textarea"
+									id="send-message"
+									label="Message"
+									value={message}
+									onChange={(e) => setMessage(e.target.value)}
+									rows={6}
+								/>
 							</>
 						)}
 
@@ -217,24 +215,21 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 								<DestinationRow label="Project">
 									{preview.projectKey} · {preview.issueType} ({hostOf(preview.baseUrl)})
 								</DestinationRow>
-								<div className="space-y-2">
-									<Label htmlFor="send-summary">Summary</Label>
-									<Input
-										id="send-summary"
-										value={summary}
-										onChange={(e) => setSummary(e.target.value)}
-									/>
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="send-description">Description</Label>
-									<Textarea
-										id="send-description"
-										value={description}
-										onChange={(e) => setDescription(e.target.value)}
-										rows={6}
-										placeholder="Optional description"
-									/>
-								</div>
+								<LabeledField
+									id="send-summary"
+									label="Summary"
+									value={summary}
+									onChange={(e) => setSummary(e.target.value)}
+								/>
+								<LabeledField
+									as="textarea"
+									id="send-description"
+									label="Description"
+									value={description}
+									onChange={(e) => setDescription(e.target.value)}
+									rows={6}
+									placeholder="Optional description"
+								/>
 							</>
 						)}
 
@@ -259,16 +254,15 @@ export const ActionSendDialog = ({ open, onOpenChange, action, alert }: ActionSe
 										onChange={(next) => setBody(JSON.stringify(next, null, 2))}
 									/>
 								) : (
-									<div className="space-y-2">
-										<Label htmlFor="send-body">Request body</Label>
-										<Textarea
-											id="send-body"
-											value={body}
-											onChange={(e) => setBody(e.target.value)}
-											rows={8}
-											className="font-mono text-xs"
-										/>
-									</div>
+									<LabeledField
+										as="textarea"
+										id="send-body"
+										label="Request body"
+										value={body}
+										onChange={(e) => setBody(e.target.value)}
+										rows={8}
+										className="font-mono text-xs"
+									/>
 								)}
 							</>
 						)}
