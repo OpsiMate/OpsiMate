@@ -16,6 +16,7 @@ import { lookup as dnsLookup } from 'node:dns/promises';
 import { AiConfigRepository } from '../../dal/aiConfigRepository';
 import { decryptPassword, encryptPassword } from '../../utils/encryption';
 import { AuditBL } from '../audit/audit.bl';
+import { MS_PER_SECOND } from '../../utils/time';
 
 const logger = new Logger('bl/ai/ai.bl');
 
@@ -317,7 +318,7 @@ export class AiBL {
 			const latencyMs = Date.now() - started;
 			const message =
 				error instanceof Error && error.name === 'AbortError'
-					? `Timed out after ${TEST_TIMEOUT_MS / 1000}s — check the region.`
+					? `Timed out after ${TEST_TIMEOUT_MS / MS_PER_SECOND}s — check the region.`
 					: error instanceof Error
 						? error.message
 						: 'Unknown error';
