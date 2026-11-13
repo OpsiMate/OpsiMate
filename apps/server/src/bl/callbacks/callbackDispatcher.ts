@@ -14,6 +14,7 @@ import {
 import { AlertCallbackRepository } from '../../dal/alertCallbackRepository';
 import { callbacksSentTotal } from '../../metrics';
 import { buildAlertContext, resolvePlaceholders } from '../actions/actionExecutor';
+import { MS_PER_SECOND } from '../../utils/time';
 
 const logger = new Logger('bl/callbacks/callbackDispatcher');
 
@@ -325,7 +326,7 @@ export class CallbackDispatcher {
 		const body = renderBody(target.bodyTemplate, payload);
 		// The timestamp and signature are per attempt (a replay check must see a fresh
 		// time); the delivery id is not (see Delivery).
-		const sentAt = Math.floor(this.now().getTime() / 1000);
+		const sentAt = Math.floor(this.now().getTime() / MS_PER_SECOND);
 		const headers: Record<string, string> = {
 			'Content-Type': 'application/json',
 			'User-Agent': 'OpsiMate-Callback/1',
