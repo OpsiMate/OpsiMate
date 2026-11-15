@@ -41,10 +41,10 @@
 		"@types/node": "^26.6.6",
 		"@types/supertest": "^7.2.1",
 		"eslint": "^10.14.0",
-		"supertest": "^7.3.1",
+		"supertest": "^7.3.2",
 		"tsx": "^4.23.15",
 		"typescript": "^5.9.3",
-		"vite": "^8.3.5",
+		"vite": "^8.3.8",
 		"vitest": "^4.1.10"
 	}
 }
