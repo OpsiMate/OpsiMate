@@ -1308,7 +1308,7 @@ const Alerts = () => {
 									isDraft={!dashboardState.id}
 								/>
 
-								<div className="mt-3 flex items-center gap-4">
+								<div className="mt-3 flex flex-wrap items-center gap-4">
 									<DropdownMenu>
 										<DropdownMenuTrigger asChild>
 											<Button
@@ -1372,7 +1372,7 @@ const Alerts = () => {
 										</DropdownMenuContent>
 									</DropdownMenu>
 
-									<div className="flex-1 min-w-0">
+									<div className="flex-1 min-w-[min(100%,20rem)]">
 										<SearchBar
 											searchTerm={dashboardState.query}
 											onSearchChange={(term) => updateDashboardField('query', term)}

@@ -140,7 +140,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 						variant="ghost"
 						size="sm"
 						onClick={() => void submitAiQuery()}
-						className="mr-0.5 h-5 px-1.5 text-[11px] font-medium text-violet-600 hover:text-violet-700 hover:bg-violet-100/60 dark:text-violet-400 dark:hover:bg-violet-900/30"
+						className="mr-0.5 h-5 shrink-0 px-1.5 text-[11px] font-medium text-violet-600 hover:text-violet-700 hover:bg-violet-100/60 dark:text-violet-400 dark:hover:bg-violet-900/30"
 					>
 						Apply
 					</Button>
@@ -154,7 +154,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 								onClick={toggleAiMode}
 								aria-label={aiMode ? 'Switch to regular search' : 'Switch to AI search'}
 								className={cn(
-									'mr-1 rounded-sm p-1 transition-colors',
+									'mr-1 shrink-0 rounded-sm p-1 transition-colors',
 									aiMode
 										? 'text-violet-500 bg-violet-100/60 dark:bg-violet-900/40 hover:bg-violet-200/60'
 										: 'text-muted-foreground hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-950/30'
@@ -169,7 +169,7 @@ export const SearchBar = ({ searchTerm, onSearchChange, onAiFilter }: SearchBarP
 			</div>
 
 			{aiMode && (
-				<p className="absolute -bottom-4 left-0 text-[10px] text-muted-foreground">
+				<p className="mt-1 text-[10px] text-muted-foreground">
 					Your request and the filter vocabulary are sent — no alert content.
 				</p>
 			)}
