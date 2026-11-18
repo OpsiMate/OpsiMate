@@ -13,12 +13,11 @@ import { ROUTES } from '@/lib/routes';
 const logger = new Logger('Login');
 
 const Login: React.FC = () => {
-	const [email, setEmail] = useState('');
+	// A username or an email; "@" tells them apart, server-side.
+	const [identifier, setIdentifier] = useState('');
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [emailEnabled, setEmailEnabled] = useState(false);
-	// Set when the server completes a bare name with a domain: the field then takes a name too.
-	const [defaultEmailDomain, setDefaultEmailDomain] = useState<string | null>(null);
 	const { generalError, clearErrors, handleApiResponse } = useFormErrors({
 		showFieldErrors: false,
 	});
@@ -39,7 +38,6 @@ const Login: React.FC = () => {
 
 				if (data.success) {
 					setEmailEnabled(data.data.isEmailEnabled);
-					setDefaultEmailDomain(data.data.loginDefaultEmailDomain ?? null);
 				} else {
 					logger.error('Failed to fetch email status', data);
 					setEmailEnabled(false);
@@ -63,7 +61,7 @@ const Login: React.FC = () => {
 				token: string;
 				data: { user: { id: string; email: string; name: string } };
 				error?: string;
-			}>('/users/login', 'POST', { email, password });
+			}>('/users/login', 'POST', { identifier, password });
 
 			if (res.success) {
 				const token = (res.data && res.data.token) || (typeof res.token === 'string' ? res.token : undefined);
@@ -99,19 +97,14 @@ const Login: React.FC = () => {
 				<h2 className="text-2xl font-bold mb-6 text-center text-foreground">Login</h2>
 				<div className="mb-4">
 					<Input
-						type={defaultEmailDomain ? 'text' : 'email'}
-						placeholder={defaultEmailDomain ? 'Email or username' : 'Email'}
-						aria-label={defaultEmailDomain ? 'Email or username' : 'Email'}
+						type="text"
+						placeholder="Username or email"
+						aria-label="Username or email"
 						autoComplete="username"
-						value={email}
-						onChange={(e) => setEmail(e.target.value)}
+						value={identifier}
+						onChange={(e) => setIdentifier(e.target.value)}
 						required
 					/>
-					{defaultEmailDomain && email.trim() !== '' && !email.includes('@') && (
-						<p className="mt-1 text-xs text-muted-foreground">
-							Signs in as {email.trim()}@{defaultEmailDomain}
-						</p>
-					)}
 				</div>
 				<div className="mb-4">
 					<Input

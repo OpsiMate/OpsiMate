@@ -198,9 +198,9 @@ describe('login API without a default domain', () => {
 		expect(ok.status).toBe(200);
 	});
 
-	test('email-status tells the login page whether a default domain is set', async () => {
+	test('email-status does not expose the default domain: the login form has no use for it', async () => {
 		const res = await app.get('/email-status');
 		expect(res.status).toBe(200);
-		expect(res.body.data).toHaveProperty('loginDefaultEmailDomain');
+		expect(res.body.data).not.toHaveProperty('loginDefaultEmailDomain');
 	});
 });

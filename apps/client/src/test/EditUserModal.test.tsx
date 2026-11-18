@@ -46,6 +46,7 @@ describe('EditUserModal keyboard', () => {
 		expect(mockedApiRequest).toHaveBeenCalledTimes(1);
 		expect(mockedApiRequest).toHaveBeenCalledWith('/users/7', 'PATCH', {
 			fullName: 'Dana Scully',
+			username: 'dana',
 			email: 'dana@example.com',
 		});
 	});
@@ -77,7 +78,7 @@ describe('EditUserModal keyboard', () => {
 		const { onClose } = renderDialog();
 
 		await keyboard.clear(screen.getByLabelText('Full Name'));
-		await keyboard.click(screen.getByLabelText('Email'));
+		await keyboard.click(screen.getByLabelText('Email (optional)'));
 		await keyboard.keyboard('{Enter}');
 
 		expect(mockedApiRequest).not.toHaveBeenCalled();

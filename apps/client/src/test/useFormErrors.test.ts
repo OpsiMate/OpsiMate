@@ -40,7 +40,7 @@ describe('useFormErrors', () => {
 		act(() => result.current.handleApiResponse(validationResponse));
 		expect(result.current.errors).toEqual({});
 		expect(result.current.generalError).toBe(
-			'Invalid email or password. Please check your credentials and try again.'
+			'Invalid username or password. Please check your credentials and try again.'
 		);
 	});
 

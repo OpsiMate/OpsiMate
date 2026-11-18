@@ -461,8 +461,11 @@ const Settings: React.FC = () => {
 																			(me)
 																		</Badge>
 																	)}
+																	<div className="text-xs font-normal text-muted-foreground">
+																		{user.username}
+																	</div>
 																</TableCell>
-																<TableCell>{user.email}</TableCell>
+																<TableCell>{user.email ?? '—'}</TableCell>
 																<TableCell>
 																	<Badge variant={getRoleBadgeVariant(user.role)}>
 																		{user.role}

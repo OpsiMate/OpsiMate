@@ -110,7 +110,9 @@ export const PersonPicker = ({
 										</div>
 										<div className="flex flex-col flex-1">
 											<span className="text-sm text-foreground">{user.fullName}</span>
-											<span className="text-xs text-foreground opacity-70">{user.email}</span>
+											<span className="text-xs text-foreground opacity-70">
+												{user.email ?? user.username}
+											</span>
 										</div>
 										{isSelected && <Check className="h-4 w-4 text-primary" />}
 									</CommandItem>

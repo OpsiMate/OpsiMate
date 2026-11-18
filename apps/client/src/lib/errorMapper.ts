@@ -1,3 +1,4 @@
+import { USERNAME_RULES } from '@OpsiMate/shared';
 // Types for validation error details from server
 export interface ValidationErrorDetail {
 	code: string;
@@ -42,6 +43,9 @@ const FIELD_ERROR_MESSAGES: Record<string, Record<string, string>> = {
 	username: {
 		too_small: 'Username is required',
 		invalid_type: 'Username is required',
+		// The server's rule, when the browser's own check was bypassed.
+		invalid_string: `Username must be ${USERNAME_RULES}`,
+		too_big: `Username must be ${USERNAME_RULES}`,
 	},
 	privateKeyFilename: {
 		too_small: 'Private key filename is required',
@@ -209,40 +213,29 @@ export function mapValidationErrors(response: ValidationErrorResponse): Record<s
 	return fieldErrors;
 }
 
+// A substring the server's message carries, and what the user reads instead. Checked in
+// order; the first match wins.
+const API_ERROR_MESSAGES: ReadonlyArray<readonly [string, string]> = [
+	['HTTP 400:', 'Invalid request. Please check your input and try again.'],
+	['HTTP 401:', 'Authentication failed. Please log in again.'],
+	['HTTP 403:', "Access denied. You don't have permission to perform this action."],
+	['HTTP 404:', 'Resource not found.'],
+	['HTTP 500:', 'Server error. Please try again later.'],
+	['Email already registered', 'This email is already registered. Please use a different email or try logging in.'],
+	['Username already taken', 'This username is already taken. Please choose a different one.'],
+	['Invalid username or password', 'Invalid username or password. Please check your credentials and try again.'],
+	['Invalid email or password', 'Invalid username or password. Please check your credentials and try again.'],
+	['Network error', 'Network error. Please check your connection and try again.'],
+	['fetch', 'Network error. Please check your connection and try again.'],
+];
+
 /**
  * Maps general API errors to user-friendly messages
  */
 export function mapApiError(error: string): string {
-	// Handle common HTTP error patterns
-	if (error.includes('HTTP 400:')) {
-		return 'Invalid request. Please check your input and try again.';
-	}
-	if (error.includes('HTTP 401:')) {
-		return 'Authentication failed. Please log in again.';
-	}
-	if (error.includes('HTTP 403:')) {
-		return "Access denied. You don't have permission to perform this action.";
-	}
-	if (error.includes('HTTP 404:')) {
-		return 'Resource not found.';
-	}
-	if (error.includes('HTTP 500:')) {
-		return 'Server error. Please try again later.';
-	}
-
-	// Handle specific error messages
-	if (error.includes('Email already registered')) {
-		return 'This email is already registered. Please use a different email or try logging in.';
-	}
-	if (error.includes('Invalid email or password')) {
-		return 'Invalid email or password. Please check your credentials and try again.';
-	}
-	if (error.includes('Network error') || error.includes('fetch')) {
-		return 'Network error. Please check your connection and try again.';
-	}
-
-	// Return the original error if no mapping is found
-	return error;
+	const known = API_ERROR_MESSAGES.find(([needle]) => error.includes(needle));
+	// The original error when no mapping is found.
+	return known ? known[1] : error;
 }
 
 /**

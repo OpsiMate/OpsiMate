@@ -75,7 +75,9 @@ describe('mapApiError', () => {
 			'Email already registered',
 			'This email is already registered. Please use a different email or try logging in.',
 		],
-		['Invalid email or password', 'Invalid email or password. Please check your credentials and try again.'],
+		['Invalid email or password', 'Invalid username or password. Please check your credentials and try again.'],
+		['Invalid username or password', 'Invalid username or password. Please check your credentials and try again.'],
+		['Username already taken', 'This username is already taken. Please choose a different one.'],
 		['Network error', 'Network error. Please check your connection and try again.'],
 		['Failed to fetch', 'Network error. Please check your connection and try again.'],
 	])('maps %j to a user-facing message', (error, expected) => {

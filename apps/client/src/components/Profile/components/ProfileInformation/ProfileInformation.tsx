@@ -2,13 +2,14 @@ import { User } from 'lucide-react';
 import { formatDate } from '@/lib/datetime';
 
 interface ProfileInformationProps {
-	email: string;
+	username: string;
+	email: string | null;
 	role: string;
 	createdAt: string;
 	phoneNumber?: string | null;
 }
 
-export const ProfileInformation = ({ email, role, createdAt, phoneNumber }: ProfileInformationProps) => {
+export const ProfileInformation = ({ username, email, role, createdAt, phoneNumber }: ProfileInformationProps) => {
 	return (
 		<div className="space-y-4">
 			<div className="flex items-center gap-3">
@@ -18,8 +19,12 @@ export const ProfileInformation = ({ email, role, createdAt, phoneNumber }: Prof
 
 			<dl className="grid grid-cols-1 md:grid-cols-2 gap-4">
 				<div>
+					<dt className="text-sm font-semibold text-muted-foreground">Username</dt>
+					<dd className="mt-1 text-sm text-foreground">{username}</dd>
+				</div>
+				<div>
 					<dt className="text-sm font-semibold text-muted-foreground">Email</dt>
-					<dd className="mt-1 text-sm text-foreground">{email}</dd>
+					<dd className="mt-1 text-sm text-foreground">{email || '—'}</dd>
 				</div>
 				<div>
 					<dt className="text-sm font-semibold text-muted-foreground">Role</dt>
