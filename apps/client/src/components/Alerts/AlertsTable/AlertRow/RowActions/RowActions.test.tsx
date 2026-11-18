@@ -49,3 +49,43 @@ describe('RowActions permissions', () => {
 		expect(await screen.findByText('Resolve')).toBeInTheDocument();
 	});
 });
+
+describe('RowActions on an auto-fixed alert', () => {
+	it('keeps Resolve in the menu but disabled, saying why — for an admin too', async () => {
+		const user = userEvent.setup();
+		vi.mocked(getUserRole).mockReturnValue(Role.Admin);
+		const onDeleteAlert = vi.fn();
+		render(
+			<RowActions
+				alert={{ ...alert, isResolved: false, tags: { fix: 'auto' } }}
+				onDeleteAlert={onDeleteAlert}
+				onSilenceAlert={vi.fn()}
+			/>
+		);
+		await user.click(screen.getByRole('button', { name: 'More actions' }));
+		const resolve = await screen.findByRole('menuitem', { name: /Resolve/ });
+		expect(resolve).toHaveAttribute('aria-disabled', 'true');
+		expect(resolve).toHaveAttribute('title', 'This alert is fixed automatically; only its source can resolve it');
+		expect(resolve).toHaveTextContent('auto fix');
+		await user.click(resolve);
+		expect(onDeleteAlert).not.toHaveBeenCalled();
+		// Silence is still offered.
+		expect(screen.getByRole('menuitem', { name: /Silence/ })).not.toHaveAttribute('aria-disabled', 'true');
+	});
+
+	it('a manual-fix alert resolves as before', async () => {
+		const user = userEvent.setup();
+		vi.mocked(getUserRole).mockReturnValue(Role.Editor);
+		const onDeleteAlert = vi.fn();
+		render(
+			<RowActions
+				alert={{ ...alert, isResolved: false, tags: { fix: 'manual' } }}
+				onDeleteAlert={onDeleteAlert}
+				onSilenceAlert={vi.fn()}
+			/>
+		);
+		await user.click(screen.getByRole('button', { name: 'More actions' }));
+		await user.click(await screen.findByRole('menuitem', { name: 'Resolve' }));
+		expect(onDeleteAlert).toHaveBeenCalledWith('alert-1');
+	});
+});

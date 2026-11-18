@@ -44,6 +44,11 @@ export const FIX_RANK: Record<AlertFix, number> = {
 // severity's); null when the alert carries no recognizable value.
 export const getAlertFix = (alert: Alert): AlertFix | null => normalizeAlertFix(alert.tags?.['fix']);
 
+// An alert its source fixes on its own (fix: auto). People do not resolve it — the
+// source's recovery does; a selection that holds even one is not resolvable as a whole.
+export const isAutoFixed = (alert: Alert): boolean => getAlertFix(alert) === AlertFix.AUTO;
+export const AUTO_FIX_RESOLVE_REFUSED = 'This alert is fixed automatically; only its source can resolve it';
+
 // ---------- owner ----------
 
 // The slice of a user either side needs to render or sort an owner.

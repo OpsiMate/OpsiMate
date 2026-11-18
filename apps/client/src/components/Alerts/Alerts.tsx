@@ -38,7 +38,7 @@ import { pluralize } from '@/lib/text';
 import { getCurrentUser } from '@/lib/auth';
 import { isPlaygroundMode } from '@/lib/playground';
 import { cn } from '@/lib/utils';
-import { AiFilterResult, Alert } from '@OpsiMate/shared';
+import { AiFilterResult, Alert, AUTO_FIX_RESOLVE_REFUSED, isAutoFixed } from '@OpsiMate/shared';
 import {
 	Bell,
 	BellOff,
@@ -961,7 +961,25 @@ const Alerts = () => {
 			run: (comment, silencedUntil) => void handleSilenceAlert(alertId, silencedUntil, comment),
 		});
 
-	const confirmResolveAlert = (alertId: string) =>
+	// Resolve is refused up front for an alert its source fixes on its own — the buttons
+	// are disabled, this covers any other way in (the server refuses too).
+	const refuseAutoFixResolve = (alerts: Alert[]): boolean => {
+		const autoFixed = alerts.filter(isAutoFixed);
+		if (autoFixed.length === 0) return false;
+		toast({
+			title: 'Cannot resolve',
+			description:
+				alerts.length === 1
+					? AUTO_FIX_RESOLVE_REFUSED
+					: `${autoFixed.length} of the selected ${pluralize(alerts.length, 'alert')} ${pluralize(autoFixed.length, 'is', 'are')} fixed automatically; unselect ${pluralize(autoFixed.length, 'it', 'them')} to resolve the rest`,
+			variant: 'destructive',
+		});
+		return true;
+	};
+
+	const confirmResolveAlert = (alertId: string) => {
+		const alert = loadedAlertsById.get(alertId);
+		if (alert && refuseAutoFixResolve([alert])) return;
 		setPendingAction({
 			title: 'Resolve this alert?',
 			description: 'The alert moves to the Resolved list. You can unresolve it later if it is still an issue.',
@@ -971,6 +989,7 @@ const Alerts = () => {
 			commentPlaceholder: 'What fixed it / why is this resolved?',
 			run: (comment) => void handleDeleteAlert(alertId, comment),
 		});
+	};
 
 	const confirmDeleteResolvedAlert = (alertId: string) =>
 		setPendingAction({
@@ -1048,7 +1067,9 @@ const Alerts = () => {
 			},
 		});
 
-	const confirmResolveAllSelected = () =>
+	const confirmResolveAllSelected = () => {
+		// The loaded selection is checked here; an "all matching" scope is the server's call.
+		if (!allMatchingSelected && refuseAutoFixResolve(selectedAlerts)) return;
 		setPendingAction({
 			title: `Resolve ${bulkCount} ${pluralize(bulkCount, 'alert')}?`,
 			description:
@@ -1060,6 +1081,7 @@ const Alerts = () => {
 			commentPlaceholder: 'What fixed it / why is this resolved?',
 			run: (comment) => void handleResolveAllSelected(comment),
 		});
+	};
 
 	// Next-page triggers per view; undefined when the loaded set is complete so the
 	// table doesn't keep firing at the bottom of a fully-loaded list.

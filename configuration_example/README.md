@@ -91,6 +91,8 @@ It holds no credentials of its own: each MCP client authenticates with the API t
 
 ## Alert Owner from the Webhook
 
+A source can also say how an alert gets fixed, on a `fix` tag (every integration reads it; the generic webhook also takes a top-level `fix`): `manual`, or `auto` for an alert the source repairs and resolves on its own. An **auto-fixed alert is not resolved by people** — the Resolve button is disabled for everyone, admins included, and a selection holding even one such alert cannot be bulk-resolved; the API answers 409. The source's own recovery (its webhook, or the API token on `DELETE /api/v1/alerts/:id`) resolves it as before.
+
 A source can say who owns an alert: the generic webhook (`POST /api/v1/alerts/custom`) takes a top-level `owner`, and every integration (Grafana, Datadog, Zabbix, GCP, Uptime Kuma) reads an `owner` label/tag. The value is a user's **username** (`idanl`) or email; anything with an `@` is an email. A bare name that matches nobody is also tried as the address the (deprecated) `login.default_email_domain` completes it to.
 
 - Local users are matched by username or email, ignoring letter case. With LDAP on, a directory user who has never logged in is looked up with the service account — by username or email, the same way a login is — and, when in a mapped group, provisioned on the spot exactly as their first login would.

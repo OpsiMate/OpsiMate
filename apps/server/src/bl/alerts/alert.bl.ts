@@ -14,6 +14,8 @@ import {
 	AlertHistoryEventType,
 	AlertStatus,
 	AlertType,
+	AUTO_FIX_RESOLVE_REFUSED,
+	isAutoFixed,
 	Logger,
 	normalizeAlertSeverity,
 	SilenceResetSettings,
@@ -172,6 +174,15 @@ export interface ManualResolveOptions {
 interface ManualResolveActor {
 	id: string | null;
 	name: string | null;
+}
+
+// A person tried to resolve an alert (or a set holding one) that its source fixes on its
+// own. Only the source's recovery resolves such an alert; the request is refused whole.
+export class AutoFixResolveError extends Error {
+	constructor(public readonly alertIds: string[]) {
+		super(AUTO_FIX_RESOLVE_REFUSED);
+		this.name = 'AutoFixResolveError';
+	}
 }
 
 export interface SourceResolveResult {
@@ -508,6 +519,14 @@ export class AlertBL {
 				cursor: undefined,
 			});
 			targetIds = items.map((alert) => alert.id);
+		}
+		// A person resolving: an auto-fixed alert among the targets refuses the whole
+		// action — not a partial resolve that quietly skips some (see AutoFixResolveError).
+		if (input.action === 'resolve' && actor.id != null) {
+			const targets = new Set(targetIds);
+			const snapshot = await this.activeSnapshot.get();
+			const autoFixed = snapshot.value.filter((alert) => targets.has(alert.id) && isAutoFixed(alert));
+			if (autoFixed.length > 0) throw new AutoFixResolveError(autoFixed.map((alert) => alert.id));
 		}
 
 		let succeeded = 0;
@@ -1103,6 +1122,9 @@ export class AlertBL {
 				logger.warn(`Alert with id ${activeAlertId} not found, nothing to resolve`);
 				return false;
 			}
+			// A signed-in person (an actor with an id) cannot resolve an auto-fixed alert; a
+			// source reporting recovery — webhooks, the API token — has no user and can.
+			if (manualActor?.id != null && isAutoFixed(alert)) throw new AutoFixResolveError([alert.id]);
 
 			// Insert into resolved table
 			await this.resolvedAlertRepo.insertResolvedAlert(

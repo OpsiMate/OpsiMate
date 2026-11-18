@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '../components/ThemeProvider';
+import { TooltipProvider } from '../components/ui/tooltip';
 
 const createTestQueryClient = () =>
 	new QueryClient({
@@ -25,7 +26,9 @@ export const AllTheProviders = ({ children }: AllTheProvidersProps) => {
 	return (
 		<QueryClientProvider client={testQueryClient}>
 			<ThemeProvider defaultTheme="light">
-				<BrowserRouter>{children}</BrowserRouter>
+				<TooltipProvider delayDuration={0}>
+					<BrowserRouter>{children}</BrowserRouter>
+				</TooltipProvider>
 			</ThemeProvider>
 		</QueryClientProvider>
 	);

@@ -6,7 +6,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, AUTO_FIX_RESOLVE_REFUSED, isAutoFixed } from '@OpsiMate/shared';
 import { BellOff, CheckCircle2, Flame, MoreVertical, RotateCcw, Trash2, FolderMinus } from 'lucide-react';
 import { AlertLinkIcon } from '../../../AlertLinkIcon';
 import { getAlertLinks } from '../../../utils/links.utils';
@@ -40,6 +40,8 @@ export const RowActions = ({
 	const canShowDelete = !isResolvedAlert || canDelete();
 
 	const isActive = !isResolvedAlert && Boolean(onSilenceAlert);
+	// Fixed by its source: the item stays, greyed, so the absence of Resolve is explained.
+	const autoFixed = isActive && isAutoFixed(alert);
 	const canToggleSilence =
 		!isResolvedAlert && ((!isSilenced && Boolean(onSilenceAlert)) || (isSilenced && Boolean(onUnsilenceAlert)));
 	// Only resolved rows can be moved back to firing (isActive is false on the Resolved tab
@@ -64,6 +66,8 @@ export const RowActions = ({
 
 	const handleDelete = (event: React.MouseEvent) => {
 		event.stopPropagation();
+		// The item is disabled for an auto-fixed alert; the guard holds without the CSS too.
+		if (autoFixed) return;
 		onDeleteAlert?.(alert.id);
 	};
 
@@ -115,12 +119,15 @@ export const RowActions = ({
 					{onDeleteAlert && canShowDelete && (
 						<DropdownMenuItem
 							onClick={handleDelete}
+							disabled={autoFixed}
+							title={autoFixed ? AUTO_FIX_RESOLVE_REFUSED : undefined}
 							className={isActive ? '' : 'text-destructive focus:text-destructive'}
 						>
 							{isActive ? (
 								<>
 									<CheckCircle2 className="mr-2 h-3 w-3" />
 									Resolve
+									{autoFixed && <span className="ml-2 text-xs text-muted-foreground">auto fix</span>}
 								</>
 							) : (
 								<>
