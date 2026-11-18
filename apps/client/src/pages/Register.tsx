@@ -1,5 +1,11 @@
 import { AUTH_TOKEN_STORAGE_KEY } from '../lib/auth';
-import { Logger, USERNAME_RULES } from '@OpsiMate/shared';
+import {
+	Logger,
+	USERNAME_HTML_PATTERN,
+	USERNAME_MAX_LENGTH,
+	USERNAME_MIN_LENGTH,
+	USERNAME_RULES,
+} from '@OpsiMate/shared';
 import React, { useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { Button } from '../components/ui/button';
@@ -78,6 +84,9 @@ const Register: React.FC = () => {
 						aria-label="Username"
 						autoComplete="username"
 						title={USERNAME_RULES}
+						minLength={USERNAME_MIN_LENGTH}
+						maxLength={USERNAME_MAX_LENGTH}
+						pattern={USERNAME_HTML_PATTERN}
 						value={username}
 						onChange={(e) => setUsername(e.target.value.toLowerCase())}
 						required

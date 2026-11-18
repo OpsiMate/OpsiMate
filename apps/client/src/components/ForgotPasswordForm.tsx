@@ -19,7 +19,8 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ email, setEmail
 				Enter your email to receive a password reset link.
 			</p>
 			<p className="text-xs text-muted-foreground text-center mb-4">
-				No email on your account? Ask an admin to set a new password for you.
+				No email on your account? For an OpsiMate account, ask an admin to set a new password for you. A
+				directory (LDAP) account uses your organization's password reset.
 			</p>
 			<div className="mb-4">
 				<Input

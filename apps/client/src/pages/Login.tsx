@@ -18,8 +18,6 @@ const Login: React.FC = () => {
 	const [password, setPassword] = useState('');
 	const [loading, setLoading] = useState(false);
 	const [emailEnabled, setEmailEnabled] = useState(false);
-	// Set when the server completes a bare name with a domain: the field then takes a name too.
-	const [defaultEmailDomain, setDefaultEmailDomain] = useState<string | null>(null);
 	const { generalError, clearErrors, handleApiResponse } = useFormErrors({
 		showFieldErrors: false,
 	});
@@ -40,7 +38,6 @@ const Login: React.FC = () => {
 
 				if (data.success) {
 					setEmailEnabled(data.data.isEmailEnabled);
-					setDefaultEmailDomain(data.data.loginDefaultEmailDomain ?? null);
 				} else {
 					logger.error('Failed to fetch email status', data);
 					setEmailEnabled(false);
@@ -108,11 +105,6 @@ const Login: React.FC = () => {
 						onChange={(e) => setIdentifier(e.target.value)}
 						required
 					/>
-					{defaultEmailDomain && identifier.trim() !== '' && !identifier.includes('@') && (
-						<p className="mt-1 text-xs text-muted-foreground">
-							Also tries {identifier.trim()}@{defaultEmailDomain}
-						</p>
-					)}
 				</div>
 				<div className="mb-4">
 					<Input

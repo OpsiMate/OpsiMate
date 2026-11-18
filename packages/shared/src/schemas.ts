@@ -58,8 +58,13 @@ export const RoleSchema = z.nativeEnum(Role);
 // hand out (idanl, j.smith, svc-deploy) — 2 to 64 characters, stored lowercased so IdanL
 // and idanl are one account. No "@": that is how a login field tells a username from an
 // email.
-export const USERNAME_PATTERN = /^[a-z0-9._-]{2,64}$/;
-export const USERNAME_RULES = '2-64 characters: lowercase letters, digits, dot, underscore or hyphen';
+export const USERNAME_MIN_LENGTH = 2;
+export const USERNAME_MAX_LENGTH = 64;
+// The hyphen is escaped so the same source serves as an HTML `pattern`, which browsers
+// compile with the `v` flag and silently drop when it does not compile.
+export const USERNAME_PATTERN = new RegExp(`^[a-z0-9._\\-]{${USERNAME_MIN_LENGTH},${USERNAME_MAX_LENGTH}}$`);
+export const USERNAME_HTML_PATTERN = USERNAME_PATTERN.source;
+export const USERNAME_RULES = `${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} characters: lowercase letters, digits, dot, underscore or hyphen`;
 export const UsernameSchema = z
 	.string()
 	.trim()
@@ -73,15 +78,13 @@ export const foldUsername = (raw: string): string => {
 		.trim()
 		.toLowerCase()
 		.replace(/[^a-z0-9._-]/g, '-')
-		.slice(0, 64);
-	return folded.length >= 2 ? folded : `user-${folded}`.slice(0, 64);
+		.slice(0, USERNAME_MAX_LENGTH);
+	return folded.length >= USERNAME_MIN_LENGTH ? folded : `user-${folded}`.slice(0, USERNAME_MAX_LENGTH);
 };
 
 // The username an email suggests: its local part, folded. For callers that only sent an
 // address, and for the migration that gives every existing account a username.
 export const usernameFromEmail = (email: string): string => foldUsername(email.trim().split('@')[0] ?? '');
-
-export const USERNAME_MAX_LENGTH = 64;
 
 // The n-th variant of a derived username: the name itself, then name2, name3, ... The
 // suffix always fits — a 64-character name is shortened to make room, so the variants

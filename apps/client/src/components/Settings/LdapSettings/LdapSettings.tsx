@@ -770,7 +770,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							<Field
 								id="ldap-loginMaxFailures"
 								label="Failed logins before a 15-minute block"
-								hint="Per login name; keep it below your directory's lockout threshold. 0 = no limit."
+								hint="Counted per directory account, whichever of its names is typed; keep it below your directory's lockout threshold. 0 = no limit."
 								error={fieldError('loginMaxFailures')}
 							>
 								<Input type="number" min={0} max={1000} {...text('loginMaxFailures')} />

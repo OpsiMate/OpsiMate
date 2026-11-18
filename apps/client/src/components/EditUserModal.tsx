@@ -1,4 +1,4 @@
-import { USERNAME_RULES } from '@OpsiMate/shared';
+import { USERNAME_HTML_PATTERN, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH, USERNAME_RULES } from '@OpsiMate/shared';
 import React, { useCallback, useState } from 'react';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest } from '../lib/api';
@@ -21,7 +21,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 	const [username, setUsername] = useState(user?.username || '');
 	const [email, setEmail] = useState(user?.email || '');
 	const [saving, setSaving] = useState(false);
-	const { generalError, clearErrors, handleApiResponse } = useFormErrors();
+	const { errors, generalError, clearErrors, handleApiResponse } = useFormErrors();
 
 	React.useEffect(() => {
 		if (user) {
@@ -103,12 +103,18 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 							value={username}
 							onChange={(e) => setUsername(e.target.value.toLowerCase())}
 							placeholder="john.doe"
-							minLength={2}
-							maxLength={64}
-							pattern="^[a-z0-9._-]{2,64}$"
+							minLength={USERNAME_MIN_LENGTH}
+							maxLength={USERNAME_MAX_LENGTH}
+							pattern={USERNAME_HTML_PATTERN}
 							title={USERNAME_RULES}
+							aria-invalid={!!errors.username}
 							disabled={user?.authSource === 'ldap'}
 						/>
+						{errors.username && (
+							<p className="text-xs text-destructive" role="alert">
+								{errors.username}
+							</p>
+						)}
 					</div>
 
 					<div className="space-y-2">
@@ -121,6 +127,11 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 							placeholder="john@example.com"
 							disabled={user?.authSource === 'ldap'}
 						/>
+						{errors.email && (
+							<p className="text-xs text-destructive" role="alert">
+								{errors.email}
+							</p>
+						)}
 						{user?.authSource === 'ldap' && (
 							<p className="text-xs text-muted-foreground">
 								Signs in through LDAP: the username and email come from the directory.
