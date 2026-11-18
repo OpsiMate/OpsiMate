@@ -58,6 +58,29 @@ describe('LDAP settings API', () => {
 		});
 	});
 
+	test('the pre-username default filter, stored by an older page or copied into a config, is the default, not an override', async () => {
+		// An upgraded installation: the old page always saved the filter it showed.
+		db.prepare('INSERT INTO ldap_config (id, settings, bind_password) VALUES (1, ?, NULL)').run(
+			JSON.stringify({ enabled: false, url: COMPLETE.url, search_filter: '(mail={{email}})' })
+		);
+		expect((await get()).body.data.searchFilter).toBe('(|(uid={{login}})(mail={{login}}))');
+		// Sent back as shown, with an attribute changed in the same save: the default
+		// follows the attribute instead of freezing as a custom filter.
+		expect(
+			(await put({ searchFilter: '(|(uid={{login}})(mail={{login}}))', usernameAttribute: 'sAMAccountName' }))
+				.status
+		).toBe(200);
+		expect((await get()).body.data.searchFilter).toBe('(|(sAMAccountName={{login}})(mail={{login}}))');
+		const stored = () =>
+			JSON.parse((db.prepare('SELECT settings FROM ldap_config').get() as LdapConfigDbRow).settings) as {
+				search_filter?: string;
+			};
+		expect(stored().search_filter).toBeUndefined();
+		// A real override is kept.
+		expect((await put({ searchFilter: '(&(objectClass=user)(sAMAccountName={{login}}))' })).status).toBe(200);
+		expect(stored().search_filter).toBe('(&(objectClass=user)(sAMAccountName={{login}}))');
+	});
+
 	test('enabling incomplete settings is refused with what is missing; nothing is saved', async () => {
 		const res = await put({ enabled: true, url: 'ldaps://ldap.example.com' });
 		expect(res.status).toBe(400);

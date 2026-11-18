@@ -258,14 +258,19 @@ describe('owner from the webhook (directory users)', () => {
 	const lookups: string[] = [];
 	let directoryDown = false;
 
-	// Answers for the identifier or any alternative spelling, recording every one asked.
+	// Answers for the identifier or any alternative spelling, recording each one searched
+	// (as the real client does: one search per spelling, until an entry is found).
 	const directory = {
 		lookup(typed: string, alternatives: string[] = []): Promise<LdapIdentity | null> {
 			const asked = [typed, ...alternatives];
-			lookups.push(...asked);
-			if (directoryDown) return Promise.reject(new LdapUnavailableError('connect ECONNREFUSED'));
+			if (directoryDown) {
+				lookups.push(asked[0]);
+				return Promise.reject(new LdapUnavailableError('connect ECONNREFUSED'));
+			}
 			const known = ['dana', 'dana@acme.test', 'guest', 'guest@acme.test', 'noa', 'mia@acme.test'];
-			const identifier = asked.find((s) => known.includes(s)) ?? typed;
+			const found = asked.findIndex((s) => known.includes(s));
+			lookups.push(...(found < 0 ? asked : asked.slice(0, found + 1)));
+			const identifier = found < 0 ? typed : asked[found];
 			if (identifier === 'noa') {
 				// A directory account with no mail attribute at all.
 				return Promise.resolve({
@@ -410,7 +415,7 @@ describe('owner from the webhook (directory users)', () => {
 
 	test('a cached miss is forgotten when the LDAP settings change', async () => {
 		const resolver = new WebhookOwnerResolver(userBL, () => null);
-		userBL.setOnUsersChanged(() => resolver.clear());
+		userBL.setOnDirectoryChanged(() => resolver.clear());
 		try {
 			userBL.setLdapAuthenticator(null);
 			expect(await resolver.resolve('dana')).toBeNull();
@@ -418,7 +423,7 @@ describe('owner from the webhook (directory users)', () => {
 			userBL.setLdapAuthenticator(directory, 0);
 			expect((await resolver.resolve('dana'))?.username).toBe('dana');
 		} finally {
-			userBL.setOnUsersChanged(() => undefined);
+			userBL.setOnDirectoryChanged(() => undefined);
 			userBL.setLdapAuthenticator(directory, 0);
 		}
 	});

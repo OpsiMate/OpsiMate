@@ -111,6 +111,14 @@ export class UserBL {
 		this.onUsersChanged = callback;
 	}
 
+	// The directory itself changed (switched on or off, pointed elsewhere): who can be
+	// found changed, though no user row did. Cached misses (webhook owners) are stale.
+	private onDirectoryChanged: (() => void) | null = null;
+
+	setOnDirectoryChanged(callback: () => void): void {
+		this.onDirectoryChanged = callback;
+	}
+
 	// Directory login (see LdapAuthenticator); null when LDAP is not configured.
 	private ldap: LdapAuthenticator | null = null;
 	// Failed directory logins per email (lower-cased), in a fixed window.
@@ -120,8 +128,7 @@ export class UserBL {
 
 	setLdapAuthenticator(ldap: LdapAuthenticator | null, maxFailures = DEFAULT_LDAP_MAX_FAILURES): void {
 		this.ldap = ldap;
-		// Who can be found changed with the directory: cached misses (webhook owners) are stale.
-		this.onUsersChanged?.();
+		this.onDirectoryChanged?.();
 		if (maxFailures <= 0) {
 			this.ldapFailures = null;
 		} else if (!this.ldapFailures || maxFailures !== this.ldapMaxFailures) {
@@ -310,10 +317,11 @@ export class UserBL {
 		const guard: LdapBindGuard = {
 			allow: (dn) => {
 				const key = dn.toLowerCase();
-				if (this.ldapFailures?.isThrottled(key)) return false;
-				if (this.ldapFailures?.recordFailure(key) === this.ldapMaxFailures) {
-					logger.warn(`LDAP login for ${dn} throttled after ${this.ldapMaxFailures} failures`);
+				if (this.ldapFailures?.isThrottled(key)) {
+					logger.warn(`LDAP login for ${dn} refused: ${this.ldapMaxFailures} failures within the window`);
+					return false;
 				}
+				this.ldapFailures?.recordFailure(key);
 				return true;
 			},
 			failed: () => undefined,
@@ -374,35 +382,33 @@ export class UserBL {
 			if (link) return this.userRepo.getUserById(link.id);
 		}
 		if (!this.ldap) return null;
-		for (const spelling of spellings) {
-			let identity: LdapIdentity | null;
-			try {
-				identity = await this.ldap.lookup(spelling);
-			} catch (error) {
-				if (error instanceof LdapUnavailableError) throw error;
-				logger.warn(`Could not resolve ${spelling} in the directory: ${(error as Error).message}`);
-				return null;
-			}
-			if (!identity) continue;
-			if (!identity.role) {
-				logger.warn(`Directory user ${spelling} is in none of the mapped groups; not provisioned`);
-				return null;
-			}
-			try {
-				return await this.provisionDirectoryUser(identity);
-			} catch (error) {
-				// A refusal is an answer (a local account holds the identity, another entry
-				// owns the account): nobody. Anything else — the database, a race — is not,
-				// and is thrown so the caller does not remember it.
-				const message = error instanceof Error ? error.message : '';
-				if (message === INVALID_LOGIN || message === NOT_ALLOWED_LOGIN) {
-					logger.warn(`Directory user ${spelling} cannot be provisioned: ${message}`);
-					return null;
-				}
-				throw error;
-			}
+		// One connection for every spelling: the first entry found is the answer.
+		let identity: LdapIdentity | null;
+		try {
+			identity = await this.ldap.lookup(spellings[0], spellings.slice(1));
+		} catch (error) {
+			if (error instanceof LdapUnavailableError) throw error;
+			logger.warn(`Could not resolve ${normalized} in the directory: ${(error as Error).message}`);
+			return null;
 		}
-		return null;
+		if (!identity) return null;
+		if (!identity.role) {
+			logger.warn(`Directory user ${identity.username} is in none of the mapped groups; not provisioned`);
+			return null;
+		}
+		try {
+			return await this.provisionDirectoryUser(identity);
+		} catch (error) {
+			// A refusal is an answer (a local account holds the identity, another entry
+			// owns the account): nobody. Anything else — the database, a race — is not,
+			// and is thrown so the caller does not remember it.
+			const message = error instanceof Error ? error.message : '';
+			if (message === INVALID_LOGIN || message === NOT_ALLOWED_LOGIN) {
+				logger.warn(`Directory user ${identity.username} cannot be provisioned: ${message}`);
+				return null;
+			}
+			throw error;
+		}
 	}
 
 	// The OpsiMate account an identity already has. The directory object itself first (its
@@ -499,8 +505,10 @@ export class UserBL {
 		const current = await this.userRepo.getUserById(userId);
 		if (!current) throw new Error('User not found');
 		const role = identity.role ?? current.role;
-		// The directory's address, also when it has none any more: null clears it.
-		let email = identity.email;
+		// The directory's address. An entry that lists none keeps the stored one: "no value"
+		// is also what a misnamed attribute or a service account that cannot read mail
+		// looks like, and that must not strip every directory user of their address.
+		let email = identity.email ?? current.email;
 		if (email && email.toLowerCase() !== current.email?.toLowerCase()) {
 			const holder = await this.userRepo.getUserByEmail(email);
 			if (holder && holder.id !== current.id) email = current.email;

@@ -269,13 +269,19 @@ describe('UserBL login with LDAP', () => {
 		expect((await userRepo.getUserByUsername('alex'))?.authSource).toBe('local');
 	});
 
-	test('an address the directory removed is removed here too', async () => {
+	test('an entry that lists no address keeps the stored one (unreadable mail must not strip everyone)', async () => {
 		await userBL.login('dana@example.com', 'dir-pw');
 		directory.answers.set('dana', {
 			password: 'dir-pw',
 			identity: { ...identity('dana@example.com', 'Dana Directory', Role.Editor), email: null },
 		});
-		expect((await userBL.login('dana', 'dir-pw')).email).toBeNull();
+		expect((await userBL.login('dana', 'dir-pw')).email).toBe('dana@example.com');
+		// A changed address is followed.
+		directory.answers.set('dana', {
+			password: 'dir-pw',
+			identity: { ...identity('dana@example.com', 'Dana Directory', Role.Editor), email: 'dana.new@example.com' },
+		});
+		expect((await userBL.login('dana', 'dir-pw')).email).toBe('dana.new@example.com');
 	});
 
 	test('concurrent wrong guesses for one entry reserve their attempts: no more binds than the limit reach the directory', async () => {

@@ -605,6 +605,21 @@ describe('resolveLdapConfig', () => {
 		expect(withAttribute('(uid=*)').enabled).toBe(false);
 	});
 
+	test('the pre-username default filter in a config file is dropped so the current default applies', () => {
+		const config = resolveLdapConfig({
+			enabled: true,
+			url: 'ldaps://x',
+			search_base: 'dc=x',
+			default_role: 'viewer',
+			search_filter: '(mail={{email}})',
+		});
+		expect(config.enabled).toBe(true);
+		expect(config.search_filter).toBeUndefined();
+		expect(resolveLdapConfig({ enabled: false, search_filter: '(uid={{email}})' }).search_filter).toBe(
+			'(uid={{email}})'
+		);
+	});
+
 	test('a blank attribute name means the default, not an attribute called ""', () => {
 		const config = resolveLdapConfig({
 			enabled: true,

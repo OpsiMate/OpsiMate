@@ -228,6 +228,15 @@ const envList = (value: string | undefined): string[] | undefined =>
 // (the Docker / Helm way to configure it), validated. An enabled but incomplete
 // section is switched off with a warning rather than failing the boot: the local
 // login keeps working and the log says what is missing.
+// The search filter default before usernames. Installations that saved LDAP settings
+// through the page (which always sent the filter it showed) have it stored as an explicit
+// filter, and a config file may carry it copied from the old example; read back as a
+// choice it would keep every login email-only. It is the default, not an override, and
+// wherever settings are read it is dropped so the current default applies.
+export const LEGACY_DEFAULT_SEARCH_FILTER = '(mail={{email}})';
+export const isLegacyDefaultSearchFilter = (filter: string | undefined): boolean =>
+	filter !== undefined && filter.trim() === LEGACY_DEFAULT_SEARCH_FILTER;
+
 export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig {
 	const env = process.env;
 	const ldap: LdapConfig = { ...(fromFile ?? { enabled: false }) };
@@ -240,6 +249,7 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (env.LDAP_BIND_PASSWORD) ldap.bind_password = env.LDAP_BIND_PASSWORD;
 	if (env.LDAP_SEARCH_BASE) ldap.search_base = env.LDAP_SEARCH_BASE;
 	if (env.LDAP_SEARCH_FILTER) ldap.search_filter = env.LDAP_SEARCH_FILTER;
+	if (isLegacyDefaultSearchFilter(ldap.search_filter)) delete ldap.search_filter;
 	if (env.LDAP_USERNAME_ATTRIBUTE) ldap.username_attribute = env.LDAP_USERNAME_ATTRIBUTE;
 	if (env.LDAP_EMAIL_ATTRIBUTE) ldap.email_attribute = env.LDAP_EMAIL_ATTRIBUTE;
 	if (env.LDAP_NAME_ATTRIBUTE) ldap.name_attribute = env.LDAP_NAME_ATTRIBUTE;

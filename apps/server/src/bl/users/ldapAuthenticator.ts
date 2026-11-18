@@ -196,14 +196,26 @@ const guidTextOf = (value: unknown): string | null => {
 	const match = GUID_TEXT.exec(text.trim());
 	return match ? match[1].toLowerCase() : null;
 };
-export const OBJECT_GUID_SPELLINGS = ['objectGUID', 'objectguid', 'OBJECTGUID', 'ObjectGUID', 'ObjectGuid'];
+const OBJECT_GUID_SPELLINGS = ['objectGUID', 'objectguid', 'OBJECTGUID', 'ObjectGUID', 'ObjectGuid'];
+// Said once per process: a GUID that cannot be read means accounts are linked by DN
+// only, which is worth knowing without flooding the log at every login.
+let warnedUnreadableGuid = false;
 const objectIdOf = (entry: Entry): string | null => {
 	const uuid = rawAttribute(entry, 'entryUUID');
 	const first = (value: unknown): unknown => (Array.isArray(value) ? (value as unknown[])[0] : value);
 	const uuidValue = first(uuid);
 	if (uuidValue !== undefined && uuidValue !== null && uuidValue !== '')
 		return asText(uuidValue).trim().toLowerCase();
-	const guid = guidTextOf(first(rawAttribute(entry, 'objectGUID')));
+	const rawGuid = first(rawAttribute(entry, 'objectGUID'));
+	if (rawGuid === undefined || rawGuid === null || rawGuid === '') return null;
+	const guid = guidTextOf(rawGuid);
+	if (!guid && !warnedUnreadableGuid) {
+		warnedUnreadableGuid = true;
+		logger.warn(
+			`LDAP: ${entry.dn} has an objectGUID that cannot be read (${Buffer.isBuffer(rawGuid) ? `${rawGuid.length} bytes` : typeof rawGuid}); ` +
+				'directory accounts are linked by DN only'
+		);
+	}
 	return guid ? `guid:${guid}` : null;
 };
 
@@ -575,8 +587,7 @@ export class LdapAuthenticator {
 		// Without a username attribute the name comes from the entry's own address — the
 		// same one every time — and only an entry listing no address at all falls back to
 		// what was typed.
-		const fallbackName = directoryEmail ?? (isEmailLike(typed) ? typed : null);
-		const username = foldUsername(directoryUsername || (fallbackName ? usernameFromEmail(fallbackName) : typed));
+		const username = foldUsername(directoryUsername || (email ? usernameFromEmail(email) : typed));
 		return {
 			dn: entry.dn,
 			objectId: objectIdOf(entry),

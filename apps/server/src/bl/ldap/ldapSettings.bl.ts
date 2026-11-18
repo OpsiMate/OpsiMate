@@ -10,7 +10,13 @@ import {
 	UpdateLdapSettings,
 	User,
 } from '@OpsiMate/shared';
-import { getLdapConfig, isLdapManagedByConfig, LdapConfig, validateLdapConfig } from '../../config/config';
+import {
+	getLdapConfig,
+	isLdapManagedByConfig,
+	isLegacyDefaultSearchFilter,
+	LdapConfig,
+	validateLdapConfig,
+} from '../../config/config';
 import { LdapConfigRepository, LdapConfigRow } from '../../dal/ldapConfigRepository';
 import { decryptPassword, encryptPassword } from '../../utils/encryption';
 import { AuditBL } from '../audit/audit.bl';
@@ -272,6 +278,9 @@ const parseSettings = (json: string): LdapConfig => {
 		const parsed = JSON.parse(json) as LdapConfig;
 		// The password never lives in this JSON; drop one if an old row had it.
 		delete parsed.bind_password;
+		// The pre-username default, saved as if it were a choice: it was not (see
+		// LEGACY_DEFAULT_SEARCH_FILTER), and kept it would leave logins email-only.
+		if (isLegacyDefaultSearchFilter(parsed.search_filter)) delete parsed.search_filter;
 		return { ...parsed, enabled: parsed.enabled === true };
 	} catch {
 		return { enabled: false };
@@ -328,9 +337,18 @@ const mergeUpdates = (base: LdapConfig, updates: UpdateLdapSettings): LdapConfig
 			...(updates.tlsCaCert !== undefined ? { ca: blankToUndefined(updates.tlsCaCert) } : {}),
 		};
 	}
-	// A filter equal to the generated default is not an override: left unset, it keeps
-	// following the attributes (the page always sends the filter it was shown).
-	if (next.search_filter === defaultSearchFilter(next)) next.search_filter = undefined;
+	// A filter equal to a generated default is not an override: left unset, it keeps
+	// following the attributes. The page always sends the filter it was shown — the one
+	// generated from the attributes BEFORE this edit — so that one counts too, or
+	// changing an attribute would freeze the old default as a custom filter.
+	if (
+		next.search_filter !== undefined &&
+		(next.search_filter === defaultSearchFilter(next) ||
+			next.search_filter === defaultSearchFilter(base) ||
+			isLegacyDefaultSearchFilter(next.search_filter))
+	) {
+		next.search_filter = undefined;
+	}
 	return next;
 };
 
