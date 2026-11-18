@@ -325,7 +325,8 @@ describe('owner from the webhook (directory users)', () => {
 		expect((await resolver.resolve('Dana@acme.test'))?.id).toBe(user?.id);
 		// And by the name within the window: the cache answers.
 		expect((await resolver.resolve('DANA'))?.id).toBe(user?.id);
-		expect(lookups).toEqual(['dana']);
+		// One directory connection was asked for both spellings of the first request.
+		expect(lookups).toEqual(['dana', 'dana@acme.test']);
 	});
 
 	test('in no mapped group → nobody; unknown → nobody (as a username, then as the completed address); a local account wins without asking the directory', async () => {
