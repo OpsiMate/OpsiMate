@@ -5,7 +5,13 @@ import { MailClient, MailType } from '../../dal/external-client/mail-client';
 import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
 import { AuditBL } from '../audit/audit.bl';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
-import { LdapAuthenticator, LdapIdentity } from './ldapAuthenticator';
+import {
+	LdapAuthenticator,
+	LdapBindGuard,
+	LdapIdentity,
+	LdapThrottledError,
+	LdapUnavailableError,
+} from './ldapAuthenticator';
 import { LoginThrottle } from './loginThrottle';
 import { MS_PER_MINUTE } from '../../utils/time';
 
@@ -264,17 +270,15 @@ export class UserBL {
 		const explicitUsername = !legacyEmailField && !typed.includes('@');
 		if (explicitUsername && candidates.length > 0 && !directoryAccount) throw new Error(INVALID_LOGIN);
 		const completed = completeLoginIdentifier(typed, this.loginDefaultEmailDomain).toLowerCase();
-		// The directory is asked for what was typed — a username or an email — with, as
-		// alternatives searched before the one bind, a known directory account's own address
-		// and, through the legacy email field only, the completed address: an explicit
-		// username must never end up signed in as whoever holds <name>@<domain>.
-		const spellings = [
-			...new Set(
-				[typed, directoryAccount?.user.email?.toLowerCase(), explicitUsername ? undefined : completed].filter(
-					(spelling): spelling is string => !!spelling
-				)
-			),
-		];
+		// The spellings the directory is searched for, one bind at the end. Through the
+		// legacy email field a bare name has always meant <name>@<domain>, so that address
+		// comes first and the name itself second; through the login field the name comes
+		// first and is never completed — an explicit username must not end up signed in as
+		// whoever holds <name>@<domain>. A known directory account's own address is tried
+		// too.
+		const knownAddress = directoryAccount?.user.email?.toLowerCase();
+		const ordered = explicitUsername ? [typed, knownAddress] : [completed, typed, knownAddress];
+		const spellings = [...new Set(ordered.filter((spelling): spelling is string => !!spelling))];
 		// A local account owns one of these addresses itself, in any spelling: no directory
 		// entry may stand in for it. (A local account that merely has the typed name as its
 		// username is unrelated to the address and blocks nothing; a directory entry carrying
@@ -288,19 +292,30 @@ export class UserBL {
 			throw new Error(INVALID_LOGIN);
 		}
 
-		// The throttle key is the address every spelling of this login resolves to — a
-		// known account's, else the completed one — so failures accumulate across spellings
-		// and any successful one clears them; a bare name with no address is its own key.
-		const throttleKey =
-			directoryAccount?.user.email?.toLowerCase() ??
-			spellings.find((spelling) => spelling.includes('@')) ??
-			typed;
+		// Two throttles. Before the directory is searched, the login as typed (its resolved
+		// address when one is known) bounds the searches. Once the entry is found, the
+		// account itself — its DN — carries the budget, so a username and an email for the
+		// same account share one count whether or not the account has an OpsiMate row yet.
+		const throttleKey = knownAddress ?? spellings.find((spelling) => spelling.includes('@')) ?? typed;
 		if (this.ldapFailures?.isThrottled(throttleKey)) throw new TooManyLoginAttemptsError();
-		const identity = await this.ldap.authenticate(typed, password, spellings.slice(1));
+		const guard: LdapBindGuard = {
+			allow: (dn) => !this.ldapFailures?.isThrottled(dn.toLowerCase()),
+			failed: (dn) => {
+				if (this.ldapFailures?.recordFailure(dn.toLowerCase()) === this.ldapMaxFailures) {
+					logger.warn(`LDAP login for ${dn} throttled after ${this.ldapMaxFailures} failures`);
+				}
+			},
+			succeeded: (dn) => this.ldapFailures?.reset(dn.toLowerCase()),
+		};
+		let identity: LdapIdentity | null;
+		try {
+			identity = await this.ldap.authenticate(spellings[0], password, spellings.slice(1), guard);
+		} catch (error) {
+			if (error instanceof LdapThrottledError) throw new TooManyLoginAttemptsError();
+			throw error;
+		}
 		if (!identity) {
-			if (this.ldapFailures?.recordFailure(throttleKey) === this.ldapMaxFailures) {
-				logger.warn(`LDAP login for ${throttleKey} throttled after ${this.ldapMaxFailures} failures`);
-			}
+			this.ldapFailures?.recordFailure(throttleKey);
 			throw new Error(INVALID_LOGIN);
 		}
 		this.ldapFailures?.reset(throttleKey);
@@ -308,16 +323,27 @@ export class UserBL {
 			logger.warn(`LDAP login refused for ${identity.username}: in none of the mapped groups`);
 			throw new Error(NOT_ALLOWED_LOGIN);
 		}
+		// A login that named a known directory account (by its username) stays that
+		// account: an alternative spelling that reached another entry is not it.
+		if (directoryAccount) {
+			const link = await this.userRepo.findDirectoryLinkByUsername(directoryAccount.user.username);
+			if (link?.ldapDn && link.ldapDn.toLowerCase() !== identity.dn.toLowerCase()) {
+				logger.warn(
+					`LDAP login for ${typed} refused: ${identity.dn} is not the account's entry ${link.ldapDn}`
+				);
+				throw new Error(INVALID_LOGIN);
+			}
+		}
 		return this.provisionDirectoryUser(identity);
 	}
 
 	// The account for a username or email, for something that is not a login — a webhook
-	// naming an alert's owner. A local or already-provisioned account is found as is (any
-	// letter case). Otherwise, with LDAP on, the directory is asked — for the identifier
-	// and then each alternative spelling, in one connection — and a user in a mapped
-	// group is provisioned now exactly as their first login would (they log in later as
-	// usual). null when nobody matches, or the directory is down (an alert must still be
-	// ingested).
+	// naming an alert's owner. Spelling by spelling (the identifier, then each
+	// alternative): an existing account first, then — with LDAP on — the directory, so an
+	// exact username is settled before a completed address can point elsewhere. A
+	// directory user in a mapped group is provisioned now exactly as their first login
+	// would (they log in later as usual). null when nobody matches; a directory that
+	// cannot answer is thrown as LdapUnavailableError, for the caller to not remember.
 	async findOrProvisionUser(identifier: string, alternatives: string[] = []): Promise<User | null> {
 		const normalized = identifier.trim().toLowerCase();
 		if (!normalized) return null;
@@ -326,28 +352,43 @@ export class UserBL {
 				? await this.userRepo.findDirectoryLink(spelling)
 				: await this.userRepo.findDirectoryLinkByUsername(spelling);
 			if (link) return this.userRepo.getUserById(link.id);
-		}
-		if (!this.ldap) return null;
-		try {
-			const identity = await this.ldap.lookup(normalized, alternatives);
-			if (!identity) return null;
-			if (!identity.role) {
-				logger.warn(`Directory user ${normalized} is in none of the mapped groups; not provisioned`);
+			if (!this.ldap) continue;
+			let identity: LdapIdentity | null;
+			try {
+				identity = await this.ldap.lookup(spelling);
+			} catch (error) {
+				if (error instanceof LdapUnavailableError) throw error;
+				logger.warn(`Could not resolve ${spelling} in the directory: ${(error as Error).message}`);
 				return null;
 			}
-			return await this.provisionDirectoryUser(identity);
-		} catch (error) {
-			logger.warn(`Could not resolve ${normalized} in the directory: ${(error as Error).message}`);
-			return null;
+			if (!identity) continue;
+			if (!identity.role) {
+				logger.warn(`Directory user ${spelling} is in none of the mapped groups; not provisioned`);
+				return null;
+			}
+			try {
+				return await this.provisionDirectoryUser(identity);
+			} catch (error) {
+				logger.warn(`Could not provision ${spelling} from the directory: ${(error as Error).message}`);
+				return null;
+			}
 		}
+		return null;
 	}
 
-	// The OpsiMate account an identity already has: by username, else by email.
+	// The OpsiMate account an identity already has. The entry itself (its DN) first — an
+	// entry whose username and address both changed still has its account; then the
+	// username; then the email. A local account holding the username does not hide the
+	// entry's own account reached through its email.
 	private async findDirectoryLinkFor(identity: LdapIdentity) {
-		return (
-			(await this.userRepo.findDirectoryLinkByUsername(identity.username)) ??
-			(identity.email ? await this.userRepo.findDirectoryLink(identity.email) : null)
-		);
+		const byDn = await this.userRepo.findDirectoryLinkByDn(identity.dn);
+		if (byDn) return byDn;
+		const byUsername = await this.userRepo.findDirectoryLinkByUsername(identity.username);
+		if (byUsername?.authSource === 'ldap') return byUsername;
+		const byEmail = identity.email ? await this.userRepo.findDirectoryLink(identity.email) : null;
+		if (byEmail?.authSource === 'ldap' && byEmail.ldapDn?.toLowerCase() === identity.dn.toLowerCase())
+			return byEmail;
+		return byUsername ?? byEmail;
 	}
 
 	private async provisionDirectoryUser(identity: LdapIdentity): Promise<User> {
@@ -409,7 +450,8 @@ export class UserBL {
 		const current = await this.userRepo.getUserById(userId);
 		if (!current) throw new Error('User not found');
 		const role = identity.role ?? current.role;
-		let email = identity.email ?? current.email;
+		// The directory's address, also when it has none any more: null clears it.
+		let email = identity.email;
 		if (email && email.toLowerCase() !== current.email?.toLowerCase()) {
 			const holder = await this.userRepo.getUserByEmail(email);
 			if (holder && holder.id !== current.id) email = current.email;

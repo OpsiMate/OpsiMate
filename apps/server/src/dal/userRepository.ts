@@ -403,6 +403,23 @@ export class UserRepository {
 		});
 	}
 
+	// The account a directory entry (DN) already has, whatever it is called now.
+	async findDirectoryLinkByDn(dn: string): Promise<DirectoryAccountLink | null> {
+		return runAsync(() => {
+			const row = this.db
+				.prepare(
+					'SELECT id, auth_source, ldap_dn FROM users WHERE ldap_dn = ? COLLATE NOCASE ORDER BY id LIMIT 1'
+				)
+				.get(dn.trim()) as UserRow | undefined;
+			if (!row) return null;
+			return {
+				id: Number(row.id),
+				authSource: row.auth_source === 'ldap' ? 'ldap' : 'local',
+				ldapDn: row.ldap_dn ?? null,
+			};
+		});
+	}
+
 	// Any account whose username matches ignoring case.
 	async findDirectoryLinkByUsername(username: string): Promise<DirectoryAccountLink | null> {
 		return runAsync(() => {

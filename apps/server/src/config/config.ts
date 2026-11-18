@@ -267,6 +267,10 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	}
 	ldap.role_mapping = mapping;
 	if (env.LDAP_DEFAULT_ROLE) ldap.default_role = env.LDAP_DEFAULT_ROLE as LdapRole;
+	// A blank attribute name means "the default", not an attribute called "".
+	for (const key of ['username_attribute', 'email_attribute', 'name_attribute', 'groups_attribute'] as const) {
+		if (typeof ldap[key] === 'string' && ldap[key].trim() === '') delete ldap[key];
+	}
 
 	if (!ldap.enabled) return ldap;
 	const problems = validateLdapConfig(ldap);
@@ -331,6 +335,7 @@ const LDAP_ENV_KEYS = [
 	'LDAP_BIND_PASSWORD',
 	'LDAP_SEARCH_BASE',
 	'LDAP_SEARCH_FILTER',
+	'LDAP_USERNAME_ATTRIBUTE',
 	'LDAP_EMAIL_ATTRIBUTE',
 	'LDAP_NAME_ATTRIBUTE',
 	'LDAP_GROUPS_ATTRIBUTE',

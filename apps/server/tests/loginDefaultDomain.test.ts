@@ -92,7 +92,8 @@ describe('UserBL login with a default domain', () => {
 		const user = await userBL.login('dana', 'dir-pw', { legacyEmailField: true });
 		expect(user.email).toBe('dana@acme.test');
 		expect(user.username).toBe('dana');
-		expect(ldapSeen).toEqual(['dana', 'dana@acme.test']);
+		// Legacy field: the address it always meant first, then the name itself.
+		expect(ldapSeen).toEqual(['dana@acme.test', 'dana']);
 	});
 
 	test('two Danas: the legacy email field keeps meaning <name>@<domain>; the login field means the username', async () => {
@@ -148,7 +149,7 @@ describe('UserBL login with a default domain', () => {
 		// username "dana", the contractor's: a directory entry never takes a local account's
 		// username, so this login is refused at provisioning.
 		await expect(userBL.login('dana', 'dir-pw', { legacyEmailField: true })).rejects.toThrow('Invalid');
-		expect(ldapSeen).toEqual(['nobody', 'dana', 'dana@acme.test']);
+		expect(ldapSeen).toEqual(['nobody', 'dana@acme.test', 'dana']);
 	});
 
 	test('a name with its own domain is not rewritten', async () => {

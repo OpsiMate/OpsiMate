@@ -325,8 +325,8 @@ describe('owner from the webhook (directory users)', () => {
 		expect((await resolver.resolve('Dana@acme.test'))?.id).toBe(user?.id);
 		// And by the name within the window: the cache answers.
 		expect((await resolver.resolve('DANA'))?.id).toBe(user?.id);
-		// One directory connection was asked for both spellings of the first request.
-		expect(lookups).toEqual(['dana', 'dana@acme.test']);
+		// The exact name settled it; the completed address was never needed.
+		expect(lookups).toEqual(['dana']);
 	});
 
 	test('in no mapped group → nobody; unknown → nobody (as a username, then as the completed address); a local account wins without asking the directory', async () => {
@@ -341,16 +341,19 @@ describe('owner from the webhook (directory users)', () => {
 			role: Role.Viewer,
 		});
 		expect((await resolver.resolve('local'))?.username).toBe('local');
-		expect(lookups).toEqual(['guest', 'guest@acme.test', 'nobody', 'nobody@acme.test']);
+		// A found-but-refused entry ends the search; an unknown name goes on to the address.
+		expect(lookups).toEqual(['guest', 'nobody', 'nobody@acme.test']);
 	});
 
-	test('a directory that is down means no owner, not an error; with no default domain a bare name is still a username', async () => {
+	test('a directory that is down means no owner, not an error — and is not remembered: the same resolver asks again', async () => {
 		directoryDown = true;
 		const resolver = new WebhookOwnerResolver(userBL, () => 'acme.test');
 		await expect(resolver.resolve('dana')).resolves.toBeNull();
-		const noDomain = new WebhookOwnerResolver(userBL, () => null);
 		directoryDown = false;
+		// Within the cache window, with the same resolver: the outage was no answer.
+		expect((await resolver.resolve('dana'))?.username).toBe('dana');
+		const noDomain = new WebhookOwnerResolver(userBL, () => null);
 		expect((await noDomain.resolve('dana'))?.username).toBe('dana');
-		expect(lookups).toEqual(['dana', 'dana@acme.test', 'dana']);
+		expect(lookups).toEqual(['dana', 'dana']);
 	});
 });

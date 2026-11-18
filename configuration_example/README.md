@@ -125,7 +125,7 @@ login:
   default_email_domain: company.com # or LOGIN_DEFAULT_EMAIL_DOMAIN=company.com
 ```
 
-`idan` then also tries `idan@company.com` — after the username lookup, for local accounts and directory (LDAP) accounts alike, since the directory lookup receives the completed address. Kept so webhooks and logins that relied on it keep working; new installations do not need it, as a bare name is a username.
+`idan` then also tries `idan@company.com` — for local accounts and directory (LDAP) accounts alike, since the directory lookup receives the completed address. Completion applies to a login sent in the legacy `email` field and to webhook `owner` values (after the exact username); a bare name sent as `identifier`, which is what the login form sends, is a username and only that. Kept so webhooks and logins that relied on it keep working; new installations do not need it.
 
 ## LDAP / Active Directory Login
 
@@ -148,7 +148,7 @@ Security notes:
 
 Local accounts, such as the first admin, always sign in locally. That is your way in if the directory is down or misconfigured. A directory entry can never take over a local account with the same username or email.
 
-The easiest way to set it up is in the app: **Settings → Users → Directory login (LDAP)**, as an admin. Fill in the connection, service account, search base and group-to-role mapping, press **Test connection** (it runs on what is in the form, before anything is saved; add a username or email to see the role they would get), then switch it on and **Save**. Changes apply immediately, without a restart. The service-account password is stored encrypted and never shown again, and every change is recorded in the audit log.
+The easiest way to set it up is in the app: **Settings → Users → Directory login (LDAP)**, as an admin. Fill in the connection, service account, search base and group-to-role mapping, press **Test connection** (it runs on what is in the form, before anything is saved; add a username or email to see the role they would get — the page's test field takes a username from the UI update on; the API's `login` field takes one already), then switch it on and **Save**. Changes apply immediately, without a restart. The service-account password is stored encrypted and never shown again, and every change is recorded in the audit log.
 
 **Test connection** runs on whatever is in the form, saved or not, and says which step failed (connect, service account, search base, user lookup). When the server refuses a save, the page marks the field it objected to.
 
@@ -173,7 +173,7 @@ Then, in **Settings → Users → Directory login (LDAP)**:
 | Admin groups       | `cn=admin_staff,ou=people,dc=planetexpress,dc=com`                                                                                 |
 | Viewer groups      | `cn=ship_crew,ou=people,dc=planetexpress,dc=com`                                                                                   |
 
-Press **Test connection** with `professor` (or `professor@planetexpress.com`) to see the admin role, or `fry` for viewer; `zoidberg` is in neither group and shows what a refused user looks like. Switch LDAP on, Save, sign out, and log in as `fry` with password `fry` — `fry@planetexpress.com` works too. The directory listens on `localhost` only (its admin password is public). If OpsiMate itself runs in Docker, attach its container to the `opsimate-ldap-test` network and use the container name instead of `localhost` — this works the same with Docker Desktop and Docker Engine on Linux:
+Press **Test connection** with `professor` (or `professor@planetexpress.com`) to see the admin role, or `fry` for viewer; `zoidberg` is in neither group and shows what a refused user looks like. Switch LDAP on, Save, sign out, and log in as `fry` with password `fry` — `fry@planetexpress.com` works too. (Signing in with a bare username from the browser form, and the test field taking one, arrive with the UI update; until then use the address in the browser, or the API's `identifier` field.) The directory listens on `localhost` only (its admin password is public). If OpsiMate itself runs in Docker, attach its container to the `opsimate-ldap-test` network and use the container name instead of `localhost` — this works the same with Docker Desktop and Docker Engine on Linux:
 
 ```bash
 docker network connect opsimate-ldap-test <opsimate-server-container>

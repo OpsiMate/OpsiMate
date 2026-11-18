@@ -3,7 +3,13 @@ import bcrypt from 'bcrypt';
 import { Role } from '@OpsiMate/shared';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { AuditBL } from '../src/bl/audit/audit.bl';
-import { LdapAuthenticator, LdapIdentity, LdapUnavailableError } from '../src/bl/users/ldapAuthenticator';
+import {
+	LdapAuthenticator,
+	LdapBindGuard,
+	LdapIdentity,
+	LdapThrottledError,
+	LdapUnavailableError,
+} from '../src/bl/users/ldapAuthenticator';
 import { DirectoryManagedError, TooManyLoginAttemptsError, UserBL } from '../src/bl/users/user.bl';
 import { AuditLogRepository } from '../src/dal/auditLogRepository';
 import { MailClient } from '../src/dal/external-client/mail-client';
@@ -20,12 +26,25 @@ class StubDirectory {
 	calls = 0;
 	down = false;
 	answers = new Map<string, StubAnswer>();
-	authenticate(identifier: string, password: string, alternatives: string[] = []): Promise<LdapIdentity | null> {
+	authenticate(
+		identifier: string,
+		password: string,
+		alternatives: string[] = [],
+		guard?: LdapBindGuard
+	): Promise<LdapIdentity | null> {
 		this.calls++;
 		if (this.down) return Promise.reject(new LdapUnavailableError('connect ECONNREFUSED'));
 		const key = [identifier, ...alternatives].find((candidate) => this.answers.has(candidate));
 		const answer = key ? this.answers.get(key) : undefined;
-		return Promise.resolve(answer && answer.password === password ? answer.identity : null);
+		if (!answer) return Promise.resolve(null);
+		if (guard && !guard.allow(answer.identity.dn))
+			return Promise.reject(new LdapThrottledError(answer.identity.dn));
+		if (answer.password !== password) {
+			guard?.failed(answer.identity.dn);
+			return Promise.resolve(null);
+		}
+		guard?.succeeded(answer.identity.dn);
+		return Promise.resolve(answer.identity);
 	}
 }
 
@@ -181,6 +200,69 @@ describe('UserBL login with LDAP', () => {
 		// The directory name now signs in too.
 		directory.answers.set('dlevi', directory.answers.get('dana@example.com')!);
 		expect((await userBL.login('dlevi', 'dir-pw')).id).toBe(user.id);
+	});
+
+	test('before the account exists, failures by username and by email count against the same directory entry', async () => {
+		directory.answers.set('dana', directory.answers.get('dana@example.com')!);
+		for (let i = 0; i < 3; i++) await expect(userBL.login('dana', 'wrong')).rejects.toThrow('Invalid');
+		for (let i = 0; i < 2; i++) await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid');
+		// Five failed binds for one entry, under two spellings: both are refused now.
+		await expect(userBL.login('dana', 'dir-pw')).rejects.toThrow(TooManyLoginAttemptsError);
+		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toThrow(TooManyLoginAttemptsError);
+		expect(await userRepo.countUsers()).toBe(1);
+	});
+
+	test('an entry whose username and address both changed keeps its account, found by its DN', async () => {
+		const first = await userBL.login('dana@example.com', 'dir-pw');
+		directory.answers.delete('dana@example.com');
+		directory.answers.set('dlevi', {
+			password: 'dir-pw',
+			identity: {
+				...identity('dana@example.com', 'Dana Levi', Role.Editor),
+				username: 'dlevi',
+				email: 'dlevi@example.com',
+			},
+		});
+		const renamed = await userBL.login('dlevi', 'dir-pw');
+		expect(renamed.id).toBe(first.id);
+		expect(renamed).toMatchObject({ username: 'dlevi', email: 'dlevi@example.com' });
+		expect(await userRepo.countUsers()).toBe(2);
+	});
+
+	test("a local account holding the directory's username does not hide the entry's own account reached by email", async () => {
+		// The directory account was migrated as alex2 (a local alex already held the name).
+		await userRepo.createUser({
+			username: 'alex',
+			email: 'alex@contractor.example',
+			passwordHash: await bcrypt.hash('x', 4),
+			fullName: 'Alex Local',
+			role: Role.Viewer,
+		});
+		await userRepo.createUser({
+			username: 'alex2',
+			email: 'alex@example.com',
+			passwordHash: '!ldap',
+			fullName: 'Alex Directory',
+			role: Role.Editor,
+			authSource: 'ldap',
+			ldapDn: 'uid=alex,dc=example,dc=com',
+		});
+		directory.answers.set('alex@example.com', {
+			password: 'dir-pw',
+			identity: { ...identity('alex@example.com', 'Alex Directory', Role.Editor), username: 'alex' },
+		});
+		const user = await userBL.login('alex@example.com', 'dir-pw');
+		expect(user).toMatchObject({ username: 'alex2', email: 'alex@example.com', authSource: 'ldap' });
+		expect((await userRepo.getUserByUsername('alex'))?.authSource).toBe('local');
+	});
+
+	test('an address the directory removed is removed here too', async () => {
+		await userBL.login('dana@example.com', 'dir-pw');
+		directory.answers.set('dana', {
+			password: 'dir-pw',
+			identity: { ...identity('dana@example.com', 'Dana Directory', Role.Editor), email: null },
+		});
+		expect((await userBL.login('dana', 'dir-pw')).email).toBeNull();
 	});
 
 	test('a directory entry with no email gets an account without one', async () => {

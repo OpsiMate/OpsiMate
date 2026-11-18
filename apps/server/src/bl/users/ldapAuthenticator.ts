@@ -34,6 +34,23 @@ export interface LdapIdentity {
 	role: Role | null;
 }
 
+// Who may still try to bind: the caller's failure counter, keyed on the directory entry
+// (its DN), so a username and an email that name the same account share one budget —
+// before the account has an OpsiMate row as much as after.
+export interface LdapBindGuard {
+	allow(dn: string): boolean;
+	failed(dn: string): void;
+	succeeded(dn: string): void;
+}
+
+// The guard refused the bind: too many failures for this directory account.
+export class LdapThrottledError extends Error {
+	constructor(dn: string) {
+		super(`Too many failed logins for ${dn}`);
+		this.name = 'LdapThrottledError';
+	}
+}
+
 // The directory could not be asked (down, TLS failure, bad service account): not the
 // same as "wrong password", and reported differently so the login page can say so.
 export class LdapUnavailableError extends Error {
@@ -111,17 +128,27 @@ export const resolveLdapRole = (
 	return defaultRole && (ROLE_PRIORITY as string[]).includes(defaultRole) ? (defaultRole as Role) : null;
 };
 
+// LDAP attribute names are case-insensitive and the server answers in its own spelling
+// (sAMAccountName for a configured samaccountname): the entry is read by name ignoring case.
+const rawAttribute = (entry: Entry, attribute: string): unknown => {
+	const wanted = attribute.toLowerCase();
+	const key = Object.keys(entry).find((name) => name.toLowerCase() === wanted);
+	return key === undefined ? undefined : entry[key];
+};
+
+const asText = (value: unknown): string => (Buffer.isBuffer(value) ? value.toString('utf8') : String(value));
+
 const firstValue = (entry: Entry, attribute: string): string | undefined => {
-	const raw = entry[attribute] ?? entry[attribute.toLowerCase()];
-	const value = Array.isArray(raw) ? raw[0] : raw;
-	if (value === undefined) return undefined;
-	return Buffer.isBuffer(value) ? value.toString('utf8') : String(value);
+	const raw = rawAttribute(entry, attribute);
+	const value: unknown = Array.isArray(raw) ? (raw as unknown[])[0] : raw;
+	return value === undefined ? undefined : asText(value);
 };
 
 const allValues = (entry: Entry, attribute: string): string[] => {
-	const raw = entry[attribute] ?? entry[attribute.toLowerCase()];
+	const raw = rawAttribute(entry, attribute);
 	if (raw === undefined) return [];
-	return (Array.isArray(raw) ? raw : [raw]).map((v) => (Buffer.isBuffer(v) ? v.toString('utf8') : String(v)));
+	const values: unknown[] = Array.isArray(raw) ? (raw as unknown[]) : [raw];
+	return values.map(asText);
 };
 
 // Directory login: find the user with the service account, prove the password by
@@ -199,7 +226,8 @@ export class LdapAuthenticator {
 	async authenticate(
 		identifier: string,
 		password: string,
-		alternatives: string[] = []
+		alternatives: string[] = [],
+		guard?: LdapBindGuard
 	): Promise<LdapIdentity | null> {
 		// An LDAP bind with an empty password is an *unauthenticated* bind, which many
 		// servers accept as success. Never let one through as a login.
@@ -221,13 +249,20 @@ export class LdapAuthenticator {
 			}
 			if (!found) return null;
 			const { entry, identifier: matched } = found;
+			// The entry is known now: the failure budget is the account's, whichever name
+			// or address reached it.
+			if (guard && !guard.allow(entry.dn)) throw new LdapThrottledError(entry.dn);
 
 			try {
 				await client.bind(entry.dn, password);
 			} catch (error) {
-				if (error instanceof InvalidCredentialsError) return null;
+				if (error instanceof InvalidCredentialsError) {
+					guard?.failed(entry.dn);
+					return null;
+				}
 				throw new LdapUnavailableError(`LDAP user bind failed: ${(error as Error).message}`);
 			}
+			guard?.succeeded(entry.dn);
 
 			// Group lookup runs as the service account again: the user may not be allowed
 			// to read groups.
@@ -235,7 +270,7 @@ export class LdapAuthenticator {
 			const groups = await this.groupsOf(client, entry);
 			return this.identityOf(entry, matched, groups);
 		} catch (error) {
-			if (error instanceof LdapUnavailableError) throw error;
+			if (error instanceof LdapUnavailableError || error instanceof LdapThrottledError) throw error;
 			throw new LdapUnavailableError(`LDAP error: ${(error as Error).message}`);
 		} finally {
 			await client.unbind().catch(() => undefined);
@@ -420,9 +455,9 @@ export class LdapAuthenticator {
 		const groupsAttr = this.config.groups_attribute ?? 'memberOf';
 		// Function replacers: a string replacement would expand $&, $' and $` in the value.
 		const escaped = escapeFilterValue(identifier.trim());
-		const filter = this.searchFilter()
-			.replaceAll('{{login}}', () => escaped)
-			.replaceAll('{{email}}', () => escaped);
+		// One pass over both placeholders: a value that itself contains "{{email}}" must
+		// not be substituted a second time.
+		const filter = this.searchFilter().replace(/\{\{(login|email)\}\}/g, () => escaped);
 		const { searchEntries } = await this.search(client, this.config.search_base as string, {
 			scope: 'sub',
 			filter,
@@ -440,16 +475,17 @@ export class LdapAuthenticator {
 		return allValues(entry, attribute).some((value) => value.trim().toLowerCase() === typed);
 	}
 
-	// The identity an entry yields. The username is the entry's own (its first username
-	// attribute value), whichever side was typed — so one entry always maps to one
-	// account; the typed name was already checked against those values by
-	// listsIdentifier. The email is the typed address, else the entry's (and may be
-	// missing: a directory user with no mail attribute gets no email).
+	// The identity an entry yields: the entry's own username (its first username
+	// attribute value) and its own first address, whichever side was typed — so one
+	// entry always maps to one account and signing in by an alias never rewrites the
+	// stored contact. The typed value was already checked against the entry's values by
+	// listsIdentifier; it is only the fallback for an entry that lists no address or no
+	// username of its own.
 	private identityOf(entry: Entry, identifier: string, groups: string[]): LdapIdentity {
 		const typed = identifier.trim().toLowerCase();
 		const directoryUsername = firstValue(entry, this.usernameAttribute())?.trim();
 		const directoryEmail = firstValue(entry, this.emailAttribute())?.trim().toLowerCase() || null;
-		const email = isEmailLike(typed) ? typed : directoryEmail;
+		const email = directoryEmail ?? (isEmailLike(typed) ? typed : null);
 		const username = foldUsername(directoryUsername || (isEmailLike(typed) ? usernameFromEmail(typed) : typed));
 		return {
 			dn: entry.dn,

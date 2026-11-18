@@ -328,6 +328,9 @@ const mergeUpdates = (base: LdapConfig, updates: UpdateLdapSettings): LdapConfig
 			...(updates.tlsCaCert !== undefined ? { ca: blankToUndefined(updates.tlsCaCert) } : {}),
 		};
 	}
+	// A filter equal to the generated default is not an override: left unset, it keeps
+	// following the attributes (the page always sends the filter it was shown).
+	if (next.search_filter === defaultSearchFilter(next)) next.search_filter = undefined;
 	return next;
 };
 

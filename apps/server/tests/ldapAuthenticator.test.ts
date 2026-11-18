@@ -5,9 +5,11 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
 	escapeFilterValue,
 	LdapAuthenticator,
+	LdapBindGuard,
 	LdapClientLike,
 	LdapSearchOptions,
 	LdapSearchResult,
+	LdapThrottledError,
 	LdapUnavailableError,
 	resolveLdapRole,
 } from '../src/bl/users/ldapAuthenticator';
@@ -20,6 +22,8 @@ interface FakeUser {
 	uid?: string;
 	// Absent for an entry with no address.
 	mail?: string;
+	// Further addresses the entry lists (aliases); mail stays the first.
+	mails?: string[];
 	displayName?: string;
 	cn?: string;
 	password: string;
@@ -61,17 +65,18 @@ class FakeClient implements LdapClientLike {
 		this.calls.push(`search ${base} ${options.filter}`);
 		// A user filter: one or more (attr=value) terms, possibly OR-ed: (mail=x), (uid=x),
 		// (|(uid=x)(mail=x)). A user matches when any term names it.
-		const terms = [...options.filter.matchAll(/\((uid|mail)=([^()]*)\)/g)].map((m) => ({
-			attribute: m[1],
+		const terms = [...options.filter.matchAll(/\((uid|mail)=([^()]*)\)/gi)].map((m) => ({
+			attribute: m[1].toLowerCase(),
 			value: m[2].toLowerCase(),
 		}));
 		if (terms.length > 0 && !options.filter.startsWith('(member=')) {
 			const uidOf = (u: FakeUser) => u.uid ?? u.dn.split(',')[0].split('=')[1];
+			const addressesOf = (u: FakeUser) =>
+				[u.searchAs, u.mail, ...(u.mails ?? [])].filter((a): a is string => a !== undefined);
 			const users = this.dir.users.filter((u) =>
 				terms.some(({ attribute, value }) =>
 					attribute === 'mail'
-						? (u.searchAs ?? u.mail) !== undefined &&
-							escapeFilterValue((u.searchAs ?? u.mail) as string).toLowerCase() === value
+						? addressesOf(u).some((a) => escapeFilterValue(a).toLowerCase() === value)
 						: escapeFilterValue(uidOf(u)).toLowerCase() === value
 				)
 			);
@@ -79,7 +84,7 @@ class FakeClient implements LdapClientLike {
 				searchEntries: users.map((u) => ({
 					dn: u.dn,
 					uid: uidOf(u),
-					...(u.mail ? { mail: u.mail } : {}),
+					...(u.mail ? { mail: u.mails ? [u.mail, ...u.mails] : u.mail } : {}),
 					...(u.displayName ? { displayName: u.displayName } : {}),
 					cn: u.cn ?? u.mail ?? uidOf(u),
 					memberOf: u.memberOf ?? [],
@@ -201,6 +206,51 @@ describe('LdapAuthenticator', () => {
 		const { auth } = make(CONFIG, dir);
 		expect((await auth.authenticate('alice.admin@example.com', 'alice-pw'))?.username).toBe('alice');
 		expect((await auth.authenticate('ALICE', 'alice-pw'))?.username).toBe('alice');
+	});
+
+	test("signing in by an alias keeps the entry's first address as the stored email", async () => {
+		const dir: FakeDirectory = {
+			...DIR,
+			users: [{ ...DIR.users[0], mails: ['hubert@example.com'] }],
+		};
+		const { auth } = make(CONFIG, dir);
+		const byAlias = await auth.authenticate('hubert@example.com', 'alice-pw');
+		expect(byAlias).toMatchObject({ username: 'alice', email: 'alice@example.com' });
+		expect((await auth.authenticate('alice', 'alice-pw'))?.email).toBe('alice@example.com');
+	});
+
+	test('attribute names are read ignoring case, as LDAP defines them', async () => {
+		const { auth } = make({ ...CONFIG, username_attribute: 'UID', email_attribute: 'MAIL' });
+		expect(await auth.authenticate('alice', 'alice-pw')).toMatchObject({
+			username: 'alice',
+			email: 'alice@example.com',
+		});
+	});
+
+	test('both placeholders are substituted in one pass: a value containing "{{email}}" is searched as typed', async () => {
+		const { auth, clients } = make({ ...CONFIG, search_filter: '(uid={{login}})' });
+		await auth.authenticate('a{{email}}b', 'x');
+		expect(clients[0].calls.find((c) => c.startsWith('search'))).toContain('(uid=a{{email}}b)');
+	});
+
+	test('the bind guard: a throttled entry is never bound; failures and success report the DN', async () => {
+		const seen: string[] = [];
+		const guard: LdapBindGuard = {
+			allow: (dn) => !dn.startsWith('uid=bob'),
+			failed: (dn) => seen.push(`failed ${dn}`),
+			succeeded: (dn) => seen.push(`ok ${dn}`),
+		};
+		const { auth, clients } = make();
+		await expect(auth.authenticate('bob@example.com', 'bob pw with spaces', [], guard)).rejects.toThrow(
+			LdapThrottledError
+		);
+		expect(clients[0].calls.some((c) => c.startsWith('bind uid=bob'))).toBe(false);
+		expect(await auth.authenticate('alice', 'nope', [], guard)).toBeNull();
+		expect((await auth.authenticate('alice@example.com', 'alice-pw', [], guard))?.username).toBe('alice');
+		expect(seen).toEqual([
+			'failed uid=alice,ou=people,dc=example,dc=com',
+			'ok uid=alice,ou=people,dc=example,dc=com',
+		]);
 	});
 
 	test('an entry with no mail attribute yields an identity without an email', async () => {
@@ -424,6 +474,18 @@ describe('resolveLdapConfig', () => {
 		expect(c.enabled).toBe(true);
 		expect(c.role_mapping?.admin).toEqual(['cn=a,dc=x', 'cn=b,dc=x']);
 		expect(c.role_mapping?.viewer).toEqual(['everyone']);
+	});
+
+	test('a blank attribute name means the default, not an attribute called ""', () => {
+		const config = resolveLdapConfig({
+			enabled: true,
+			url: 'ldaps://x',
+			search_base: 'dc=x',
+			username_attribute: '',
+			email_attribute: ' ',
+		});
+		expect(config.username_attribute).toBeUndefined();
+		expect(config.email_attribute).toBeUndefined();
 	});
 
 	test('enabled but incomplete → switched off, not a crash', () => {
