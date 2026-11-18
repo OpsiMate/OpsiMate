@@ -264,8 +264,31 @@ describe('owner from the webhook (directory users)', () => {
 			const asked = [typed, ...alternatives];
 			lookups.push(...asked);
 			if (directoryDown) return Promise.reject(new LdapUnavailableError('connect ECONNREFUSED'));
-			const identifier =
-				asked.find((s) => ['dana', 'dana@acme.test', 'guest', 'guest@acme.test'].includes(s)) ?? typed;
+			const known = ['dana', 'dana@acme.test', 'guest', 'guest@acme.test', 'noa', 'mia@acme.test'];
+			const identifier = asked.find((s) => known.includes(s)) ?? typed;
+			if (identifier === 'noa') {
+				// A directory account with no mail attribute at all.
+				return Promise.resolve({
+					dn: 'cn=noa,dc=x',
+					objectId: 'uuid-noa',
+					username: 'noa',
+					email: null,
+					fullName: 'Noa Nomail',
+					groups: [],
+					role: Role.Viewer,
+				});
+			}
+			if (identifier === 'mia@acme.test') {
+				return Promise.resolve({
+					dn: 'cn=mia,dc=x',
+					objectId: 'uuid-mia',
+					username: 'mia',
+					email: 'mia@acme.test',
+					fullName: 'Mia',
+					groups: [],
+					role: Role.Viewer,
+				});
+			}
 			if (identifier === 'dana' || identifier === 'dana@acme.test') {
 				return Promise.resolve({
 					dn: 'cn=dana,dc=x',
@@ -329,6 +352,24 @@ describe('owner from the webhook (directory users)', () => {
 		expect((await resolver.resolve('DANA'))?.id).toBe(user?.id);
 		// The exact name settled it; the completed address was never needed.
 		expect(lookups).toEqual(['dana']);
+	});
+
+	test('an unknown owner with no mail in the directory is provisioned by username; the account is then found without the directory', async () => {
+		// No default login domain: a bare name is asked of the directory as a username only.
+		const resolver = new WebhookOwnerResolver(userBL, () => null);
+		const user = await resolver.resolve('Noa');
+		expect(user).toMatchObject({ username: 'noa', email: null, fullName: 'Noa Nomail', authSource: 'ldap' });
+		expect(lookups).toEqual(['noa']);
+		// Another resolver (a restart, or the cache cleared after a user change): the row
+		// is found by username, the directory is not asked again.
+		const again = await new WebhookOwnerResolver(userBL, () => null).resolve('noa');
+		expect(again?.id).toBe(user?.id);
+		expect(lookups).toEqual(['noa']);
+		// An address names a directory user by email, as before; an unknown bare name is
+		// asked as a username and nothing else.
+		expect((await resolver.resolve('mia@acme.test'))?.username).toBe('mia');
+		expect(await resolver.resolve('nobody')).toBeNull();
+		expect(lookups).toEqual(['noa', 'mia@acme.test', 'nobody']);
 	});
 
 	test('in no mapped group → nobody; unknown → nobody (as a username, then as the completed address); a local account wins without asking the directory', async () => {
