@@ -45,6 +45,13 @@ export class LoginThrottle {
 		return this.counts[bucket];
 	}
 
+	// Takes back one recorded failure: an attempt that was reserved (see UserBL's bind
+	// guard) but never judged. Nothing to take back once the window has passed.
+	forgive(key: string): void {
+		const bucket = this.bucketOf(key);
+		if (!this.expired(bucket) && this.counts[bucket] > 0) this.counts[bucket]--;
+	}
+
 	// A success clears the key's bucket (shared only on a chance collision).
 	reset(key: string): void {
 		this.counts[this.bucketOf(key)] = 0;

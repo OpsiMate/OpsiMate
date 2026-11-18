@@ -17,6 +17,13 @@ interface CachedOwner {
 	expires: number;
 }
 
+export interface WebhookOwnerLookup {
+	user: User | null;
+	// Set when there is no answer rather than a "nobody": the directory could not be
+	// asked, or provisioning failed on the way. Not remembered; the next webhook retries.
+	failure?: string;
+}
+
 // Turns the `owner` a webhook sends — a username or an email — into an OpsiMate user,
 // provisioning a directory user who has never logged in (see UserBL.findOrProvisionUser).
 // A bare name that matches nobody is also tried as the address the (deprecated) default
@@ -34,10 +41,15 @@ export class WebhookOwnerResolver {
 	) {}
 
 	async resolve(identifier: string): Promise<User | null> {
+		return (await this.lookup(identifier)).user;
+	}
+
+	// The user, or why there is none: a miss (`user: null`), or no answer (`failure`).
+	async lookup(identifier: string): Promise<WebhookOwnerLookup> {
 		const typed = identifier.trim().toLowerCase();
-		if (!typed) return null;
+		if (!typed) return { user: null };
 		const cached = this.cache.get(typed);
-		if (cached && cached.expires > Date.now()) return cached.user;
+		if (cached && cached.expires > Date.now()) return { user: cached.user };
 		const generation = this.generation;
 		// The completed address rides along as an alternative, tried after the name itself.
 		const completed = completeLoginIdentifier(typed, this.defaultEmailDomain()).toLowerCase();
@@ -50,12 +62,13 @@ export class WebhookOwnerResolver {
 			// retries. The alert itself is ingested regardless.
 			const reason =
 				error instanceof LdapUnavailableError ? 'the directory could not be asked' : 'provisioning failed';
-			logger.warn(`Webhook owner ${typed}: ${reason} (${(error as Error).message})`);
-			return null;
+			const detail = error instanceof Error ? error.message : String(error);
+			logger.warn(`Webhook owner ${typed}: ${reason} (${detail})`);
+			return { user: null, failure: `${reason}: ${detail}` };
 		}
 		if (!user) logger.debug(`Webhook owner ${typed} matches no user`);
 		if (generation === this.generation) this.remember(typed, user);
-		return user;
+		return { user };
 	}
 
 	private remember(key: string, user: User | null): void {

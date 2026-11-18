@@ -31,6 +31,12 @@ interface FakeUser {
 	// The search matches this address although the entry's mail says otherwise
 	// (a custom filter on another attribute, or a self-edited extra value).
 	searchAs?: string;
+	// The operational id the directory returns; null = none (an older server), default uuid-<uid>.
+	entryUUID?: string | null;
+	// Active Directory's id: 16 raw bytes, or (through a proxy) text.
+	objectGUID?: Buffer | string;
+	// The user bind fails with this connection error instead of a verdict.
+	bindError?: string;
 }
 
 interface FakeGroup {
@@ -58,11 +64,14 @@ class FakeClient implements LdapClientLike {
 		if (this.dir.down) return Promise.reject(new Error('connect ECONNREFUSED'));
 		if (dn === this.dir.serviceDn && password === this.dir.servicePassword) return Promise.resolve();
 		const user = this.dir.users.find((u) => u.dn === dn);
+		if (user?.bindError) return Promise.reject(new Error(user.bindError));
 		if (user && user.password === password) return Promise.resolve();
 		return Promise.reject(new InvalidCredentialsError('Invalid Credentials'));
 	}
+	searches: LdapSearchOptions[] = [];
 	search(base: string, options: LdapSearchOptions): Promise<LdapSearchResult> {
 		this.calls.push(`search ${base} ${options.filter}`);
+		this.searches.push(options);
 		// A user filter: one or more (attr=value) terms, possibly OR-ed: (mail=x), (uid=x),
 		// (|(uid=x)(mail=x)). A user matches when any term names it.
 		const terms = [...options.filter.matchAll(/\((uid|mail)=([^()]*)\)/gi)].map((m) => ({
@@ -84,7 +93,8 @@ class FakeClient implements LdapClientLike {
 				searchEntries: users.map((u) => ({
 					dn: u.dn,
 					uid: uidOf(u),
-					entryUUID: `uuid-${uidOf(u)}`,
+					...(u.entryUUID === null ? {} : { entryUUID: u.entryUUID ?? `uuid-${uidOf(u)}` }),
+					...(u.objectGUID !== undefined ? { objectGUID: u.objectGUID } : {}),
 					...(u.mail ? { mail: u.mails ? [u.mail, ...u.mails] : u.mail } : {}),
 					...(u.displayName ? { displayName: u.displayName } : {}),
 					cn: u.cn ?? u.mail ?? uidOf(u),
@@ -235,6 +245,24 @@ describe('LdapAuthenticator', () => {
 		expect((await auth.authenticate('alice', 'alice-pw'))?.objectId).toBe('uuid-alice');
 	});
 
+	test("Active Directory's objectGUID is asked for as bytes and read as hex; text is taken in GUID form only", async () => {
+		const guid = Buffer.from('0123456789abcdef0123456789abcdef', 'hex');
+		const ad = (objectGUID: Buffer | string): FakeDirectory => ({
+			...DIR,
+			users: [{ dn: 'cn=ann,ou=people,dc=example,dc=com', password: 'ann-pw', entryUUID: null, objectGUID }],
+		});
+		const asBytes = make(CONFIG, ad(guid));
+		expect((await asBytes.auth.authenticate('ann', 'ann-pw'))?.objectId).toBe(`guid:${guid.toString('hex')}`);
+		expect(asBytes.clients[0].searches[0].explicitBufferAttributes).toContain('objectGUID');
+		const asGuidText = make(CONFIG, ad('{01234567-89AB-CDEF-0123-456789ABCDEF}'));
+		expect((await asGuidText.auth.authenticate('ann', 'ann-pw'))?.objectId).toBe(
+			'guid:01234567-89ab-cdef-0123-456789abcdef'
+		);
+		// The bytes decoded as UTF-8 (lossy: different GUIDs can read alike) are no id.
+		const lossy = make(CONFIG, ad(guid.toString('utf8')));
+		expect((await lossy.auth.authenticate('ann', 'ann-pw'))?.objectId).toBeNull();
+	});
+
 	test('attribute names are read ignoring case, as LDAP defines them', async () => {
 		const { auth } = make({ ...CONFIG, username_attribute: 'UID', email_attribute: 'MAIL' });
 		expect(await auth.authenticate('alice', 'alice-pw')).toMatchObject({
@@ -254,6 +282,7 @@ describe('LdapAuthenticator', () => {
 		const guard: LdapBindGuard = {
 			allow: (dn) => !dn.startsWith('uid=bob'),
 			failed: (dn) => seen.push(`failed ${dn}`),
+			abandoned: (dn) => seen.push(`abandoned ${dn}`),
 			succeeded: (dn) => seen.push(`ok ${dn}`),
 		};
 		const { auth, clients } = make();
@@ -267,6 +296,25 @@ describe('LdapAuthenticator', () => {
 			'failed uid=alice,ou=people,dc=example,dc=com',
 			'ok uid=alice,ou=people,dc=example,dc=com',
 		]);
+	});
+
+	test('the bind guard: a bind the connection broke off gives its reservation back; a timed-out one does not', async () => {
+		const seen: string[] = [];
+		const guard: LdapBindGuard = {
+			allow: () => true,
+			failed: (dn) => seen.push(`failed ${dn}`),
+			abandoned: (dn) => seen.push(`abandoned ${dn}`),
+			succeeded: (dn) => seen.push(`ok ${dn}`),
+		};
+		const carl = (bindError: string): FakeDirectory => ({
+			...DIR,
+			users: [{ dn: 'uid=carl,ou=people,dc=example,dc=com', password: 'carl-pw', bindError }],
+		});
+		const broken = make(CONFIG, carl('socket hang up'));
+		await expect(broken.auth.authenticate('carl', 'carl-pw', [], guard)).rejects.toThrow(LdapUnavailableError);
+		const timedOut = make(CONFIG, carl('Connection timeout'));
+		await expect(timedOut.auth.authenticate('carl', 'carl-pw', [], guard)).rejects.toThrow(LdapUnavailableError);
+		expect(seen).toEqual(['abandoned uid=carl,ou=people,dc=example,dc=com']);
 	});
 
 	test('an entry with no mail attribute yields an identity without an email', async () => {
@@ -492,14 +540,22 @@ describe('resolveLdapConfig', () => {
 		expect(c.role_mapping?.viewer).toEqual(['everyone']);
 	});
 
-	test('a list where an attribute name belongs switches LDAP off with a reason', () => {
-		const config = resolveLdapConfig({
-			enabled: true,
-			url: 'ldaps://x',
-			search_base: 'dc=x',
-			username_attribute: ['uid', 'sAMAccountName'] as unknown as string,
-		});
-		expect(config.enabled).toBe(false);
+	test('an attribute name must be one: a list, or a name with a space, switches LDAP off with a reason', () => {
+		const withAttribute = (username_attribute: unknown) =>
+			resolveLdapConfig({
+				enabled: true,
+				url: 'ldaps://x',
+				search_base: 'dc=x',
+				default_role: 'viewer',
+				username_attribute: username_attribute as string,
+			});
+		expect(withAttribute('uid').enabled).toBe(true);
+		expect(withAttribute('sAMAccountName').enabled).toBe(true);
+		expect(withAttribute('0.9.2342.19200300.100.1.1').enabled).toBe(true);
+		expect(withAttribute('cn;lang-en').enabled).toBe(true);
+		expect(withAttribute(['uid', 'sAMAccountName']).enabled).toBe(false);
+		expect(withAttribute('uid name').enabled).toBe(false);
+		expect(withAttribute('(uid=*)').enabled).toBe(false);
 	});
 
 	test('a blank attribute name means the default, not an attribute called ""', () => {

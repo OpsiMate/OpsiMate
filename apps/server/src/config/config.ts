@@ -284,6 +284,11 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	return ldap;
 }
 
+// An LDAP attribute description (RFC 4512): a name (`mail`, `sAMAccountName`) or a
+// numeric OID (`0.9.2342.19200300.100.1.3`), with optional `;option`s (`cn;lang-en`).
+const ATTRIBUTE_DESCRIPTION = /^(?:[A-Za-z][A-Za-z0-9-]*|\d+(?:\.\d+)*)(?:;[A-Za-z0-9-]+)*$/;
+const isAttributeDescription = (value: string): boolean => ATTRIBUTE_DESCRIPTION.test(value.trim());
+
 // What stops this LDAP config from working, as short field notes; empty = usable.
 // Shared by config.yml / env loading and the Settings page.
 export function validateLdapConfig(ldap: LdapConfig): string[] {
@@ -292,7 +297,14 @@ export function validateLdapConfig(ldap: LdapConfig): string[] {
 	if (!ldap.url || !/^ldaps?:\/\//i.test(ldap.url)) problems.push('url (ldap:// or ldaps://)');
 	if (!ldap.search_base) problems.push('search_base');
 	for (const key of ['username_attribute', 'email_attribute', 'name_attribute', 'groups_attribute'] as const) {
-		if (ldap[key] !== undefined && typeof ldap[key] !== 'string') problems.push(`${key} (an attribute name)`);
+		const value = ldap[key];
+		// Blank means the default (see resolveLdapConfig); anything else must be an
+		// attribute description — a list, or a name with a space, would break the filter.
+		if (
+			value !== undefined &&
+			!(typeof value === 'string' && (value.trim() === '' || isAttributeDescription(value)))
+		)
+			problems.push(`${key} (an attribute name)`);
 	}
 	if (ldap.bind_dn && !ldap.bind_password) problems.push('bind_password (bind_dn is set)');
 	if (ldap.default_role && !LDAP_ROLES.includes(ldap.default_role)) problems.push('default_role');

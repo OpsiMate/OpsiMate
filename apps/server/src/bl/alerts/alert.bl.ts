@@ -689,9 +689,13 @@ export class AlertBL {
 		try {
 			const current = await this.alertRepo.getAlert(alert.id);
 			if (current?.ownerId) return 'kept';
-			const user = await this.webhookOwnerResolver.resolve(requested);
+			const { user, failure } = await this.webhookOwnerResolver.lookup(requested);
 			if (!user) {
-				logger.warn(`Alert ${alert.id}: owner "${requested}" from the ${alert.type} webhook matches no user`);
+				// Left unassigned either way; the log says whether that is a verdict or not.
+				const why = failure
+					? `could not be resolved (${failure}); the next webhook retries`
+					: 'matches no user';
+				logger.warn(`Alert ${alert.id}: owner "${requested}" from the ${alert.type} webhook ${why}`);
 				return 'not_found';
 			}
 			await this.alertRepo.updateAlertOwner(alert.id, Number(user.id));

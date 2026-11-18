@@ -215,7 +215,7 @@ describe('owner from the webhook (API)', () => {
 		const dana = await userRepo.getUserByEmail('dana@example.com');
 		let release: () => void = () => undefined;
 		const directory = new Promise<void>((resolve) => (release = resolve));
-		const slow = { resolve: async () => (await directory, dana) } as unknown as WebhookOwnerResolver;
+		const slow = { lookup: async () => (await directory, { user: dana }) } as unknown as WebhookOwnerResolver;
 		bl.setWebhookOwnerResolver(slow);
 		const now = new Date().toISOString();
 		const incoming = (owner: string): IncomingAlert => ({
@@ -388,18 +388,49 @@ describe('owner from the webhook (directory users)', () => {
 		expect(lookups).toEqual(['guest', 'nobody', 'nobody@acme.test']);
 	});
 
+	test('a local account reached through the completed address is the answer even while the directory is down', async () => {
+		await userRepo.createUser({
+			username: 'ops',
+			email: 'ops-team@acme.test',
+			passwordHash: 'hash',
+			fullName: 'Ops Team',
+			role: Role.Viewer,
+		});
+		directoryDown = true;
+		const resolver = new WebhookOwnerResolver(userBL, () => 'acme.test');
+		// No account is named "ops-team"; ops-team@acme.test is a local account: found
+		// without asking the directory, which could not have answered anyway.
+		expect((await resolver.resolve('ops-team'))?.username).toBe('ops');
+		expect(lookups).toEqual([]);
+		// Someone the directory would have to answer for: no answer, and said so.
+		const asked = await resolver.lookup('dana');
+		expect(asked.user).toBeNull();
+		expect(asked.failure).toMatch(/directory could not be asked/);
+	});
+
 	test('a provisioning failure on the way (the database) is not remembered either', async () => {
 		const resolver = new WebhookOwnerResolver(userBL, () => null);
 		const original = userRepo.createUser.bind(userRepo);
 		let failedOnce = false;
+		let rejectWith: unknown = new Error('SQLITE_BUSY: database is locked');
 		const spy = vi.spyOn(userRepo, 'createUser').mockImplementation(async (row) => {
 			if (!failedOnce) {
 				failedOnce = true;
-				throw new Error('SQLITE_BUSY: database is locked');
+				throw rejectWith;
 			}
 			return original(row);
 		});
-		expect(await resolver.resolve('dana')).toBeNull();
+		// Not a miss: the caller hears why, and nothing is cached.
+		const failed = await resolver.lookup('dana');
+		expect(failed.user).toBeNull();
+		expect(failed.failure).toMatch(/provisioning failed: SQLITE_BUSY/);
+		expect((await resolver.resolve('dana'))?.username).toBe('dana');
+		// A rejection that is not an Error is reported too, not thrown again.
+		db.exec('DELETE FROM users');
+		resolver.clear();
+		failedOnce = false;
+		rejectWith = undefined;
+		expect((await resolver.lookup('dana')).failure).toMatch(/provisioning failed: undefined/);
 		expect((await resolver.resolve('dana'))?.username).toBe('dana');
 		spy.mockRestore();
 	});

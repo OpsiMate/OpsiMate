@@ -27,6 +27,8 @@ class StubDirectory {
 	// Password checks that actually reached the directory.
 	binds = 0;
 	down = false;
+	// The user bind breaks off (the connection, not the password) instead of a verdict.
+	bindBroken = false;
 	answers = new Map<string, StubAnswer>();
 	authenticate(
 		identifier: string,
@@ -41,6 +43,10 @@ class StubDirectory {
 		if (!answer) return Promise.resolve(null);
 		if (guard && !guard.allow(answer.identity.dn))
 			return Promise.reject(new LdapThrottledError(answer.identity.dn));
+		if (this.bindBroken) {
+			guard?.abandoned(answer.identity.dn);
+			return Promise.reject(new LdapUnavailableError('LDAP user bind failed: socket hang up'));
+		}
 		this.binds++;
 		// The bind crosses the network: let the other attempts queue up behind it.
 		return new Promise((resolve) => setTimeout(resolve, 5)).then(() => {
@@ -286,6 +292,15 @@ describe('UserBL login with LDAP', () => {
 		expect(directory.binds).toBe(5);
 	});
 
+	test('a bind the connection broke off is not a failed attempt: the budget is intact when the directory is back', async () => {
+		directory.bindBroken = true;
+		for (let i = 0; i < 7; i++) {
+			await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toThrow(LdapUnavailableError);
+		}
+		directory.bindBroken = false;
+		expect((await userBL.login('dana@example.com', 'dir-pw')).username).toBe('dana');
+	});
+
 	test("legacy email field: the completed address is checked first, even when the bare name is another directory account's username", async () => {
 		// "alex" is user A's username (provisioned); alex@example.com belongs to user B.
 		await userRepo.createUser({
@@ -307,6 +322,12 @@ describe('UserBL login with LDAP', () => {
 				objectId: 'uuid-alexb',
 			},
 		});
+		// The directory answers for the bare name too (user A, same password), so the
+		// winner shows which spelling was searched first.
+		directory.answers.set('alex', {
+			password: 'b-pw',
+			identity: { ...identity('alex.a@example.com', 'Alex A', Role.Viewer), username: 'alex' },
+		});
 		const withDomain = new UserBL(
 			userRepo,
 			{ sendMail } as unknown as MailClient,
@@ -315,8 +336,99 @@ describe('UserBL login with LDAP', () => {
 			'example.com'
 		);
 		withDomain.setLdapAuthenticator(directory as unknown as LdapAuthenticator);
+		// User A's own address is over its budget: that is A's problem, not this login's,
+		// which means alex@example.com.
+		for (let i = 0; i < 5; i++) {
+			await expect(withDomain.login('alex.a@example.com', 'wrong')).rejects.toThrow(
+				'Invalid username or password'
+			);
+		}
+		await expect(withDomain.login('alex.a@example.com', 'wrong')).rejects.toThrow(TooManyLoginAttemptsError);
 		const b = await withDomain.login('alex', 'b-pw', { legacyEmailField: true });
 		expect(b).toMatchObject({ username: 'alexb', email: 'alex@example.com' });
+	});
+
+	test('a known username whose directory object moved still signs in by that username; the new DN is recorded', async () => {
+		await userBL.login('dana@example.com', 'dir-pw');
+		directory.answers.set('dana', {
+			password: 'dir-pw',
+			identity: {
+				...identity('dana@example.com', 'Dana Directory', Role.Editor),
+				dn: 'uid=dana,ou=moved,dc=example,dc=com',
+			},
+		});
+		const moved = await userBL.login('dana', 'dir-pw');
+		expect(moved.username).toBe('dana');
+		// Still one directory account (next to the local admin the fixture creates).
+		expect(await userRepo.countUsers()).toBe(2);
+		expect((await userRepo.findDirectoryLinkByUsername('dana'))?.ldapDn).toBe(
+			'uid=dana,ou=moved,dc=example,dc=com'
+		);
+		// Another object at the account's old DN, with its username and address, is not it.
+		directory.answers.set('dana', {
+			password: 'dir-pw',
+			identity: { ...identity('dana@example.com', 'Impostor', Role.Admin), objectId: 'uuid-impostor' },
+		});
+		await expect(userBL.login('dana', 'dir-pw')).rejects.toThrow('Invalid username or password');
+	});
+
+	test('an account linked before object ids were recorded is found at its DN even behind a newer object that once lived there', async () => {
+		// An older object at the DN (its id known) and the legacy row at the same DN (no id).
+		await userRepo.createUser({
+			username: 'former',
+			email: 'former@example.com',
+			passwordHash: '!ldap',
+			fullName: 'Former Occupant',
+			role: Role.Viewer,
+			authSource: 'ldap',
+			ldapDn: 'uid=shared,dc=example,dc=com',
+			ldapObjectId: 'uuid-former',
+		});
+		await userRepo.createUser({
+			username: 'legacy',
+			email: 'legacy@example.com',
+			passwordHash: '!ldap',
+			fullName: 'Legacy Link',
+			role: Role.Viewer,
+			authSource: 'ldap',
+			ldapDn: 'uid=shared,dc=example,dc=com',
+		});
+		// The legacy account's object logs in with a new username and address.
+		directory.answers.set('shared@example.com', {
+			password: 'pw',
+			identity: {
+				...identity('shared@example.com', 'Legacy Renamed', Role.Editor),
+				username: 'legacy2',
+				dn: 'uid=shared,dc=example,dc=com',
+				objectId: 'uuid-legacy',
+			},
+		});
+		const user = await userBL.login('shared@example.com', 'pw');
+		expect(user.fullName).toBe('Legacy Renamed');
+		// No third directory account: the two rows above, plus the fixture's local admin.
+		expect(await userRepo.countUsers()).toBe(3);
+		expect(await userRepo.findDirectoryLinkByObjectId('uuid-legacy')).toMatchObject({
+			ldapObjectId: 'uuid-legacy',
+		});
+		expect((await userRepo.findDirectoryLinkByUsername('former'))?.ldapObjectId).toBe('uuid-former');
+	});
+
+	test('one directory object, one account: the database refuses a second row for the same object id', async () => {
+		const row = {
+			passwordHash: '!ldap',
+			fullName: 'Twice',
+			role: Role.Viewer,
+			authSource: 'ldap' as const,
+			ldapDn: 'uid=twice,dc=example,dc=com',
+			ldapObjectId: 'uuid-twice',
+		};
+		await userRepo.createUser({ ...row, username: 'twice', email: 'twice@example.com' });
+		await expect(userRepo.createUser({ ...row, username: 'twice2', email: 'twice2@example.com' })).rejects.toThrow(
+			/UNIQUE/
+		);
+		// Null ids are not compared: two local accounts, two directories without ids, fine.
+		await userRepo.createUser({ ...row, username: 'noid1', email: null, ldapObjectId: undefined });
+		await userRepo.createUser({ ...row, username: 'noid2', email: null, ldapObjectId: undefined });
 	});
 
 	test('a new entry at an old DN is not the old account: object ids tell them apart', async () => {

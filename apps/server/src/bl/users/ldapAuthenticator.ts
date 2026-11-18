@@ -41,8 +41,13 @@ export interface LdapIdentity {
 // (its DN), so a username and an email that name the same account share one budget —
 // before the account has an OpsiMate row as much as after.
 export interface LdapBindGuard {
+	// Reserves an attempt, or refuses: the account is over its budget.
 	allow(dn: string): boolean;
+	// The directory said the password was wrong: the reservation is a failure now.
 	failed(dn: string): void;
+	// The password never reached a verdict (the connection broke before or during the
+	// bind): the reservation is given back, the directory counted nothing.
+	abandoned(dn: string): void;
 	succeeded(dn: string): void;
 }
 
@@ -76,6 +81,8 @@ export interface LdapSearchOptions {
 	filter: string;
 	attributes: string[];
 	sizeLimit?: number;
+	// Attributes to hand back as raw bytes (ldapts would otherwise decode them as UTF-8).
+	explicitBufferAttributes?: string[];
 }
 
 export interface LdapSearchResult {
@@ -145,6 +152,10 @@ const asText = (value: unknown): string => (Buffer.isBuffer(value) ? value.toStr
 // FreeIPA expose entryUUID, Active Directory objectGUID (16 bytes, read as hex). Both
 // are asked for; whichever the server returns becomes the identity's objectId.
 const OBJECT_ID_ATTRIBUTES = ['entryUUID', 'objectGUID'] as const;
+// The GUID is asked for as bytes (see findEntries); a textual GUID is accepted in its
+// standard form only. Anything else — the 16 bytes decoded as UTF-8, which is lossy, so
+// two objects could read the same — is no id at all, and the account is linked by DN.
+const GUID_TEXT = /^\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?$/i;
 const objectIdOf = (entry: Entry): string | null => {
 	const uuid = rawAttribute(entry, 'entryUUID');
 	const first = (value: unknown): unknown => (Array.isArray(value) ? (value as unknown[])[0] : value);
@@ -152,8 +163,11 @@ const objectIdOf = (entry: Entry): string | null => {
 	if (uuidValue !== undefined && uuidValue !== null && uuidValue !== '')
 		return asText(uuidValue).trim().toLowerCase();
 	const guid = first(rawAttribute(entry, 'objectGUID'));
-	if (guid === undefined || guid === null || guid === '') return null;
-	return Buffer.isBuffer(guid) ? `guid:${guid.toString('hex')}` : `guid:${asText(guid).trim().toLowerCase()}`;
+	if (Buffer.isBuffer(guid)) return guid.length === 16 ? `guid:${guid.toString('hex')}` : null;
+	if (typeof guid === 'string' && GUID_TEXT.test(guid.trim())) {
+		return `guid:${guid.trim().replace(/[{}]/g, '').toLowerCase()}`;
+	}
+	return null;
 };
 
 const firstValue = (entry: Entry, attribute: string): string | undefined => {
@@ -278,7 +292,12 @@ export class LdapAuthenticator {
 					guard?.failed(entry.dn);
 					return null;
 				}
-				throw new LdapUnavailableError(`LDAP user bind failed: ${(error as Error).message}`);
+				// No verdict. The connection broke: the password was not checked, the
+				// reservation goes back. A timeout is the one case where it may have been —
+				// the directory may be counting it — so that reservation stands.
+				const message = error instanceof Error ? error.message : String(error);
+				if (!/time(d )?out/i.test(message)) guard?.abandoned(entry.dn);
+				throw new LdapUnavailableError(`LDAP user bind failed: ${message}`);
 			}
 			guard?.succeeded(entry.dn);
 
@@ -487,6 +506,8 @@ export class LdapAuthenticator {
 				groupsAttr,
 				...OBJECT_ID_ATTRIBUTES,
 			],
+			// Active Directory's objectGUID is 16 raw bytes: decoded as text it is not unique.
+			explicitBufferAttributes: ['objectGUID'],
 			sizeLimit: 2,
 		});
 		return searchEntries;

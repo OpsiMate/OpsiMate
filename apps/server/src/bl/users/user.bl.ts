@@ -292,11 +292,15 @@ export class UserBL {
 			throw new Error(INVALID_LOGIN);
 		}
 
-		// Two throttles. Before the directory is searched, the login as typed (its resolved
-		// address when one is known) bounds the searches. Once the entry is found, the
-		// account itself — its DN — carries the budget, so a username and an email for the
-		// same account share one count whether or not the account has an OpsiMate row yet.
-		const throttleKey = knownAddress ?? spellings.find((spelling) => spelling.includes('@')) ?? typed;
+		// Two throttles. Before the directory is searched, the login's preferred spelling
+		// bounds the searches: through the login field the named account's address when
+		// known (an explicit username names one account), through the legacy email field
+		// the completed address — a username holder is only a fallback there and its own
+		// budget is not this login's. Once the entry is found, the account itself — its DN —
+		// carries the budget, so a username and an email for the same account share one
+		// count whether or not the account has an OpsiMate row yet.
+		const firstAddress = spellings.find((spelling) => spelling.includes('@'));
+		const throttleKey = explicitUsername ? (knownAddress ?? typed) : (firstAddress ?? typed);
 		if (this.ldapFailures?.isThrottled(throttleKey)) throw new TooManyLoginAttemptsError();
 		// The attempt is counted BEFORE the bind, as a reservation: concurrent requests for
 		// one account cannot all pass the check while the bind is in flight and then each
@@ -311,6 +315,7 @@ export class UserBL {
 				return true;
 			},
 			failed: () => undefined,
+			abandoned: (dn) => this.ldapFailures?.forgive(dn.toLowerCase()),
 			succeeded: (dn) => this.ldapFailures?.reset(dn.toLowerCase()),
 		};
 		let identity: LdapIdentity | null;
@@ -330,14 +335,16 @@ export class UserBL {
 			throw new Error(NOT_ALLOWED_LOGIN);
 		}
 		// A login that named a known directory account by its username stays that account:
-		// the stored address, tried as an alternative, must not have reached another entry.
-		// (Through the legacy email field the completed address comes first and may rightly
-		// be someone else's; the account it reaches is checked at provisioning.)
+		// the stored address, tried as an alternative, must not have reached another
+		// directory object. The same object at a new DN (moved, renamed) is still it, and
+		// provisioning records where it lives now. (Through the legacy email field the
+		// completed address comes first and may rightly be someone else's; the account it
+		// reaches is checked at provisioning.)
 		if (explicitUsername && directoryAccount) {
 			const link = await this.userRepo.findDirectoryLinkByUsername(directoryAccount.user.username);
-			if (link?.ldapDn && link.ldapDn.toLowerCase() !== identity.dn.toLowerCase()) {
+			if (link && !UserBL.sameDirectoryObject(link, identity)) {
 				logger.warn(
-					`LDAP login for ${typed} refused: ${identity.dn} is not the account's entry ${link.ldapDn}`
+					`LDAP login for ${typed} refused: ${identity.dn} is not the account's directory object (${link.ldapDn})`
 				);
 				throw new Error(INVALID_LOGIN);
 			}
@@ -355,12 +362,17 @@ export class UserBL {
 	async findOrProvisionUser(identifier: string, alternatives: string[] = []): Promise<User | null> {
 		const normalized = identifier.trim().toLowerCase();
 		if (!normalized) return null;
-		for (const spelling of [normalized, ...alternatives.map((alt) => alt.trim().toLowerCase())]) {
+		const spellings = [normalized, ...alternatives.map((alt) => alt.trim().toLowerCase())];
+		// Every spelling is looked up locally before the directory is asked at all: an
+		// account that exists is the answer whether or not the directory can be reached.
+		for (const spelling of spellings) {
 			const link = spelling.includes('@')
 				? await this.userRepo.findDirectoryLink(spelling)
 				: await this.userRepo.findDirectoryLinkByUsername(spelling);
 			if (link) return this.userRepo.getUserById(link.id);
-			if (!this.ldap) continue;
+		}
+		if (!this.ldap) return null;
+		for (const spelling of spellings) {
 			let identity: LdapIdentity | null;
 			try {
 				identity = await this.ldap.lookup(spelling);
@@ -402,8 +414,12 @@ export class UserBL {
 			const byObject = await this.userRepo.findDirectoryLinkByObjectId(identity.objectId);
 			if (byObject) return byObject;
 		}
-		const byDn = await this.userRepo.findDirectoryLinkByDn(identity.dn);
-		if (byDn && (!byDn.ldapObjectId || !identity.objectId)) return byDn;
+		// Rows at this DN: one linked before object ids were recorded is this object (it is
+		// how such an account gets its id). A row with another object id is another object
+		// that lived here, and must not hide the legacy one behind it.
+		const atDn = await this.userRepo.findDirectoryLinksByDn(identity.dn);
+		const byDn = atDn.find((row) => !row.ldapObjectId) ?? (identity.objectId ? undefined : atDn[0]);
+		if (byDn) return byDn;
 		const byUsername = await this.userRepo.findDirectoryLinkByUsername(identity.username);
 		if (byUsername?.authSource === 'ldap') return byUsername;
 		const byEmail = identity.email ? await this.userRepo.findDirectoryLink(identity.email) : null;

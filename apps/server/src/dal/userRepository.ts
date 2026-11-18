@@ -131,7 +131,31 @@ export class UserRepository {
 				.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (username COLLATE NOCASE)`)
 				.run();
 			this.ensureEmailUniqueIgnoringCase();
+			this.ensureObjectIdUnique();
 		});
+	}
+
+	// One directory object, one account: two first logins for the same object that both
+	// pass the lookup must not both insert (the loser re-reads by object id, see UserBL).
+	// Null ids (local accounts, directories without entryUUID) are not compared.
+	private ensureObjectIdUnique(): void {
+		const duplicates = this.db
+			.prepare(
+				`SELECT ldap_object_id AS id, COUNT(*) AS n FROM users WHERE ldap_object_id IS NOT NULL GROUP BY ldap_object_id HAVING n > 1`
+			)
+			.all() as { id: string; n: number }[];
+		if (duplicates.length > 0) {
+			logger.warn(
+				`Several accounts are linked to one directory object: ${duplicates.map((d) => d.id).join(', ')}. ` +
+					'Delete the duplicates so the object id can be made unique.'
+			);
+			return;
+		}
+		this.db
+			.prepare(
+				`CREATE UNIQUE INDEX IF NOT EXISTS users_ldap_object_id_unique ON users (ldap_object_id) WHERE ldap_object_id IS NOT NULL`
+			)
+			.run();
 	}
 
 	// Every lookup treats Dana@x and dana@x as one address, so the database should refuse
@@ -423,12 +447,14 @@ export class UserRepository {
 	}
 
 	// The account a directory entry (DN) already has, whatever it is called now.
-	async findDirectoryLinkByDn(dn: string): Promise<DirectoryAccountLink | null> {
+	// Every account recorded at a DN, oldest first: a DN can have been reused by another
+	// directory object, so there may be more than one.
+	async findDirectoryLinksByDn(dn: string): Promise<DirectoryAccountLink[]> {
 		return runAsync(() => {
-			const row = this.db
-				.prepare(`SELECT ${LINK_COLUMNS} FROM users WHERE ldap_dn = ? COLLATE NOCASE ORDER BY id LIMIT 1`)
-				.get(dn.trim()) as UserRow | undefined;
-			return row ? toLink(row) : null;
+			const rows = this.db
+				.prepare(`SELECT ${LINK_COLUMNS} FROM users WHERE ldap_dn = ? COLLATE NOCASE ORDER BY id`)
+				.all(dn.trim()) as UserRow[];
+			return rows.map(toLink);
 		});
 	}
 
