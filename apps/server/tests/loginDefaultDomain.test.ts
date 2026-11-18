@@ -144,8 +144,11 @@ describe('UserBL login with a default domain', () => {
 		// completed to an address through the login field.
 		await expect(userBL.login('nobody', 'dir-pw')).rejects.toThrow('Invalid');
 		expect(ldapSeen).toEqual(['nobody']);
-		// The legacy field still completes it, as it always did.
-		expect((await userBL.login('dana', 'dir-pw', { legacyEmailField: true })).email).toBe('dana@acme.test');
+		// The legacy field still completes it and asks the directory — which answers with the
+		// username "dana", the contractor's: a directory entry never takes a local account's
+		// username, so this login is refused at provisioning.
+		await expect(userBL.login('dana', 'dir-pw', { legacyEmailField: true })).rejects.toThrow('Invalid');
+		expect(ldapSeen).toEqual(['nobody', 'dana', 'dana@acme.test']);
 	});
 
 	test('a name with its own domain is not rewritten', async () => {
