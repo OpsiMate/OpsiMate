@@ -13,6 +13,7 @@ import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
 import { ActiveListBuilder } from './activeListBuilder';
 import { BuildRequest, SnapshotWorkerData, WorkerMessage } from './snapshotWorkerClient';
+import { applyConnectionPragmas } from '../../dal/db';
 
 // The snapshot worker thread: owns an ActiveListBuilder over its own connection to
 // the database file and answers each build request with the delta since the last
@@ -24,8 +25,7 @@ if (!port) throw new Error('snapshotWorker must run as a worker thread');
 
 const { dbPath } = workerData as SnapshotWorkerData;
 const db = new Database(dbPath);
-db.pragma('journal_mode = WAL');
-db.pragma('busy_timeout = 5000');
+applyConnectionPragmas(db);
 
 const auditBL = new AuditBL(new AuditLogRepository(db));
 const enrichmentBL = new EnrichmentBL(new EnrichmentRepository(db), auditBL);
