@@ -38,6 +38,7 @@ import { routeParam } from '../../../utils/routeParams.ts';
 import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
+import { MS_PER_SECOND } from '../../../utils/time.ts';
 
 const logger: Logger = new Logger('api/v1/alerts/controller');
 
@@ -1153,12 +1154,12 @@ export class AlertController {
 
 		// If it's a number (unix seconds)
 		if (typeof value === 'number') {
-			return new Date(value * 1000).toISOString();
+			return new Date(value * MS_PER_SECOND).toISOString();
 		}
 
 		// If it's a numeric string (e.g. "1763324240" or "1763324240.0")
 		if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)) {
-			return new Date(Number(value) * 1000).toISOString();
+			return new Date(Number(value) * MS_PER_SECOND).toISOString();
 		}
 
 		// If it's an ISO-like string, try parsing

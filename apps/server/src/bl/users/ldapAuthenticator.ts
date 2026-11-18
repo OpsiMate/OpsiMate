@@ -4,6 +4,9 @@ import type { ConnectionOptions } from 'node:tls';
 import { Client, ClientOptions, Entry, InvalidCredentialsError, ResultCodeError } from 'ldapts';
 import { LdapTestResult, LdapTestStep, LdapTestUser, Logger, Role } from '@OpsiMate/shared';
 import { LdapConfig, LdapRoleMapping } from '../../config/config';
+import { MS_PER_SECOND } from '../../utils/time';
+
+export const DEFAULT_LDAP_TIMEOUT_MS = 5 * MS_PER_SECOND;
 
 const logger = new Logger('bl/users/ldapAuthenticator');
 
@@ -308,7 +311,7 @@ export class LdapAuthenticator {
 
 	// One short-lived client. See authenticate() for why nothing is shared.
 	private createClient(): LdapClientLike {
-		const timeout = this.config.timeout_ms ?? 5000;
+		const timeout = this.config.timeout_ms ?? DEFAULT_LDAP_TIMEOUT_MS;
 		const url = this.config.url as string;
 		let plainSockets = 0;
 		return this.clientFactory({

@@ -14,14 +14,13 @@ import { getLdapConfig, isLdapManagedByConfig, LdapConfig, validateLdapConfig } 
 import { LdapConfigRepository, LdapConfigRow } from '../../dal/ldapConfigRepository';
 import { decryptPassword, encryptPassword } from '../../utils/encryption';
 import { AuditBL } from '../audit/audit.bl';
-import { LdapAuthenticator } from '../users/ldapAuthenticator';
+import { LdapAuthenticator, DEFAULT_LDAP_TIMEOUT_MS } from '../users/ldapAuthenticator';
 import { DEFAULT_LDAP_MAX_FAILURES, UserBL } from '../users/user.bl';
 
 const logger = new Logger('bl/ldap/ldapSettings.bl');
 
 const DEFAULT_SEARCH_FILTER = '(mail={{email}})';
 const DEFAULT_GROUP_SEARCH_FILTER = '(member={{dn}})';
-const DEFAULT_TIMEOUT_MS = 5000;
 
 // config.yml / LDAP_* env configure LDAP: the page can only show it.
 export class LdapSettingsManagedError extends Error {
@@ -356,7 +355,7 @@ const toSettings = (
 	groupSearchFilter: config.group_search_filter ?? DEFAULT_GROUP_SEARCH_FILTER,
 	roleMapping: groupsFor(config),
 	defaultRole: (config.default_role as Role | undefined) ?? null,
-	timeoutMs: config.timeout_ms ?? DEFAULT_TIMEOUT_MS,
+	timeoutMs: config.timeout_ms ?? DEFAULT_LDAP_TIMEOUT_MS,
 	loginMaxFailures: config.login_max_failures ?? DEFAULT_LDAP_MAX_FAILURES,
 	tlsRejectUnauthorized: config.tls?.rejectUnauthorized !== false,
 	// A file-based CA is shown by path; the page only edits inline PEMs.

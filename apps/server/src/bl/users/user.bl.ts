@@ -134,18 +134,6 @@ export class UserBL {
 			throw new Error('Registration is disabled after first admin');
 		}
 		const user = await this.createLocalAccount(account, Role.Admin);
-
-		// A welcome mail, when there is an address to send it to.
-		if (user.email) {
-			void this.mailClient
-				.sendMail({
-					to: user.email,
-					mailType: MailType.WELCOME,
-					userName: user.fullName,
-				})
-				.catch((error) => logger.error('Failed to send welcome email', error));
-		}
-
 		return user;
 	}
 
@@ -174,7 +162,22 @@ export class UserBL {
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
 		this.onUsersChanged?.();
+		this.sendWelcomeEmail(user);
 		return user;
+	}
+
+	// Shared by self-registration and admin-created accounts, when the account has an
+	// address. Delivery is fire-and-forget so an SMTP failure cannot roll back a user that
+	// was already saved.
+	private sendWelcomeEmail(user: User): void {
+		if (!user.email) return;
+		void this.mailClient
+			.sendMail({
+				to: user.email,
+				mailType: MailType.WELCOME,
+				userName: user.fullName,
+			})
+			.catch((error) => logger.error('Failed to send welcome email', error));
 	}
 
 	// By username, or by email for older callers.
