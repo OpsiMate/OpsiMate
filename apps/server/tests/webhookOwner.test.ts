@@ -108,13 +108,17 @@ describe('owner from the webhook (API)', () => {
 		expect((await alertById('w-3')).ownerId).toBe(adminId);
 	});
 
-	test('an unknown owner, or a bare name with no default domain, leaves the alert unassigned — and still 200', async () => {
+	test('an unknown owner leaves the alert unassigned — and still 200; a bare name is a username', async () => {
 		const unknown = await post('/api/v1/alerts/custom', custom('w-4', { owner: 'nobody@example.com' }));
 		expect(unknown.status).toBe(200);
 		expect(unknown.body.data.owner).toBe('not_found');
 		expect((await alertById('w-4')).ownerId).toBeNull();
-		const bare = await post('/api/v1/alerts/custom', custom('w-5', { owner: 'dana' }));
-		expect(bare.body.data.owner).toBe('not_found');
+		const unknownName = await post('/api/v1/alerts/custom', custom('w-5', { owner: 'nobody' }));
+		expect(unknownName.body.data.owner).toBe('not_found');
+		// "dana" is dana@example.com's username (the local part), with no default domain set.
+		const byUsername = await post('/api/v1/alerts/custom', custom('w-5b', { owner: 'Dana' }));
+		expect(byUsername.body.data.owner).toBe('assigned');
+		expect((await alertById('w-5b')).ownerId).not.toBeNull();
 	});
 
 	test('an owner tag works for the sources without a field — Grafana labels here', async () => {
@@ -211,7 +215,7 @@ describe('owner from the webhook (API)', () => {
 		const dana = await userRepo.getUserByEmail('dana@example.com');
 		let release: () => void = () => undefined;
 		const directory = new Promise<void>((resolve) => (release = resolve));
-		const slow = { resolve: async () => (await directory, dana) } as unknown as WebhookOwnerResolver;
+		const slow = { lookup: async () => (await directory, { user: dana }) } as unknown as WebhookOwnerResolver;
 		bl.setWebhookOwnerResolver(slow);
 		const now = new Date().toISOString();
 		const incoming = (owner: string): IncomingAlert => ({
@@ -254,21 +258,63 @@ describe('owner from the webhook (directory users)', () => {
 	const lookups: string[] = [];
 	let directoryDown = false;
 
+	// Answers for the identifier or any alternative spelling, recording each one searched
+	// (as the real client does: one search per spelling, until an entry is found).
 	const directory = {
-		lookup(email: string): Promise<LdapIdentity | null> {
-			lookups.push(email);
-			if (directoryDown) return Promise.reject(new LdapUnavailableError('connect ECONNREFUSED'));
-			if (email === 'dana@acme.test') {
+		lookup(typed: string, alternatives: string[] = []): Promise<LdapIdentity | null> {
+			const asked = [typed, ...alternatives];
+			if (directoryDown) {
+				lookups.push(asked[0]);
+				return Promise.reject(new LdapUnavailableError('connect ECONNREFUSED'));
+			}
+			const known = ['dana', 'dana@acme.test', 'guest', 'guest@acme.test', 'noa', 'mia@acme.test'];
+			const found = asked.findIndex((s) => known.includes(s));
+			lookups.push(...(found < 0 ? asked : asked.slice(0, found + 1)));
+			const identifier = found < 0 ? typed : asked[found];
+			if (identifier === 'noa') {
+				// A directory account with no mail attribute at all.
+				return Promise.resolve({
+					dn: 'cn=noa,dc=x',
+					objectId: 'uuid-noa',
+					username: 'noa',
+					email: null,
+					fullName: 'Noa Nomail',
+					groups: [],
+					role: Role.Viewer,
+				});
+			}
+			if (identifier === 'mia@acme.test') {
+				return Promise.resolve({
+					dn: 'cn=mia,dc=x',
+					objectId: 'uuid-mia',
+					username: 'mia',
+					email: 'mia@acme.test',
+					fullName: 'Mia',
+					groups: [],
+					role: Role.Viewer,
+				});
+			}
+			if (identifier === 'dana' || identifier === 'dana@acme.test') {
 				return Promise.resolve({
 					dn: 'cn=dana,dc=x',
-					email,
+					objectId: 'uuid-dana',
+					username: 'dana',
+					email: 'dana@acme.test',
 					fullName: 'Dana Directory',
 					groups: [],
 					role: Role.Editor,
 				});
 			}
-			if (email === 'guest@acme.test') {
-				return Promise.resolve({ dn: 'cn=guest,dc=x', email, fullName: 'Guest', groups: [], role: null });
+			if (identifier === 'guest' || identifier === 'guest@acme.test') {
+				return Promise.resolve({
+					dn: 'cn=guest,dc=x',
+					objectId: 'uuid-guest',
+					username: 'guest',
+					email: 'guest@acme.test',
+					fullName: 'Guest',
+					groups: [],
+					role: null,
+				});
 			}
 			return Promise.resolve(null);
 		},
@@ -300,37 +346,124 @@ describe('owner from the webhook (directory users)', () => {
 	test('a directory user who never logged in is provisioned (as a first login would) and returned', async () => {
 		const resolver = new WebhookOwnerResolver(userBL, () => 'acme.test');
 		const user = await resolver.resolve('dana');
+		expect(user?.username).toBe('dana');
 		expect(user?.email).toBe('dana@acme.test');
 		expect(user?.fullName).toBe('Dana Directory');
 		expect(user?.role).toBe(Role.Editor);
 		expect(user?.authSource).toBe('ldap');
-		// Second ask within the window: the cache answers; the directory is not called again.
+		// Asked by the address now: the account exists, so the directory is not called again.
 		expect((await resolver.resolve('Dana@acme.test'))?.id).toBe(user?.id);
-		expect(lookups).toEqual(['dana@acme.test']);
+		// And by the name within the window: the cache answers.
+		expect((await resolver.resolve('DANA'))?.id).toBe(user?.id);
+		// The exact name settled it; the completed address was never needed.
+		expect(lookups).toEqual(['dana']);
 	});
 
-	test('in no mapped group → nobody; unknown → nobody; a local account wins without asking the directory', async () => {
+	test('an unknown owner with no mail in the directory is provisioned by username; the account is then found without the directory', async () => {
+		// No default login domain: a bare name is asked of the directory as a username only.
+		const resolver = new WebhookOwnerResolver(userBL, () => null);
+		const user = await resolver.resolve('Noa');
+		expect(user).toMatchObject({ username: 'noa', email: null, fullName: 'Noa Nomail', authSource: 'ldap' });
+		expect(lookups).toEqual(['noa']);
+		// Another resolver (a restart, or the cache cleared after a user change): the row
+		// is found by username, the directory is not asked again.
+		const again = await new WebhookOwnerResolver(userBL, () => null).resolve('noa');
+		expect(again?.id).toBe(user?.id);
+		expect(lookups).toEqual(['noa']);
+		// An address names a directory user by email, as before; an unknown bare name is
+		// asked as a username and nothing else.
+		expect((await resolver.resolve('mia@acme.test'))?.username).toBe('mia');
+		expect(await resolver.resolve('nobody')).toBeNull();
+		expect(lookups).toEqual(['noa', 'mia@acme.test', 'nobody']);
+	});
+
+	test('in no mapped group → nobody; unknown → nobody (as a username, then as the completed address); a local account wins without asking the directory', async () => {
 		const resolver = new WebhookOwnerResolver(userBL, () => 'acme.test');
 		expect(await resolver.resolve('guest')).toBeNull();
 		expect(await resolver.resolve('nobody')).toBeNull();
 		await userRepo.createUser({
 			username: 'local',
-			email: 'local@acme.test',
+			email: null,
 			passwordHash: 'hash',
 			fullName: 'Local',
 			role: Role.Viewer,
 		});
-		expect((await resolver.resolve('local'))?.email).toBe('local@acme.test');
-		expect(lookups).toEqual(['guest@acme.test', 'nobody@acme.test']);
+		expect((await resolver.resolve('local'))?.username).toBe('local');
+		// A found-but-refused entry ends the search; an unknown name goes on to the address.
+		expect(lookups).toEqual(['guest', 'nobody', 'nobody@acme.test']);
 	});
 
-	test('a directory that is down means no owner, not an error; a bare name with no default domain is never looked up', async () => {
+	test('a local account reached through the completed address is the answer even while the directory is down', async () => {
+		await userRepo.createUser({
+			username: 'ops',
+			email: 'ops-team@acme.test',
+			passwordHash: 'hash',
+			fullName: 'Ops Team',
+			role: Role.Viewer,
+		});
+		directoryDown = true;
+		const resolver = new WebhookOwnerResolver(userBL, () => 'acme.test');
+		// No account is named "ops-team"; ops-team@acme.test is a local account: found
+		// without asking the directory, which could not have answered anyway.
+		expect((await resolver.resolve('ops-team'))?.username).toBe('ops');
+		expect(lookups).toEqual([]);
+		// Someone the directory would have to answer for: no answer, and said so.
+		const asked = await resolver.lookup('dana');
+		expect(asked.user).toBeNull();
+		expect(asked.failure).toMatch(/directory could not be asked/);
+	});
+
+	test('a cached miss is forgotten when the LDAP settings change', async () => {
+		const resolver = new WebhookOwnerResolver(userBL, () => null);
+		userBL.setOnDirectoryChanged(() => resolver.clear());
+		try {
+			userBL.setLdapAuthenticator(null);
+			expect(await resolver.resolve('dana')).toBeNull();
+			// LDAP switched on: the same webhook minutes later finds her in the directory.
+			userBL.setLdapAuthenticator(directory, 0);
+			expect((await resolver.resolve('dana'))?.username).toBe('dana');
+		} finally {
+			userBL.setOnDirectoryChanged(() => undefined);
+			userBL.setLdapAuthenticator(directory, 0);
+		}
+	});
+
+	test('a provisioning failure on the way (the database) is not remembered either', async () => {
+		const resolver = new WebhookOwnerResolver(userBL, () => null);
+		const original = userRepo.createUser.bind(userRepo);
+		let failedOnce = false;
+		let rejectWith: unknown = new Error('SQLITE_BUSY: database is locked');
+		const spy = vi.spyOn(userRepo, 'createUser').mockImplementation(async (row) => {
+			if (!failedOnce) {
+				failedOnce = true;
+				throw rejectWith;
+			}
+			return original(row);
+		});
+		// Not a miss: the caller hears why, and nothing is cached.
+		const failed = await resolver.lookup('dana');
+		expect(failed.user).toBeNull();
+		expect(failed.failure).toMatch(/provisioning failed: SQLITE_BUSY/);
+		expect((await resolver.resolve('dana'))?.username).toBe('dana');
+		// A rejection that is not an Error is reported too, not thrown again.
+		db.exec('DELETE FROM users');
+		resolver.clear();
+		failedOnce = false;
+		rejectWith = undefined;
+		expect((await resolver.lookup('dana')).failure).toMatch(/provisioning failed: undefined/);
+		expect((await resolver.resolve('dana'))?.username).toBe('dana');
+		spy.mockRestore();
+	});
+
+	test('a directory that is down means no owner, not an error — and is not remembered: the same resolver asks again', async () => {
 		directoryDown = true;
 		const resolver = new WebhookOwnerResolver(userBL, () => 'acme.test');
 		await expect(resolver.resolve('dana')).resolves.toBeNull();
-		const noDomain = new WebhookOwnerResolver(userBL, () => null);
 		directoryDown = false;
-		expect(await noDomain.resolve('dana')).toBeNull();
-		expect(lookups).toEqual(['dana@acme.test']);
+		// Within the cache window, with the same resolver: the outage was no answer.
+		expect((await resolver.resolve('dana'))?.username).toBe('dana');
+		const noDomain = new WebhookOwnerResolver(userBL, () => null);
+		expect((await noDomain.resolve('dana'))?.username).toBe('dana');
+		expect(lookups).toEqual(['dana', 'dana']);
 	});
 });

@@ -1,11 +1,17 @@
-import { LoginRecord, UserRepository, UserUpdates } from '../../dal/userRepository';
+import { DirectoryAccountLink, LoginRecord, UserRepository, UserUpdates } from '../../dal/userRepository';
 import bcrypt from 'bcrypt';
 import { AuditActionType, AuditResourceType, Logger, Role, User, usernameFromEmail } from '@OpsiMate/shared';
 import { MailClient, MailType } from '../../dal/external-client/mail-client';
 import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
 import { AuditBL } from '../audit/audit.bl';
 import { decryptPassword, generatePasswordResetInfo, hashString } from '../../utils/encryption';
-import { LdapAuthenticator } from './ldapAuthenticator';
+import {
+	LdapAuthenticator,
+	LdapBindGuard,
+	LdapIdentity,
+	LdapThrottledError,
+	LdapUnavailableError,
+} from './ldapAuthenticator';
 import { LoginThrottle } from './loginThrottle';
 import { MS_PER_MINUTE } from '../../utils/time';
 
@@ -18,9 +24,6 @@ export const EMAIL_TAKEN = 'Email already registered';
 // An old database can hold Dana@x and dana@x as two accounts; a request naming the
 // address in a third spelling cannot tell which it means.
 export const AMBIGUOUS_EMAIL = 'That email belongs to more than one account; use the username';
-// How many times a first directory login re-allocates its derived username when another
-// first login took the same number in between.
-const PROVISION_USERNAME_ATTEMPTS = 3;
 
 // How a login request named the account (see UserBL.login).
 export interface LoginOptions {
@@ -108,6 +111,14 @@ export class UserBL {
 		this.onUsersChanged = callback;
 	}
 
+	// The directory itself changed (switched on or off, pointed elsewhere): who can be
+	// found changed, though no user row did. Cached misses (webhook owners) are stale.
+	private onDirectoryChanged: (() => void) | null = null;
+
+	setOnDirectoryChanged(callback: () => void): void {
+		this.onDirectoryChanged = callback;
+	}
+
 	// Directory login (see LdapAuthenticator); null when LDAP is not configured.
 	private ldap: LdapAuthenticator | null = null;
 	// Failed directory logins per email (lower-cased), in a fixed window.
@@ -117,6 +128,7 @@ export class UserBL {
 
 	setLdapAuthenticator(ldap: LdapAuthenticator | null, maxFailures = DEFAULT_LDAP_MAX_FAILURES): void {
 		this.ldap = ldap;
+		this.onDirectoryChanged?.();
 		if (maxFailures <= 0) {
 			this.ldapFailures = null;
 		} else if (!this.ldapFailures || maxFailures !== this.ldapMaxFailures) {
@@ -261,125 +273,264 @@ export class UserBL {
 		const directoryAccount = candidates.find((candidate) => candidate.user.authSource === 'ldap');
 		const typed = identifier.trim().toLowerCase();
 		// An explicit username (the login field, no "@") names exactly one account: a local
-		// one has just failed its password check, an unknown one is not a login — only a
-		// directory account's own address goes on to the directory. Through the legacy
-		// email field a bare name still completes with the default login domain.
+		// one has just failed its password check and that is the end of it; an unknown one
+		// is asked of the directory as a username. Through the legacy email field a bare
+		// name still completes with the default login domain.
 		const explicitUsername = !legacyEmailField && !typed.includes('@');
-		if (explicitUsername && !directoryAccount) throw new Error(INVALID_LOGIN);
+		if (explicitUsername && candidates.length > 0 && !directoryAccount) throw new Error(INVALID_LOGIN);
 		const completed = completeLoginIdentifier(typed, this.loginDefaultEmailDomain).toLowerCase();
-		const email =
-			directoryAccount?.user.email?.toLowerCase() ??
-			(!explicitUsername && completed.includes('@') ? completed : null);
-		// A local account owns the address itself, in any spelling: no directory entry may
-		// stand in for it. (A local account that merely has the typed name as its username
-		// is unrelated to the address and blocks nothing.)
-		const owners = email ? await this.userRepo.findUsersByEmail(email) : [];
-		const addressIsLocal = owners.some((owner) => owner.authSource !== 'ldap');
-		if (!email || addressIsLocal || !this.ldap) {
-			// Nothing to ask the directory for, or (LDAP switched off) nothing that can vouch
-			// for a directory account.
+		// The spellings the directory is searched for, one bind at the end. Through the
+		// legacy email field a bare name has always meant <name>@<domain>, so that address
+		// comes first and the name itself second; through the login field the name comes
+		// first and is never completed — an explicit username must not end up signed in as
+		// whoever holds <name>@<domain>. A known directory account's own address is tried
+		// too.
+		const knownAddress = directoryAccount?.user.email?.toLowerCase();
+		const ordered = explicitUsername ? [typed, knownAddress] : [completed, typed, knownAddress];
+		const spellings = [...new Set(ordered.filter((spelling): spelling is string => !!spelling))];
+		// A local account owns one of these addresses itself, in any spelling: no directory
+		// entry may stand in for it. (A local account that merely has the typed name as its
+		// username is unrelated to the address and blocks nothing; a directory entry carrying
+		// that username is refused at provisioning.)
+		for (const address of spellings.filter((spelling) => spelling.includes('@'))) {
+			const owners = await this.userRepo.findUsersByEmail(address);
+			if (owners.some((owner) => owner.authSource !== 'ldap')) throw new Error(INVALID_LOGIN);
+		}
+		if (!this.ldap) {
+			// A directory account while LDAP is switched off: nothing can vouch for it.
 			throw new Error(INVALID_LOGIN);
 		}
 
-		// The resolved address is the throttle key: every spelling of the login resolves to
-		// it, so failures accumulate across them and any successful spelling clears them.
-		if (this.ldapFailures?.isThrottled(email)) throw new TooManyLoginAttemptsError();
-		const identity = await this.ldap.authenticate(email, password);
+		// Two throttles. Before the directory is searched, the login's preferred spelling
+		// bounds the searches: through the login field the named account's address when
+		// known (an explicit username names one account), through the legacy email field
+		// the completed address — a username holder is only a fallback there and its own
+		// budget is not this login's. Once the entry is found, the account itself — its DN —
+		// carries the budget, so a username and an email for the same account share one
+		// count whether or not the account has an OpsiMate row yet.
+		const firstAddress = spellings.find((spelling) => spelling.includes('@'));
+		const throttleKey = explicitUsername ? (knownAddress ?? typed) : (firstAddress ?? typed);
+		if (this.ldapFailures?.isThrottled(throttleKey)) throw new TooManyLoginAttemptsError();
+		// The attempt is counted BEFORE the bind, as a reservation: concurrent requests for
+		// one account cannot all pass the check while the bind is in flight and then each
+		// send a guess the directory's own lockout counts. A success gives them all back.
+		const guard: LdapBindGuard = {
+			allow: (dn) => {
+				const key = dn.toLowerCase();
+				if (this.ldapFailures?.isThrottled(key)) {
+					logger.warn(`LDAP login for ${dn} refused: ${this.ldapMaxFailures} failures within the window`);
+					return false;
+				}
+				this.ldapFailures?.recordFailure(key);
+				return true;
+			},
+			failed: () => undefined,
+			abandoned: (dn) => this.ldapFailures?.forgive(dn.toLowerCase()),
+			succeeded: (dn) => this.ldapFailures?.reset(dn.toLowerCase()),
+		};
+		let identity: LdapIdentity | null;
+		try {
+			identity = await this.ldap.authenticate(spellings[0], password, spellings.slice(1), guard);
+		} catch (error) {
+			if (error instanceof LdapThrottledError) throw new TooManyLoginAttemptsError();
+			throw error;
+		}
 		if (!identity) {
-			if (this.ldapFailures?.recordFailure(email) === this.ldapMaxFailures) {
-				logger.warn(`LDAP login for ${email} throttled after ${this.ldapMaxFailures} failures`);
-			}
+			this.ldapFailures?.recordFailure(throttleKey);
 			throw new Error(INVALID_LOGIN);
 		}
-		this.ldapFailures?.reset(email);
+		this.ldapFailures?.reset(throttleKey);
 		if (!identity.role) {
-			logger.warn(`LDAP login refused for ${identity.email}: in none of the mapped groups`);
+			logger.warn(`LDAP login refused for ${identity.username}: in none of the mapped groups`);
 			throw new Error(NOT_ALLOWED_LOGIN);
 		}
-		return this.provisionDirectoryUser(identity.email, identity.fullName, identity.role, identity.dn);
+		// A login that named a known directory account by its username stays that account:
+		// the stored address, tried as an alternative, must not have reached another
+		// directory object. The same object at a new DN (moved, renamed) is still it, and
+		// provisioning records where it lives now. (Through the legacy email field the
+		// completed address comes first and may rightly be someone else's; the account it
+		// reaches is checked at provisioning.)
+		if (explicitUsername && directoryAccount) {
+			const link = await this.userRepo.findDirectoryLinkByUsername(directoryAccount.user.username);
+			if (link && !UserBL.sameDirectoryObject(link, identity)) {
+				logger.warn(
+					`LDAP login for ${typed} refused: ${identity.dn} is not the account's directory object (${link.ldapDn})`
+				);
+				throw new Error(INVALID_LOGIN);
+			}
+		}
+		return this.provisionDirectoryUser(identity);
 	}
 
-	// The account for an email, for something that is not a login — a webhook naming an
-	// alert's owner. A local or already-provisioned account is found as is (any letter
-	// case). Otherwise, with LDAP on, the directory is asked, and a user in a mapped group
-	// is provisioned now exactly as their first login would (they log in later as usual).
-	// null when nobody matches, or the directory is down (an alert must still be ingested).
-	async findOrProvisionUserByEmail(email: string): Promise<User | null> {
-		const normalized = email.trim().toLowerCase();
+	// The account for a username or email, for something that is not a login — a webhook
+	// naming an alert's owner. Spelling by spelling (the identifier, then each
+	// alternative): an existing account first, then — with LDAP on — the directory, so an
+	// exact username is settled before a completed address can point elsewhere. A
+	// directory user in a mapped group is provisioned now exactly as their first login
+	// would (they log in later as usual). null when nobody matches; a directory that
+	// cannot answer is thrown as LdapUnavailableError, for the caller to not remember.
+	async findOrProvisionUser(identifier: string, alternatives: string[] = []): Promise<User | null> {
+		const normalized = identifier.trim().toLowerCase();
 		if (!normalized) return null;
-		const link = await this.userRepo.findDirectoryLink(normalized);
-		if (link) return this.userRepo.getUserById(link.id);
+		const spellings = [normalized, ...alternatives.map((alt) => alt.trim().toLowerCase())];
+		// Every spelling is looked up locally before the directory is asked at all: an
+		// account that exists is the answer whether or not the directory can be reached.
+		for (const spelling of spellings) {
+			const link = spelling.includes('@')
+				? await this.userRepo.findDirectoryLink(spelling)
+				: await this.userRepo.findDirectoryLinkByUsername(spelling);
+			if (link) return this.userRepo.getUserById(link.id);
+		}
 		if (!this.ldap) return null;
+		// One connection for every spelling: the first entry found is the answer.
+		let identity: LdapIdentity | null;
 		try {
-			const identity = await this.ldap.lookup(normalized);
-			if (!identity) return null;
-			if (!identity.role) {
-				logger.warn(`Directory user ${normalized} is in none of the mapped groups; not provisioned`);
-				return null;
-			}
-			return await this.provisionDirectoryUser(identity.email, identity.fullName, identity.role, identity.dn);
+			identity = await this.ldap.lookup(spellings[0], spellings.slice(1));
 		} catch (error) {
+			if (error instanceof LdapUnavailableError) throw error;
 			logger.warn(`Could not resolve ${normalized} in the directory: ${(error as Error).message}`);
 			return null;
 		}
+		if (!identity) return null;
+		if (!identity.role) {
+			logger.warn(`Directory user ${identity.username} is in none of the mapped groups; not provisioned`);
+			return null;
+		}
+		try {
+			return await this.provisionDirectoryUser(identity);
+		} catch (error) {
+			// A refusal is an answer (a local account holds the identity, another entry
+			// owns the account): nobody. Anything else — the database, a race — is not,
+			// and is thrown so the caller does not remember it.
+			const message = error instanceof Error ? error.message : '';
+			if (message === INVALID_LOGIN || message === NOT_ALLOWED_LOGIN) {
+				logger.warn(`Directory user ${identity.username} cannot be provisioned: ${message}`);
+				return null;
+			}
+			throw error;
+		}
 	}
 
-	private async provisionDirectoryUser(email: string, fullName: string, role: Role, dn: string): Promise<User> {
-		const link = await this.userRepo.findDirectoryLink(email);
+	// The OpsiMate account an identity already has. The directory object itself first (its
+	// stable id) — an entry whose username and address both changed still has its account;
+	// its DN next, but only while the account has no object id recorded yet (a DN can be
+	// reused by a new entry, an object id cannot); then the username; then the email. A
+	// local account holding the username does not hide the entry's own account reached
+	// through its email.
+	private async findDirectoryLinkFor(identity: LdapIdentity) {
+		if (identity.objectId) {
+			const byObject = await this.userRepo.findDirectoryLinkByObjectId(identity.objectId);
+			if (byObject) return byObject;
+		}
+		// Rows at this DN: one linked before object ids were recorded is this object (it is
+		// how such an account gets its id). A row with another object id is another object
+		// that lived here, and must not hide the legacy one behind it.
+		const atDn = await this.userRepo.findDirectoryLinksByDn(identity.dn);
+		const byDn = atDn.find((row) => !row.ldapObjectId) ?? (identity.objectId ? undefined : atDn[0]);
+		if (byDn) return byDn;
+		const byUsername = await this.userRepo.findDirectoryLinkByUsername(identity.username);
+		if (byUsername?.authSource === 'ldap') return byUsername;
+		const byEmail = identity.email ? await this.userRepo.findDirectoryLink(identity.email) : null;
+		if (byEmail?.authSource === 'ldap' && byEmail.ldapDn?.toLowerCase() === identity.dn.toLowerCase())
+			return byEmail;
+		return byUsername ?? byEmail;
+	}
+
+	// The same directory object as the account's? Same object id when both are known;
+	// otherwise the same DN (an account linked before object ids were recorded).
+	private static sameDirectoryObject(link: DirectoryAccountLink, identity: LdapIdentity): boolean {
+		if (link.ldapObjectId && identity.objectId) return link.ldapObjectId === identity.objectId;
+		return !link.ldapDn || link.ldapDn.toLowerCase() === identity.dn.toLowerCase();
+	}
+
+	private async provisionDirectoryUser(identity: LdapIdentity): Promise<User> {
+		const { username, email, fullName, role, dn } = identity;
+		if (!role) throw new Error(NOT_ALLOWED_LOGIN);
+		const link = await this.findDirectoryLinkFor(identity);
 		if (link && link.authSource !== 'ldap') {
-			// A local account has this email (in any letter case): never take a local
-			// account over from the directory.
+			// A local account has this username or email (in any letter case): never take
+			// a local account over from the directory.
+			logger.warn(`LDAP login for ${username} refused: a local account has that username or email`);
 			throw new Error(INVALID_LOGIN);
 		}
 		if (link) {
-			if (link.ldapDn && link.ldapDn.toLowerCase() !== dn.toLowerCase()) {
-				// Another directory entry now answers for this email (address reused, or
-				// the entry was moved/renamed): don't hand it the old person's account.
+			if (!UserBL.sameDirectoryObject(link, identity)) {
+				// Another directory object now answers for this identity (name or address
+				// reused, or a new entry at an old DN): don't hand it the old person's account.
 				logger.warn(
-					`LDAP login for ${email} refused: the account belongs to ${link.ldapDn}, not ${dn}. ` +
+					`LDAP login for ${username} refused: the account belongs to ${link.ldapDn ?? 'another entry'}, not ${dn}. ` +
 						'Delete the OpsiMate user to let the new entry sign in.'
 				);
 				throw new Error(INVALID_LOGIN);
 			}
-			if (!link.ldapDn) await this.userRepo.setLdapDn(link.id, dn);
-			return this.syncDirectoryAccount(link.id, fullName, role);
-		}
-		// No usable password hash: this account can only ever sign in through LDAP. The
-		// username is the address's local part, numbered when it is taken. Two first logins
-		// at once can pick the same free number; the loser allocates again. (The same
-		// account twice over — same address and entry — is the other race, below.)
-		for (let attempt = 1; ; attempt++) {
-			try {
-				const result = await this.userRepo.createUser({
-					username: await this.allocateUsername(usernameFromEmail(email)),
-					email,
-					passwordHash: DIRECTORY_PASSWORD_HASH,
-					fullName,
-					role,
-					authSource: 'ldap',
-					ldapDn: dn,
-				});
-				const created = await this.userRepo.getUserById(result.lastID);
-				if (!created) throw new Error('User creation failed');
-				logger.info(`Provisioned ${email} from LDAP as ${role}`);
-				this.onUsersChanged?.();
-				return created;
-			} catch (error) {
-				const raced = await this.userRepo.findDirectoryLink(email);
-				if (raced?.authSource === 'ldap' && raced.ldapDn?.toLowerCase() === dn.toLowerCase()) {
-					return this.syncDirectoryAccount(raced.id, fullName, role);
-				}
-				if (uniqueViolationMessage(error) === USERNAME_TAKEN && attempt < PROVISION_USERNAME_ATTEMPTS) continue;
-				throw error;
+			// Record where the object lives now and, once known, which object it is.
+			if (link.ldapDn?.toLowerCase() !== dn.toLowerCase() || (!link.ldapObjectId && identity.objectId)) {
+				await this.userRepo.setDirectoryLink(link.id, dn, identity.objectId);
 			}
+			return this.syncDirectoryAccount(link.id, identity);
+		}
+		try {
+			// No usable password hash: this account can only ever sign in through LDAP. The
+			// username is the directory's; a local account holding it was refused above.
+			const result = await this.userRepo.createUser({
+				username,
+				email,
+				passwordHash: DIRECTORY_PASSWORD_HASH,
+				fullName,
+				role,
+				authSource: 'ldap',
+				ldapDn: dn,
+				ldapObjectId: identity.objectId,
+			});
+			const created = await this.userRepo.getUserById(result.lastID);
+			if (!created) throw new Error('User creation failed');
+			logger.info(`Provisioned ${username} from LDAP as ${role}`);
+			this.onUsersChanged?.();
+			return created;
+		} catch (error) {
+			// Two first logins at once: the other one created it; use that account.
+			const raced = await this.findDirectoryLinkFor(identity);
+			if (raced?.authSource === 'ldap' && UserBL.sameDirectoryObject(raced, identity)) {
+				return this.syncDirectoryAccount(raced.id, identity);
+			}
+			throw error;
 		}
 	}
 
-	private async syncDirectoryAccount(userId: number, fullName: string, role: Role): Promise<User> {
+	// Name, role, email and username follow the directory on every login — an account
+	// provisioned before usernames carries its email's local part until its first login
+	// brings the directory's name. A value the directory now gives can collide with
+	// another account's: then it stays as it was.
+	private async syncDirectoryAccount(userId: number, identity: LdapIdentity): Promise<User> {
 		const current = await this.userRepo.getUserById(userId);
 		if (!current) throw new Error('User not found');
-		if (current.fullName === fullName && current.role === role) return current;
-		await this.userRepo.syncDirectoryUser(userId, fullName, role);
+		const role = identity.role ?? current.role;
+		// The directory's address. An entry that lists none keeps the stored one (undefined =
+		// not written): "no value" is also what a misnamed attribute or a service account
+		// that cannot read mail looks like, and that must not strip every directory user of
+		// their address. An address someone else holds is not taken either.
+		let email: string | null | undefined = identity.email ?? undefined;
+		if (email && email.toLowerCase() === current.email?.toLowerCase()) email = undefined;
+		if (email) {
+			const holder = await this.userRepo.getUserByEmail(email);
+			if (holder && holder.id !== current.id) email = undefined;
+		}
+		// The username likewise: written only when the directory renamed the account and
+		// nobody else holds the new name; otherwise the column is left alone.
+		let username: string | undefined;
+		if (identity.username !== current.username) {
+			const holder = await this.userRepo.getUserByUsername(identity.username);
+			if (!holder || holder.id === current.id) username = identity.username;
+		}
+		if (
+			current.fullName === identity.fullName &&
+			current.role === role &&
+			email === undefined &&
+			username === undefined
+		) {
+			return current;
+		}
+		await this.userRepo.syncDirectoryUser(userId, identity.fullName, role, email, username);
 		this.onUsersChanged?.();
 		const synced = await this.userRepo.getUserById(userId);
 		if (!synced) throw new Error('User not found');

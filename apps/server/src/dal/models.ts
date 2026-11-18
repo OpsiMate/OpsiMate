@@ -100,6 +100,7 @@ export type UserRow = {
 	// Absent on rows read before the column existed; treated as 'local'.
 	auth_source?: string | null;
 	ldap_dn?: string | null;
+	ldap_object_id?: string | null;
 };
 
 export type OncallTeamRow = {
