@@ -398,6 +398,7 @@ export class UserBL {
 			if (raced?.authSource === 'ldap' && raced.ldapDn?.toLowerCase() === dn.toLowerCase()) {
 				return this.syncDirectoryAccount(raced.id, identity);
 			}
+			throw error;
 		}
 	}
 
