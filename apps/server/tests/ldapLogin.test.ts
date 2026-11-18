@@ -279,12 +279,13 @@ describe('UserBL login with LDAP', () => {
 		// Kept in the write itself, not copied from an earlier read: a sync without an
 		// address leaves whatever another login saved in the meantime.
 		const dana = await userRepo.getUserByUsername('dana');
-		await userRepo.syncDirectoryUser(Number(dana!.id), 'Dana Directory', Role.Editor, 'raced@example.com', 'dana');
-		await userRepo.syncDirectoryUser(Number(dana!.id), 'Dana Renamed', Role.Editor, undefined, 'dana');
-		expect(await userRepo.getUserByUsername('dana')).toMatchObject({
+		await userRepo.syncDirectoryUser(Number(dana!.id), 'Dana Directory', Role.Editor, 'raced@example.com', 'dana2');
+		await userRepo.syncDirectoryUser(Number(dana!.id), 'Dana Renamed', Role.Editor, undefined, undefined);
+		expect(await userRepo.getUserByUsername('dana2')).toMatchObject({
 			fullName: 'Dana Renamed',
 			email: 'raced@example.com',
 		});
+		await userRepo.syncDirectoryUser(Number(dana!.id), 'Dana Directory', Role.Editor, undefined, 'dana');
 		// A changed address is followed.
 		directory.answers.set('dana', {
 			password: 'dir-pw',

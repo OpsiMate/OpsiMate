@@ -251,7 +251,12 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	// YAML's empty value (`search_filter:`) is null: no filter. The old default copied
 	// from the file is the default, not an override. An environment value is a choice
 	// made now and stands as written — "(mail={{email}})" there means email-only.
-	if ((ldap.search_filter as unknown) === null || isLegacyDefaultSearchFilter(ldap.search_filter)) {
+	const fileFilter = ldap.search_filter as unknown;
+	if (
+		fileFilter === null ||
+		(typeof fileFilter === 'string' && fileFilter.trim() === '') ||
+		isLegacyDefaultSearchFilter(fileFilter)
+	) {
 		delete ldap.search_filter;
 	}
 	if (env.LDAP_SEARCH_FILTER) ldap.search_filter = env.LDAP_SEARCH_FILTER;

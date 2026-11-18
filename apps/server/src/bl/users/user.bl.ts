@@ -515,7 +515,9 @@ export class UserBL {
 			const holder = await this.userRepo.getUserByEmail(email);
 			if (holder && holder.id !== current.id) email = undefined;
 		}
-		let username = current.username;
+		// The username likewise: written only when the directory renamed the account and
+		// nobody else holds the new name; otherwise the column is left alone.
+		let username: string | undefined;
 		if (identity.username !== current.username) {
 			const holder = await this.userRepo.getUserByUsername(identity.username);
 			if (!holder || holder.id === current.id) username = identity.username;
@@ -524,7 +526,7 @@ export class UserBL {
 			current.fullName === identity.fullName &&
 			current.role === role &&
 			email === undefined &&
-			current.username === username
+			username === undefined
 		) {
 			return current;
 		}

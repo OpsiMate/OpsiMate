@@ -618,10 +618,11 @@ describe('resolveLdapConfig', () => {
 		expect(resolveLdapConfig({ enabled: false, search_filter: '(uid={{email}})' }).search_filter).toBe(
 			'(uid={{email}})'
 		);
-		// YAML's empty value is null: no filter, and no crash while loading.
+		// YAML's empty value is null, a quoted one "": no filter either way, and no crash.
 		expect(
 			resolveLdapConfig({ enabled: false, search_filter: null as unknown as string }).search_filter
 		).toBeUndefined();
+		expect(resolveLdapConfig({ enabled: false, search_filter: '  ' }).search_filter).toBeUndefined();
 		// The environment is a choice made now: email-only on purpose stays email-only.
 		process.env.LDAP_SEARCH_FILTER = '(mail={{email}})';
 		expect(resolveLdapConfig({ enabled: false }).search_filter).toBe('(mail={{email}})');

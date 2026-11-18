@@ -432,25 +432,27 @@ export class UserRepository {
 
 	// An LDAP login keeps the local copy in step with the directory: name, role, email
 	// and username are the directory's on every login.
-	// `email` undefined leaves the stored address as it is, in the same write as the rest —
-	// not re-saved from an earlier read that another login may have outdated since.
+	// `email` / `username` undefined leave the stored value as it is, in the same write as
+	// the rest — not re-saved from an earlier read that another login may have outdated.
 	async syncDirectoryUser(
 		userId: number,
 		fullName: string,
 		role: string,
 		email: string | null | undefined,
-		username: string
+		username: string | undefined
 	): Promise<void> {
 		return runAsync(() => {
-			if (email === undefined) {
-				this.db
-					.prepare('UPDATE users SET full_name = ?, role = ?, username = ? WHERE id = ?')
-					.run(fullName, role, username.toLowerCase(), userId);
-				return;
+			const sets = ['full_name = ?', 'role = ?'];
+			const values: (string | number | null)[] = [fullName, role];
+			if (email !== undefined) {
+				sets.push('email = ?');
+				values.push(email);
 			}
-			this.db
-				.prepare('UPDATE users SET full_name = ?, role = ?, email = ?, username = ? WHERE id = ?')
-				.run(fullName, role, email, username.toLowerCase(), userId);
+			if (username !== undefined) {
+				sets.push('username = ?');
+				values.push(username.toLowerCase());
+			}
+			this.db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).run(...values, userId);
 		});
 	}
 
