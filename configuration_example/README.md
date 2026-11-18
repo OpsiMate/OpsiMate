@@ -98,16 +98,34 @@ A source can say who owns an alert: the generic webhook (`POST /api/v1/alerts/cu
 - Sending `owner` **empty** (`""` or `null`, or an empty `owner` label) **removes** the owner — also one a person set by hand — and takes the alert out of its incident. The response says `unassigned`; when there was an owner to remove, the history reads "Owner removed" and the `owner_unassigned` callback fires (on an alert nobody owns it is a no-op). Like everything about the owner, a removal that fails never fails the webhook: the response says `kept`, meaning the removal was not confirmed — check the alert, or send the empty `owner` again. Within one backend instance, webhooks for the same alert apply their `owner` in arrival order even when a directory lookup is slow, so an assignment followed by a removal ends unowned — a later name still never replaces an existing owner. A sender that updates the same alert in quick succession should wait for each response before sending the next; across several backend replicas that is the only ordering guarantee.
 - Nobody matching, or the directory being down, never fails the webhook: the alert is stored unassigned and the response's `owner` field says `not_found` (otherwise `assigned`, `kept` or `unassigned`). No `owner_assigned` callback fires for a webhook owner — that is for a person's decision.
 
-## Login with a Short Name
+## Usernames, and Accounts without an Email
 
-Typing a full email at every login is tedious when everyone shares one domain. Set the installation's domain and a bare name completes to an address before the normal login runs:
+Every account has a **username**: 2-64 characters, lowercase letters, digits, dot, underscore or hyphen (`idanl`, `j.smith`, `svc-deploy`), unique ignoring case. The email is optional. A user signs in with either one in the login field; anything with an `@` is taken as an email. (Until the login form update ships, the browser form accepts a bare username only when `login.default_email_domain` is set; the API's `identifier` field takes one regardless.)
+
+- Creating a user through `POST /api/v1/users` takes `username` and an optional `email` (the Settings page's Add User form gains its username field with the UI update; until then it sends only an email and the server derives the username). A caller that sends only an `email` gets the address's local part as the username, normalized: lowercased, any character outside the allowed set folded to `-`, and a `user-` prefix when fewer than 2 characters remain (`dana@company.com` → `dana`, `Dana+ops@company.com` → `dana-ops`, `a@company.com` → `user-a`); when that name is taken the next free numbered variant (`dana2`) is used, and the response carries the username that was assigned. A `username` asked for explicitly is never changed: it is refused when taken.
+- Existing installations are migrated on startup: every account gets the local part of its email as its username, normalized the same way (oldest account first; a name already taken gets a numeric suffix, which the server log reports), and the email column stops being required. Everyone keeps signing in with their email as before.
+- A user **without** an email cannot receive a password-reset link or the welcome mail; an admin sets their password from the Users page instead. Directory (LDAP) accounts never needed either.
+- **A sole admin without an email who forgets the password** has no in-app path (the admin reset refuses the caller's own account). Keep two admins, or give admins an address. Failing both, set a new hash directly in the database — on the server, with the service stopped:
+
+  ```bash
+  HASH=$(node -e "require('bcrypt').hash(process.argv[1], 10).then(console.log)" 'new-password') &&
+    [ -n "$HASH" ] &&
+    sqlite3 /path/to/opsimate.db "UPDATE users SET password_hash = '$HASH' WHERE username = 'idanl';"
+  ```
+
+  Run the `node` line from the server's directory (it needs the server's `bcrypt` dependency); the next login with the new password works at once. Nothing else about the account changes.
+- `PATCH /api/v1/users/role` takes `username` (or `email`); `PATCH /api/v1/users/:id` can rename the username and set or clear (`null`) the email. Directory accounts keep the identity the directory gave them.
+
+### Login with a Short Name (deprecated)
+
+Before usernames, a bare name could be completed with the installation's domain:
 
 ```yaml
 login:
   default_email_domain: company.com # or LOGIN_DEFAULT_EMAIL_DOMAIN=company.com
 ```
 
-`idan` then signs in as `idan@company.com` — local accounts and directory (LDAP) accounts alike, since the directory lookup receives the completed address. Anything typed with an `@` is used as is, so people with another domain still sign in with their full email. Unset, the login takes the full email only, as before. The login page shows what a bare name will mean as it is typed.
+`idan` then also tries `idan@company.com` — after the username lookup, for local accounts and directory (LDAP) accounts alike, since the directory lookup receives the completed address. Kept so webhooks and logins that relied on it keep working; new installations do not need it, as a bare name is a username.
 
 ## LDAP / Active Directory Login
 

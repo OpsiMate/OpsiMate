@@ -102,7 +102,9 @@ describe('admin user management endpoint behavior', () => {
 			success: false,
 			error: 'Validation error',
 			details: expect.arrayContaining([
-				expect.objectContaining({ message: 'At least one field (fullName, email, or role) must be provided' }),
+				expect.objectContaining({
+					message: 'At least one field (fullName, username, email, or role) must be provided',
+				}),
 			]),
 		});
 		expect(await listUsers()).toEqual(before);

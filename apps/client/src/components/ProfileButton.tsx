@@ -18,11 +18,16 @@ const getInitials = (name: string) => {
 		.slice(0, 2);
 };
 
+// What the avatar abbreviates: the username; on a token from before usernames, the
+// email's local part; failing both, a plain "U".
+const handleOf = (user: ReturnType<typeof getCurrentUser>): string =>
+	user?.username ?? user?.email?.split('@')[0] ?? 'U';
+
 export const ProfileButton = ({ collapsed }: ProfileButtonProps) => {
 	const location = useLocation();
 	const isActive = location.pathname === ROUTES.profile;
 	const currentUser = getCurrentUser();
-	const userInitials = currentUser ? getInitials(currentUser.email.split('@')[0]) : 'U';
+	const userInitials = getInitials(handleOf(currentUser));
 
 	return (
 		<Button

@@ -24,7 +24,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 	React.useEffect(() => {
 		if (user) {
 			setFullName(user.fullName);
-			setEmail(user.email);
+			setEmail(user.email ?? '');
 		}
 	}, [user]);
 
@@ -37,7 +37,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 		try {
 			const response = await apiRequest<User>(`/users/${user.id}`, 'PATCH', {
 				fullName: fullName.trim(),
-				email: email.trim(),
+				// Optional: an empty box clears the address.
+				email: email.trim() || null,
 			});
 
 			if (response.success && response.data) {
@@ -63,7 +64,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		if (saving || !fullName.trim() || !email.trim()) return;
+		if (saving || !fullName.trim()) return;
 		handleSave();
 	};
 
@@ -111,7 +112,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 						<Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
 							Cancel
 						</Button>
-						<Button type="submit" disabled={saving || !fullName.trim() || !email.trim()}>
+						<Button type="submit" disabled={saving || !fullName.trim()}>
 							{saving ? 'Saving...' : 'Save Changes'}
 						</Button>
 					</DialogFooter>

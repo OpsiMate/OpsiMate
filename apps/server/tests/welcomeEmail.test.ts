@@ -62,7 +62,10 @@ describe('welcome email after admin user creation', () => {
 		const { db, userBL } = await createUserBl(sendMail);
 
 		try {
-			const created = await userBL.createUser(NEW_USER_EMAIL, NEW_USER_NAME, NEW_USER_PASSWORD, Role.Viewer);
+			const created = await userBL.createUser(
+				{ email: NEW_USER_EMAIL, fullName: NEW_USER_NAME, password: NEW_USER_PASSWORD },
+				Role.Viewer
+			);
 
 			expect(created.email).toBe(NEW_USER_EMAIL);
 			expect(created.fullName).toBe(NEW_USER_NAME);
@@ -83,7 +86,10 @@ describe('welcome email after admin user creation', () => {
 		const { db, userRepo, userBL } = await createUserBl(sendMail);
 
 		try {
-			const created = await userBL.createUser(NEW_USER_EMAIL, NEW_USER_NAME, NEW_USER_PASSWORD, Role.Editor);
+			const created = await userBL.createUser(
+				{ email: NEW_USER_EMAIL, fullName: NEW_USER_NAME, password: NEW_USER_PASSWORD },
+				Role.Editor
+			);
 			const stored = await userRepo.getUserById(Number(created.id));
 
 			expect(created.email).toBe(NEW_USER_EMAIL);

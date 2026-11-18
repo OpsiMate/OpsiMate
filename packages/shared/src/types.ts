@@ -23,7 +23,12 @@ export type DashboardType = (typeof DASHBOARD_TYPES)[number];
 
 export interface User {
 	id: string;
-	email: string;
+	// The login name: unique, lowercase, letters/digits/dot/underscore/hyphen. Directory
+	// (LDAP) accounts carry the directory's own username (uid / sAMAccountName).
+	username: string;
+	// Contact address, optional: a user without one signs in with the username and gets no
+	// mailed password reset (an admin sets the password instead).
+	email: string | null;
 	fullName: string;
 	role: Role;
 	createdAt: string;
@@ -42,7 +47,8 @@ export type UserAuthSource = 'local' | 'ldap';
 export interface OncallTeamMember {
 	userId: string;
 	fullName: string;
-	email: string;
+	username: string;
+	email: string | null;
 	phoneNumber?: string | null;
 	// 1-based call priority after applying the rotation shift (1 = on call now).
 	priority: number;

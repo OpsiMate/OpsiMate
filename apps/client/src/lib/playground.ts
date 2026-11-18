@@ -17,6 +17,7 @@ export const isPlaygroundMode = (): boolean => {
 
 export const getPlaygroundUser = (): User => ({
 	id: '0',
+	username: 'demo',
 	email: 'demo@opsimate.local',
 	fullName: 'Playground Admin',
 	role: Role.Admin,

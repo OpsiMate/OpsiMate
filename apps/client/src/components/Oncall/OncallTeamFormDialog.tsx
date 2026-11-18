@@ -236,7 +236,7 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 												{availableUsers.map((user) => (
 													<CommandItem
 														key={user.id}
-														value={`${user.fullName} ${user.email}`}
+														value={`${user.fullName} ${user.username} ${user.email ?? ''}`}
 														onSelect={() => {
 															setUserIds((ids) => [...ids, user.id]);
 															setAddOpen(false);
@@ -244,7 +244,7 @@ export const OncallTeamFormDialog = ({ open, team, users, saving, onClose, onSav
 													>
 														{user.fullName}
 														<span className="ml-1.5 truncate text-xs text-muted-foreground">
-															{user.email}
+															{user.email ?? user.username}
 														</span>
 													</CommandItem>
 												))}

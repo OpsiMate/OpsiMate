@@ -48,6 +48,7 @@ afterAll(() => {
 describe('authenticate when the config file has no security.api_token', () => {
 	const user: User = {
 		id: 'u-1',
+		username: 'jwt',
 		email: 'jwt@test.com',
 		fullName: 'JWT User',
 		role: Role.Admin,

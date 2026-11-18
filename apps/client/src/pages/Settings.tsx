@@ -123,6 +123,10 @@ const Settings: React.FC = () => {
 	const [showAddUserModal, setShowAddUserModal] = useState(false);
 	const { generalError, clearErrors, handleApiResponse } = useFormErrors();
 	const currentUser = getCurrentUser();
+	// The API hands ids back as strings while the token (and the playground's) carries a
+	// number: the same account, compared as text.
+	const isCurrentUser = (id: number | string | undefined) =>
+		id !== undefined && currentUser !== null && String(id) === String(currentUser.id);
 	const [userToDelete, setUserToDelete] = useState<User | null>(null);
 	const [deleting, setDeleting] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
@@ -155,16 +159,16 @@ const Settings: React.FC = () => {
 		fetchUsers();
 	}, [fetchUsers]);
 
-	const handleRoleUpdate = async (email: string, newRole: Role) => {
-		setUpdatingUser(email);
+	const handleRoleUpdate = async (username: string, newRole: Role) => {
+		setUpdatingUser(username);
 		clearErrors();
 
 		try {
-			const response = await apiRequest('/users/role', 'PATCH', { email, newRole });
+			const response = await apiRequest('/users/role', 'PATCH', { username, newRole });
 			if (response.success) {
 				// Update the local state
 				setUsers((prevUsers) =>
-					prevUsers.map((user) => (user.email === email ? { ...user, role: newRole as Role } : user))
+					prevUsers.map((user) => (user.username === username ? { ...user, role: newRole as Role } : user))
 				);
 			} else {
 				handleApiResponse(response);
@@ -201,15 +205,16 @@ const Settings: React.FC = () => {
 	const filteredUsers = users.filter(
 		(user) =>
 			user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			user.email.toLowerCase().includes(searchQuery.toLowerCase())
+			user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(user.email ?? '').toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
 	// Handle bulk role update
 	const handleBulkRoleUpdate = async (newRole: Role) => {
 		for (const userId of selectedUsers) {
 			const user = users.find((u) => u.id === userId);
-			if (user && user.email !== currentUser?.email) {
-				await handleRoleUpdate(user.email, newRole);
+			if (user && !isCurrentUser(user.id)) {
+				await handleRoleUpdate(user.username, newRole);
 			}
 		}
 		setSelectedUsers([]);
@@ -218,7 +223,7 @@ const Settings: React.FC = () => {
 	// Handle bulk delete
 	const handleBulkDelete = async () => {
 		for (const userId of selectedUsers) {
-			if (users.find((u) => u.id === userId)?.email !== currentUser?.email) {
+			if (!isCurrentUser(userId)) {
 				await handleDeleteUser(userId);
 			}
 		}
@@ -442,13 +447,13 @@ const Settings: React.FC = () => {
 																				);
 																			}
 																		}}
-																		disabled={user.email === currentUser?.email}
+																		disabled={isCurrentUser(user.id)}
 																		className="cursor-pointer"
 																	/>
 																</TableCell>
 																<TableCell className="font-medium">
 																	{user.fullName}
-																	{user.email === currentUser?.email && (
+																	{isCurrentUser(user.id) && (
 																		<Badge
 																			variant="outline"
 																			className="ml-2 text-xs"
@@ -489,18 +494,18 @@ const Settings: React.FC = () => {
 																			value={user.role}
 																			onValueChange={(newRole) =>
 																				handleRoleUpdate(
-																					user.email,
+																					user.username,
 																					newRole as Role
 																				)
 																			}
 																			disabled={
-																				updatingUser === user.email ||
-																				user.email === currentUser?.email
+																				updatingUser === user.username ||
+																				isCurrentUser(user.id)
 																			}
 																		>
 																			<SelectTrigger
 																				className="w-32"
-																				aria-label={`${USER_ROLE_LABEL_PREFIX}${user.email}`}
+																				aria-label={`${USER_ROLE_LABEL_PREFIX}${user.username}`}
 																			>
 																				<SelectValue />
 																			</SelectTrigger>
@@ -519,102 +524,100 @@ const Settings: React.FC = () => {
 																				</SelectItem>
 																			</SelectContent>
 																		</Select>
-																		{isAdmin &&
-																			user.email !== currentUser?.email && (
-																				<>
+																		{isAdmin && !isCurrentUser(user.id) && (
+																			<>
+																				<Button
+																					variant="ghost"
+																					size="icon"
+																					onClick={() => {
+																						setUserToEdit(user);
+																						setShowEditModal(true);
+																					}}
+																					title="Edit user"
+																					className="hover:bg-muted hover:text-foreground"
+																				>
+																					<Edit className="h-4 w-4" />
+																				</Button>
+																				{user.authSource !== 'ldap' && (
 																					<Button
 																						variant="ghost"
 																						size="icon"
 																						onClick={() => {
-																							setUserToEdit(user);
-																							setShowEditModal(true);
+																							setUserToResetPassword(
+																								user
+																							);
+																							setShowResetPasswordModal(
+																								true
+																							);
 																						}}
-																						title="Edit user"
+																						title="Reset password"
 																						className="hover:bg-muted hover:text-foreground"
 																					>
-																						<Edit className="h-4 w-4" />
+																						<KeyRound className="h-4 w-4" />
 																					</Button>
-																					{user.authSource !== 'ldap' && (
+																				)}
+																				<AlertDialog>
+																					<AlertDialogTrigger asChild>
 																						<Button
 																							variant="ghost"
 																							size="icon"
-																							onClick={() => {
-																								setUserToResetPassword(
-																									user
-																								);
-																								setShowResetPasswordModal(
-																									true
-																								);
-																							}}
-																							title="Reset password"
-																							className="hover:bg-muted hover:text-foreground"
+																							className="hover:bg-muted hover:text-destructive"
+																							title="Delete user"
+																							onClick={() =>
+																								setUserToDelete(user)
+																							}
 																						>
-																							<KeyRound className="h-4 w-4" />
+																							<Trash2 className="h-4 w-4" />
 																						</Button>
-																					)}
-																					<AlertDialog>
-																						<AlertDialogTrigger asChild>
-																							<Button
-																								variant="ghost"
-																								size="icon"
-																								className="hover:bg-muted hover:text-destructive"
-																								title="Delete user"
+																					</AlertDialogTrigger>
+																					<AlertDialogContent>
+																						<AlertDialogHeader>
+																							<AlertDialogTitle>
+																								Delete User
+																							</AlertDialogTitle>
+																							<AlertDialogDescription>
+																								Are you sure you want to
+																								delete{' '}
+																								<b>
+																									{
+																										userToDelete?.fullName
+																									}
+																								</b>{' '}
+																								(
+																								{userToDelete?.username}
+																								)? This action cannot be
+																								undone.
+																							</AlertDialogDescription>
+																						</AlertDialogHeader>
+																						<AlertDialogFooter>
+																							<AlertDialogCancel
+																								disabled={deleting}
 																								onClick={() =>
 																									setUserToDelete(
-																										user
+																										null
 																									)
 																								}
 																							>
-																								<Trash2 className="h-4 w-4" />
-																							</Button>
-																						</AlertDialogTrigger>
-																						<AlertDialogContent>
-																							<AlertDialogHeader>
-																								<AlertDialogTitle>
-																									Delete User
-																								</AlertDialogTitle>
-																								<AlertDialogDescription>
-																									Are you sure you
-																									want to delete{' '}
-																									<b>
-																										{
-																											userToDelete?.fullName
-																										}
-																									</b>
-																									? This action cannot
-																									be undone.
-																								</AlertDialogDescription>
-																							</AlertDialogHeader>
-																							<AlertDialogFooter>
-																								<AlertDialogCancel
-																									disabled={deleting}
-																									onClick={() =>
-																										setUserToDelete(
-																											null
-																										)
-																									}
-																								>
-																									Cancel
-																								</AlertDialogCancel>
-																								<AlertDialogAction
-																									className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
-																									disabled={deleting}
-																									onClick={() =>
-																										handleDeleteUser(
-																											userToDelete!
-																												.id
-																										)
-																									}
-																								>
-																									{deleting
-																										? 'Deleting...'
-																										: 'Delete'}
-																								</AlertDialogAction>
-																							</AlertDialogFooter>
-																						</AlertDialogContent>
-																					</AlertDialog>
-																				</>
-																			)}
+																								Cancel
+																							</AlertDialogCancel>
+																							<AlertDialogAction
+																								className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
+																								disabled={deleting}
+																								onClick={() =>
+																									handleDeleteUser(
+																										userToDelete!.id
+																									)
+																								}
+																							>
+																								{deleting
+																									? 'Deleting...'
+																									: 'Delete'}
+																							</AlertDialogAction>
+																						</AlertDialogFooter>
+																					</AlertDialogContent>
+																				</AlertDialog>
+																			</>
+																		)}
 																	</div>
 																</TableCell>
 															</TableRow>

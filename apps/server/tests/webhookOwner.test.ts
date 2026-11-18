@@ -313,7 +313,13 @@ describe('owner from the webhook (directory users)', () => {
 		const resolver = new WebhookOwnerResolver(userBL, () => 'acme.test');
 		expect(await resolver.resolve('guest')).toBeNull();
 		expect(await resolver.resolve('nobody')).toBeNull();
-		await userRepo.createUser('local@acme.test', 'hash', 'Local', Role.Viewer);
+		await userRepo.createUser({
+			username: 'local',
+			email: 'local@acme.test',
+			passwordHash: 'hash',
+			fullName: 'Local',
+			role: Role.Viewer,
+		});
 		expect((await resolver.resolve('local'))?.email).toBe('local@acme.test');
 		expect(lookups).toEqual(['guest@acme.test', 'nobody@acme.test']);
 	});

@@ -26,11 +26,19 @@ describe('AlertTeamPopover', () => {
 				{
 					userId: '7',
 					fullName: 'Dana Levi',
+					username: 'dana',
 					email: 'dana@example.com',
 					phoneNumber: '+972-50-123-4567',
 					priority: 1,
 				},
-				{ userId: '8', fullName: 'Noa Bar', email: 'noa@example.com', phoneNumber: null, priority: 2 },
+				{
+					userId: '8',
+					fullName: 'Noa Bar',
+					username: 'noa',
+					email: 'noa@example.com',
+					phoneNumber: null,
+					priority: 2,
+				},
 			]),
 		];
 		const onAssignOwner = vi.fn();

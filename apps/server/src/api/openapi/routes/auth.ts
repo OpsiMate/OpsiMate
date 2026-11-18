@@ -5,7 +5,8 @@ import { ApiRouteDoc, errors } from '../registry';
 const UserResponseSchema: z.ZodType<User> = z
 	.object({
 		id: z.string(),
-		email: z.string(),
+		username: z.string().describe('The login name; unique, lowercase'),
+		email: z.string().nullable().describe('Contact address, null when the account has none'),
 		fullName: z.string(),
 		role: z.enum(Role),
 		createdAt: z.string(),
@@ -27,14 +28,15 @@ export const authRoutes: ApiRouteDoc[] = [
 		tag: 'Authentication',
 		summary: 'Sign in',
 		description:
-			'Returns a JWT for the `Authorization: Bearer` header. Local accounts are checked against their ' +
-			'password; when directory (LDAP) login is enabled, other emails are checked against the directory.',
+			'Returns a JWT for the `Authorization: Bearer` header. `identifier` is a username or an email (`email` is ' +
+			'the same field under its old name). Local accounts are checked against their password; when directory ' +
+			'(LDAP) login is enabled, other identities are checked against the directory.',
 		auth: 'public',
 		body: LoginSchema,
 		responses: {
 			200: { description: 'Signed in', schema: SignedInSchema },
 			400: errors.validation,
-			401: { description: 'Invalid email or password', schema: errors.unauthorized.schema },
+			401: { description: 'Invalid username or password', schema: errors.unauthorized.schema },
 			403: {
 				description: 'Directory account not in any group allowed to use OpsiMate',
 				schema: errors.forbidden.schema,

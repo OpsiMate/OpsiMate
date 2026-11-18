@@ -159,6 +159,7 @@ const createUsers = (): User[] => [
 	{ ...getPlaygroundUser(), phoneNumber: '+972 50 111 2233' },
 	{
 		id: '1',
+		username: 'editor',
 		email: 'editor@opsimate.local',
 		fullName: 'Demo Editor',
 		role: Role.Editor,
@@ -167,6 +168,7 @@ const createUsers = (): User[] => [
 	},
 	{
 		id: '2',
+		username: 'viewer',
 		email: 'viewer@opsimate.local',
 		fullName: 'Demo Viewer',
 		role: Role.Viewer,

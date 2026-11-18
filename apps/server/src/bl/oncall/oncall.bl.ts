@@ -44,7 +44,8 @@ export class OncallBL {
 		const members: OncallTeamMember[] = memberRows.map((row, index) => ({
 			userId: String(row.user_id),
 			fullName: row.full_name,
-			email: row.email,
+			username: row.username,
+			email: row.email ?? null,
 			phoneNumber: row.phone_number ?? null,
 			// Rotate the base order by `shift`: the member at base position `shift` becomes
 			// priority 1, the one before them wraps to the end. The dense index is used

@@ -46,7 +46,13 @@ describe('forgot password mail failures', () => {
 
 	test('removes a newly created reset token when sending the email rejects', async () => {
 		const { db, userRepo, passwordResetsRepo, auditBL } = await createRepositories();
-		const user = await userRepo.createUser('user@example.test', 'password-hash', 'Test User', Role.Admin);
+		const user = await userRepo.createUser({
+			username: 'user',
+			email: 'user@example.test',
+			passwordHash: 'password-hash',
+			fullName: 'Test User',
+			role: Role.Admin,
+		});
 		let tokenHashAtSend: string | undefined;
 		const mailClient = {
 			sendMail: vi.fn(() => {
@@ -73,7 +79,13 @@ describe('forgot password mail failures', () => {
 
 	test('keeps a newer reset token when an earlier email send fails', async () => {
 		const { db, userRepo, passwordResetsRepo, auditBL } = await createRepositories();
-		await userRepo.createUser('user@example.test', 'password-hash', 'Test User', Role.Admin);
+		await userRepo.createUser({
+			username: 'user',
+			email: 'user@example.test',
+			passwordHash: 'password-hash',
+			fullName: 'Test User',
+			role: Role.Admin,
+		});
 		// The promise executor runs synchronously, so the capture is set before the
 		// first await yields — which tsc cannot see on its own.
 		let resolveFirstMailStarted: () => void;
@@ -121,7 +133,9 @@ describe('forgot password mail failures', () => {
 		const userBL = new UserBL(userRepo, mailClient, passwordResetsRepo, auditBL);
 
 		try {
-			await expect(userBL.register('user@example.test', 'Test User', 'password')).resolves.toMatchObject({
+			await expect(
+				userBL.register({ email: 'user@example.test', fullName: 'Test User', password: 'password' })
+			).resolves.toMatchObject({
 				email: 'user@example.test',
 			});
 			expect(sendMail).toHaveBeenCalledWith({

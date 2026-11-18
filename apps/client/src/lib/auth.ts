@@ -8,7 +8,10 @@ const logger = new Logger('auth');
 
 export interface JWTPayload {
 	id: number;
-	email: string;
+	// Absent on tokens issued before accounts had usernames; present on every new one.
+	username?: string;
+	// null for an account without a contact address (absent on old tokens too).
+	email?: string | null;
 	role: Role;
 	iat: number;
 	exp: number;

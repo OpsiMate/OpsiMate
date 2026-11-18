@@ -23,8 +23,9 @@ let cyId: number;
 // Members are plain user rows; the rotation only reads full_name / email / phone_number.
 const insertUser = (fullName: string): number =>
 	db
-		.prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)')
-		.run(`${fullName.toLowerCase()}@oncall.test`, 'not-a-real-hash', fullName, 'editor').lastInsertRowid as number;
+		.prepare('INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, ?)')
+		.run(fullName.toLowerCase(), `${fullName.toLowerCase()}@oncall.test`, 'not-a-real-hash', fullName, 'editor')
+		.lastInsertRowid as number;
 
 // The BL and the API share this repository, so a team is created exactly the way the routes do.
 const createTeam = async (name: string, rotationIntervalDays: number | null, memberIds: number[]): Promise<number> => {

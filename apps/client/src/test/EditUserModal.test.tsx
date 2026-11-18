@@ -16,6 +16,7 @@ const mockedApiRequest = vi.mocked(apiRequest);
 
 const user: User = {
 	id: 7,
+	username: 'dana',
 	email: 'dana@example.com',
 	fullName: 'Dana Scully',
 	role: Role.Viewer,
