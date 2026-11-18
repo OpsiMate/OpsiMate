@@ -160,6 +160,29 @@ describe('UserBL login with LDAP', () => {
 		expect(await userRepo.countUsers()).toBe(2);
 	});
 
+	test("an account provisioned before usernames takes the directory's username at its next login", async () => {
+		// Provisioned from an email in the old days: username = local part.
+		await userRepo.createUser({
+			username: 'dana',
+			email: 'dana@example.com',
+			passwordHash: '!ldap',
+			fullName: 'Dana Directory',
+			role: Role.Editor,
+			authSource: 'ldap',
+			ldapDn: 'uid=dana,dc=example,dc=com',
+		});
+		directory.answers.set('dana@example.com', {
+			password: 'dir-pw',
+			identity: { ...identity('dana@example.com', 'Dana Directory', Role.Editor), username: 'dlevi' },
+		});
+		const user = await userBL.login('dana@example.com', 'dir-pw');
+		expect(user.username).toBe('dlevi');
+		expect(await userRepo.countUsers()).toBe(2);
+		// The directory name now signs in too.
+		directory.answers.set('dlevi', directory.answers.get('dana@example.com')!);
+		expect((await userBL.login('dlevi', 'dir-pw')).id).toBe(user.id);
+	});
+
 	test('a directory entry with no email gets an account without one', async () => {
 		directory.answers.set('svc', {
 			password: 'dir-pw',

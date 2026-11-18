@@ -191,6 +191,18 @@ describe('LdapAuthenticator', () => {
 		expect(clients[0].calls.find((c) => c.startsWith('search'))).toContain('(|(uid=Alice)(mail=Alice))');
 	});
 
+	test("the username is the entry's own uid whichever side was typed, so one entry is one account", async () => {
+		const dir: FakeDirectory = {
+			...DIR,
+			users: [
+				{ ...DIR.users[0], uid: 'alice', mail: 'alice.admin@example.com', searchAs: 'alice.admin@example.com' },
+			],
+		};
+		const { auth } = make(CONFIG, dir);
+		expect((await auth.authenticate('alice.admin@example.com', 'alice-pw'))?.username).toBe('alice');
+		expect((await auth.authenticate('ALICE', 'alice-pw'))?.username).toBe('alice');
+	});
+
 	test('an entry with no mail attribute yields an identity without an email', async () => {
 		const dir: FakeDirectory = {
 			...DIR,

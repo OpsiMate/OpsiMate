@@ -25,11 +25,10 @@ export class WebhookOwnerResolver {
 		if (!typed) return null;
 		const cached = this.cache.get(typed);
 		if (cached && cached.expires > Date.now()) return cached.user;
-		let user = await this.userBL.findOrProvisionUser(typed);
-		if (!user) {
-			const completed = completeLoginIdentifier(typed, this.defaultEmailDomain()).toLowerCase();
-			if (completed !== typed) user = await this.userBL.findOrProvisionUser(completed);
-		}
+		// The completed address rides along as an alternative: one directory connection
+		// answers for both spellings.
+		const completed = completeLoginIdentifier(typed, this.defaultEmailDomain()).toLowerCase();
+		const user = await this.userBL.findOrProvisionUser(typed, completed !== typed ? [completed] : []);
 		if (!user) logger.debug(`Webhook owner ${typed} matches no user`);
 		this.cache.set(typed, { user, expires: Date.now() + CACHE_TTL_MS });
 		return user;

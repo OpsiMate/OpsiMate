@@ -258,10 +258,14 @@ describe('owner from the webhook (directory users)', () => {
 	const lookups: string[] = [];
 	let directoryDown = false;
 
+	// Answers for the identifier or any alternative spelling, recording every one asked.
 	const directory = {
-		lookup(identifier: string): Promise<LdapIdentity | null> {
-			lookups.push(identifier);
+		lookup(typed: string, alternatives: string[] = []): Promise<LdapIdentity | null> {
+			const asked = [typed, ...alternatives];
+			lookups.push(...asked);
 			if (directoryDown) return Promise.reject(new LdapUnavailableError('connect ECONNREFUSED'));
+			const identifier =
+				asked.find((s) => ['dana', 'dana@acme.test', 'guest', 'guest@acme.test'].includes(s)) ?? typed;
 			if (identifier === 'dana' || identifier === 'dana@acme.test') {
 				return Promise.resolve({
 					dn: 'cn=dana,dc=x',

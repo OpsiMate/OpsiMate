@@ -14,16 +14,17 @@ import { getLdapConfig, isLdapManagedByConfig, LdapConfig, validateLdapConfig } 
 import { LdapConfigRepository, LdapConfigRow } from '../../dal/ldapConfigRepository';
 import { decryptPassword, encryptPassword } from '../../utils/encryption';
 import { AuditBL } from '../audit/audit.bl';
-import { LdapAuthenticator, DEFAULT_LDAP_TIMEOUT_MS } from '../users/ldapAuthenticator';
+import {
+	DEFAULT_EMAIL_ATTRIBUTE,
+	DEFAULT_LDAP_TIMEOUT_MS,
+	DEFAULT_USERNAME_ATTRIBUTE,
+	defaultSearchFilter,
+	LdapAuthenticator,
+} from '../users/ldapAuthenticator';
 import { DEFAULT_LDAP_MAX_FAILURES, UserBL } from '../users/user.bl';
 
 const logger = new Logger('bl/ldap/ldapSettings.bl');
 
-const DEFAULT_USERNAME_ATTRIBUTE = 'uid';
-const DEFAULT_EMAIL_ATTRIBUTE = 'mail';
-// Matches the typed login against the username attribute or the email attribute.
-const defaultSearchFilter = (config: LdapConfig): string =>
-	`(|(${config.username_attribute ?? DEFAULT_USERNAME_ATTRIBUTE}={{login}})(${config.email_attribute ?? DEFAULT_EMAIL_ATTRIBUTE}={{login}}))`;
 const DEFAULT_GROUP_SEARCH_FILTER = '(member={{dn}})';
 
 // config.yml / LDAP_* env configure LDAP: the page can only show it.

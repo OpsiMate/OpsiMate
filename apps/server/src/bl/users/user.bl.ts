@@ -314,20 +314,23 @@ export class UserBL {
 
 	// The account for a username or email, for something that is not a login — a webhook
 	// naming an alert's owner. A local or already-provisioned account is found as is (any
-	// letter case). Otherwise, with LDAP on, the directory is asked, and a user in a
-	// mapped group is provisioned now exactly as their first login would (they log in
-	// later as usual). null when nobody matches, or the directory is down (an alert must
-	// still be ingested).
-	async findOrProvisionUser(identifier: string): Promise<User | null> {
+	// letter case). Otherwise, with LDAP on, the directory is asked — for the identifier
+	// and then each alternative spelling, in one connection — and a user in a mapped
+	// group is provisioned now exactly as their first login would (they log in later as
+	// usual). null when nobody matches, or the directory is down (an alert must still be
+	// ingested).
+	async findOrProvisionUser(identifier: string, alternatives: string[] = []): Promise<User | null> {
 		const normalized = identifier.trim().toLowerCase();
 		if (!normalized) return null;
-		const link = normalized.includes('@')
-			? await this.userRepo.findDirectoryLink(normalized)
-			: await this.userRepo.findDirectoryLinkByUsername(normalized);
-		if (link) return this.userRepo.getUserById(link.id);
+		for (const spelling of [normalized, ...alternatives.map((alt) => alt.trim().toLowerCase())]) {
+			const link = spelling.includes('@')
+				? await this.userRepo.findDirectoryLink(spelling)
+				: await this.userRepo.findDirectoryLinkByUsername(spelling);
+			if (link) return this.userRepo.getUserById(link.id);
+		}
 		if (!this.ldap) return null;
 		try {
-			const identity = await this.ldap.lookup(normalized);
+			const identity = await this.ldap.lookup(normalized, alternatives);
 			if (!identity) return null;
 			if (!identity.role) {
 				logger.warn(`Directory user ${normalized} is in none of the mapped groups; not provisioned`);
@@ -398,8 +401,10 @@ export class UserBL {
 		}
 	}
 
-	// Name, role and email follow the directory on every login. The email the directory
-	// now gives can collide with a local account's: then it stays as it was.
+	// Name, role, email and username follow the directory on every login — an account
+	// provisioned before usernames carries its email's local part until its first login
+	// brings the directory's name. A value the directory now gives can collide with
+	// another account's: then it stays as it was.
 	private async syncDirectoryAccount(userId: number, identity: LdapIdentity): Promise<User> {
 		const current = await this.userRepo.getUserById(userId);
 		if (!current) throw new Error('User not found');
@@ -409,8 +414,20 @@ export class UserBL {
 			const holder = await this.userRepo.getUserByEmail(email);
 			if (holder && holder.id !== current.id) email = current.email;
 		}
-		if (current.fullName === identity.fullName && current.role === role && current.email === email) return current;
-		await this.userRepo.syncDirectoryUser(userId, identity.fullName, role, email);
+		let username = current.username;
+		if (identity.username !== current.username) {
+			const holder = await this.userRepo.getUserByUsername(identity.username);
+			if (!holder || holder.id === current.id) username = identity.username;
+		}
+		if (
+			current.fullName === identity.fullName &&
+			current.role === role &&
+			current.email === email &&
+			current.username === username
+		) {
+			return current;
+		}
+		await this.userRepo.syncDirectoryUser(userId, identity.fullName, role, email, username);
 		this.onUsersChanged?.();
 		const synced = await this.userRepo.getUserById(userId);
 		if (!synced) throw new Error('User not found');
