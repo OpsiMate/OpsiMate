@@ -216,16 +216,15 @@ export const CustomAlertsSetupModal = ({ open, onOpenChange }: CustomAlertsSetup
 												<span className="text-muted-foreground">No</span>
 											</td>
 											<td className="p-3 text-muted-foreground">
-												Who owns the alert: a user's email, or a bare name when a default login
-												domain is configured. Directory (LDAP) users are matched even before
-												their first login. A name fills an empty owner only — it never replaces
-												an owner someone set by hand. Send it <strong>empty</strong> (
-												<code>""</code> or <code>null</code>) to <strong>remove</strong> the
-												owner, which also takes the alert out of its incident (a no-op on an
-												alert nobody owns); omit it — field and tag — to leave the owner alone.
-												The response says what happened: assigned / kept / unassigned /
-												not_found. An <code>owner</code> tag does the same for the other
-												integrations.
+												Who owns the alert: a user's username or email. Directory (LDAP) users
+												are matched even before their first login. A name fills an empty owner
+												only — it never replaces an owner someone set by hand. Send it{' '}
+												<strong>empty</strong> (<code>""</code> or <code>null</code>) to{' '}
+												<strong>remove</strong> the owner, which also takes the alert out of its
+												incident (a no-op on an alert nobody owns); omit it — field and tag — to
+												leave the owner alone. The response says what happened: assigned / kept
+												/ unassigned / not_found. An <code>owner</code> tag does the same for
+												the other integrations.
 											</td>
 										</tr>
 										<tr>

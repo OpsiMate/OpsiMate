@@ -387,11 +387,28 @@ export class UserRepository {
 		};
 	};
 
-	// An LDAP login keeps the local copy in step with the directory: name and role
-	// are the directory's on every login.
-	async syncDirectoryUser(userId: number, fullName: string, role: string): Promise<void> {
+	// An LDAP login keeps the local copy in step with the directory: name, role and
+	// email are the directory's on every login.
+	async syncDirectoryUser(userId: number, fullName: string, role: string, email: string | null): Promise<void> {
 		return runAsync(() => {
-			this.db.prepare('UPDATE users SET full_name = ?, role = ? WHERE id = ?').run(fullName, role, userId);
+			this.db
+				.prepare('UPDATE users SET full_name = ?, role = ?, email = ? WHERE id = ?')
+				.run(fullName, role, email, userId);
+		});
+	}
+
+	// Any account whose username matches ignoring case.
+	async findDirectoryLinkByUsername(username: string): Promise<DirectoryAccountLink | null> {
+		return runAsync(() => {
+			const row = this.db
+				.prepare('SELECT id, auth_source, ldap_dn FROM users WHERE username = ? COLLATE NOCASE')
+				.get(username.trim()) as UserRow | undefined;
+			if (!row) return null;
+			return {
+				id: Number(row.id),
+				authSource: row.auth_source === 'ldap' ? 'ldap' : 'local',
+				ldapDn: row.ldap_dn ?? null,
+			};
 		});
 	}
 

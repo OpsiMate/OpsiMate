@@ -8,10 +8,10 @@ const logger = new Logger('bl/alerts/webhookOwnerResolver');
 // meantime is picked up within the window.
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
-// Turns the `owner` a webhook sends — an email, or a bare name completed with the
-// installation's default login domain — into an OpsiMate user, provisioning a directory
-// user who has never logged in (see UserBL.findOrProvisionUserByEmail). Results are
-// cached, misses included.
+// Turns the `owner` a webhook sends — a username or an email — into an OpsiMate user,
+// provisioning a directory user who has never logged in (see UserBL.findOrProvisionUser).
+// A bare name that matches nobody is also tried as the address the (deprecated) default
+// login domain completes it to. Results are cached, misses included.
 export class WebhookOwnerResolver {
 	private readonly cache = new Map<string, { user: User | null; expires: number }>();
 
@@ -21,14 +21,17 @@ export class WebhookOwnerResolver {
 	) {}
 
 	async resolve(identifier: string): Promise<User | null> {
-		const email = completeLoginIdentifier(identifier, this.defaultEmailDomain()).toLowerCase();
-		// Only an address can name an account; a bare name with no default domain cannot.
-		if (!email.includes('@')) return null;
-		const cached = this.cache.get(email);
+		const typed = identifier.trim().toLowerCase();
+		if (!typed) return null;
+		const cached = this.cache.get(typed);
 		if (cached && cached.expires > Date.now()) return cached.user;
-		const user = await this.userBL.findOrProvisionUserByEmail(email);
-		if (!user) logger.debug(`Webhook owner ${email} matches no user`);
-		this.cache.set(email, { user, expires: Date.now() + CACHE_TTL_MS });
+		let user = await this.userBL.findOrProvisionUser(typed);
+		if (!user) {
+			const completed = completeLoginIdentifier(typed, this.defaultEmailDomain()).toLowerCase();
+			if (completed !== typed) user = await this.userBL.findOrProvisionUser(completed);
+		}
+		if (!user) logger.debug(`Webhook owner ${typed} matches no user`);
+		this.cache.set(typed, { user, expires: Date.now() + CACHE_TTL_MS });
 		return user;
 	}
 

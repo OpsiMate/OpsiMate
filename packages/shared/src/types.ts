@@ -930,6 +930,8 @@ export interface LdapSettings {
 	hasBindPassword: boolean;
 	searchBase: string;
 	searchFilter: string;
+	// The attribute that holds the login name (uid; sAMAccountName on Active Directory).
+	usernameAttribute: string;
 	emailAttribute: string;
 	nameAttribute: string;
 	groupsAttribute: string;
@@ -955,6 +957,7 @@ export interface UpdateLdapSettings {
 	bindPassword?: string | null;
 	searchBase?: string;
 	searchFilter?: string;
+	usernameAttribute?: string;
 	emailAttribute?: string;
 	nameAttribute?: string;
 	groupsAttribute?: string;
@@ -969,8 +972,9 @@ export interface UpdateLdapSettings {
 }
 
 export interface LdapTestRequest {
-	// Optional: look this user up too and show the role they would get (no password
-	// is needed or checked).
+	// Optional: look this user up too — a username or an email — and show the role they
+	// would get (no password is needed or checked). `email` is the old name of the field.
+	login?: string;
 	email?: string;
 	// Optional: unsaved edits from the Settings page, laid over the stored settings for
 	// this test only. Nothing is saved. Omitted = test the settings as saved.

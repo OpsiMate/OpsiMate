@@ -91,9 +91,9 @@ It holds no credentials of its own: each MCP client authenticates with the API t
 
 ## Alert Owner from the Webhook
 
-A source can say who owns an alert: the generic webhook (`POST /api/v1/alerts/custom`) takes a top-level `owner`, and every integration (Grafana, Datadog, Zabbix, GCP, Uptime Kuma) reads an `owner` label/tag. The value is a user's email, or a bare name when `login.default_email_domain` is set (`dana` → `dana@company.com`).
+A source can say who owns an alert: the generic webhook (`POST /api/v1/alerts/custom`) takes a top-level `owner`, and every integration (Grafana, Datadog, Zabbix, GCP, Uptime Kuma) reads an `owner` label/tag. The value is a user's **username** (`idanl`) or email; anything with an `@` is an email. A bare name that matches nobody is also tried as the address the (deprecated) `login.default_email_domain` completes it to.
 
-- Local users are matched by email. With LDAP on, a directory user who has never logged in is looked up with the service account and, when in a mapped group, provisioned on the spot — exactly as their first login would.
+- Local users are matched by username or email, ignoring letter case. With LDAP on, a directory user who has never logged in is looked up with the service account — by username or email, the same way a login is — and, when in a mapped group, provisioned on the spot exactly as their first login would.
 - The owner is a default, not an authority: a name fills an **empty** owner only. A re-send with another name never replaces an owner a person set by hand, and leaving it out — field and `owner` label alike — leaves the owner alone.
 - Sending `owner` **empty** (`""` or `null`, or an empty `owner` label) **removes** the owner — also one a person set by hand — and takes the alert out of its incident. The response says `unassigned`; when there was an owner to remove, the history reads "Owner removed" and the `owner_unassigned` callback fires (on an alert nobody owns it is a no-op). Like everything about the owner, a removal that fails never fails the webhook: the response says `kept`, meaning the removal was not confirmed — check the alert, or send the empty `owner` again. Within one backend instance, webhooks for the same alert apply their `owner` in arrival order even when a directory lookup is slow, so an assignment followed by a removal ends unowned — a later name still never replaces an existing owner. A sender that updates the same alert in quick succession should wait for each response before sending the next; across several backend replicas that is the only ordering guarantee.
 - Nobody matching, or the directory being down, never fails the webhook: the alert is stored unassigned and the response's `owner` field says `not_found` (otherwise `assigned`, `kept` or `unassigned`). No `owner_assigned` callback fires for a webhook owner — that is for a person's decision.
@@ -130,24 +130,25 @@ login:
 ## LDAP / Active Directory Login
 
 OpsiMate can sign users in against an LDAP directory (OpenLDAP, Active Directory, FreeIPA, ...).
-Nobody needs to be invited: a directory user's OpsiMate account is created the first time they log in, and their role is re-read from their groups at every login.
+Nobody needs to be invited: a directory user's OpsiMate account is created the first time they log in, and their role is re-read from their groups at every login. People sign in with their directory **username** (`uid`; `sAMAccountName` on Active Directory) or their email.
 
 How it works:
 
-1. OpsiMate binds with a read-only service account and searches `search_base` for the email the user typed.
+1. OpsiMate binds with a read-only service account and searches `search_base` for what the user typed: a username is matched against `username_attribute` (default `uid`), an email against `email_attribute` (default `mail`). The default `search_filter` is `(|(uid={{login}})(mail={{login}}))`; a custom one must contain `{{login}}` (`{{email}}` is accepted as its old name). The matching entry must itself list the typed value in that attribute — an entry that merely matched the filter is refused.
 2. It checks the password by binding as that entry. OpsiMate never stores directory passwords.
 3. It reads the user's groups (`memberOf`, or a group search) and maps them to a role through `role_mapping`. The highest role wins. Users in no mapped group are refused unless `default_role` is set.
+4. The OpsiMate account gets the directory username as its username and the entry's `mail` as its email (none, if the entry has no address). Name, role and email follow the directory at every login.
 
 Security notes:
 
 - **Prefer full group DNs in `role_mapping`, at least for `admin`.** A bare name like `admins` matches _any_ group whose name is `admins`, anywhere the lookup can see. Anyone who can create or own a group there could grant themselves that role.
-- An OpsiMate account belongs to the directory entry (DN) that created it. If another entry later answers for the same email (for example a reused address, or an entry that was moved or renamed), that login is refused and the server log says so. Delete the OpsiMate user to let the new entry sign in.
-- After 5 failed directory logins for an email within 15 minutes, OpsiMate answers 429 without asking the directory. This protects the account from being locked by the directory's own lockout policy. Keep your directory lockout threshold above this number. The trade-off is that anyone who knows a user's email can block that user's OpsiMate login for 15 minutes. Without the limit, the same guesses would lock their directory account everywhere. If your directory has no lockout policy, you can raise the limit or turn it off with `login_max_failures` / `LDAP_LOGIN_MAX_FAILURES` (`0` = no limit).
+- An OpsiMate account belongs to the directory entry (DN) that created it. If another entry later answers for the same username or email (for example a reused name or address, or an entry that was moved or renamed), that login is refused and the server log says so. Delete the OpsiMate user to let the new entry sign in.
+- After 5 failed directory logins for a login name within 15 minutes, OpsiMate answers 429 without asking the directory. This protects the account from being locked by the directory's own lockout policy. Keep your directory lockout threshold above this number. The trade-off is that anyone who knows a user's username or email can block that user's OpsiMate login for 15 minutes. Without the limit, the same guesses would lock their directory account everywhere. If your directory has no lockout policy, you can raise the limit or turn it off with `login_max_failures` / `LDAP_LOGIN_MAX_FAILURES` (`0` = no limit). With the deprecated `login.default_email_domain` set, a bare name is also searched as the completed address — one more search, still a single bind.
 - Role and name changes in the directory apply at the user's next login. A session that is already open keeps its role until the token expires.
 
-Local accounts, such as the first admin, always sign in locally. That is your way in if the directory is down or misconfigured. A directory entry can never take over a local account with the same email.
+Local accounts, such as the first admin, always sign in locally. That is your way in if the directory is down or misconfigured. A directory entry can never take over a local account with the same username or email.
 
-The easiest way to set it up is in the app: **Settings → Users → Directory login (LDAP)**, as an admin. Fill in the connection, service account, search base and group-to-role mapping, press **Test connection** (it runs on what is in the form, before anything is saved; add a user's email to see the role they would get), then switch it on and **Save**. Changes apply immediately, without a restart. The service-account password is stored encrypted and never shown again, and every change is recorded in the audit log.
+The easiest way to set it up is in the app: **Settings → Users → Directory login (LDAP)**, as an admin. Fill in the connection, service account, search base and group-to-role mapping, press **Test connection** (it runs on what is in the form, before anything is saved; add a username or email to see the role they would get), then switch it on and **Save**. Changes apply immediately, without a restart. The service-account password is stored encrypted and never shown again, and every change is recorded in the audit log.
 
 **Test connection** runs on whatever is in the form, saved or not, and says which step failed (connect, service account, search base, user lookup). When the server refuses a save, the page marks the field it objected to.
 
@@ -168,11 +169,11 @@ Then, in **Settings → Users → Directory login (LDAP)**:
 | Server URL         | `ldap://localhost:10389` (security: **None**), or `ldaps://localhost:10636` with "Verify the server certificate" off (self-signed) |
 | Bind DN / Password | `cn=admin,dc=planetexpress,dc=com` / `GoodNewsEveryone`                                                                            |
 | Search base        | `ou=people,dc=planetexpress,dc=com`                                                                                                |
-| Search filter      | `(mail={{email}})` (default)                                                                                                       |
+| Search filter      | `(\|(uid={{login}})(mail={{login}}))` (default)                                                                                    |
 | Admin groups       | `cn=admin_staff,ou=people,dc=planetexpress,dc=com`                                                                                 |
 | Viewer groups      | `cn=ship_crew,ou=people,dc=planetexpress,dc=com`                                                                                   |
 
-Press **Test connection** with `professor@planetexpress.com` to see the admin role, or `fry@planetexpress.com` for viewer; `zoidberg@planetexpress.com` is in neither group and shows what a refused user looks like. Switch LDAP on, Save, sign out, and log in as `fry@planetexpress.com` with password `fry`. The directory listens on `localhost` only (its admin password is public). If OpsiMate itself runs in Docker, attach its container to the `opsimate-ldap-test` network and use the container name instead of `localhost` — this works the same with Docker Desktop and Docker Engine on Linux:
+Press **Test connection** with `professor` (or `professor@planetexpress.com`) to see the admin role, or `fry` for viewer; `zoidberg` is in neither group and shows what a refused user looks like. Switch LDAP on, Save, sign out, and log in as `fry` with password `fry` — `fry@planetexpress.com` works too. The directory listens on `localhost` only (its admin password is public). If OpsiMate itself runs in Docker, attach its container to the `opsimate-ldap-test` network and use the container name instead of `localhost` — this works the same with Docker Desktop and Docker Engine on Linux:
 
 ```bash
 docker network connect opsimate-ldap-test <opsimate-server-container>
@@ -192,7 +193,8 @@ Configure it in the `ldap:` section of your config file (see the commented examp
 | `LDAP_START_TLS`                                                                                             | `true` (with an `ldap://` URL)                                   |
 | `LDAP_BIND_DN` / `LDAP_BIND_PASSWORD`                                                                        | service account                                                  |
 | `LDAP_SEARCH_BASE`                                                                                           | `ou=people,dc=example,dc=com`                                    |
-| `LDAP_SEARCH_FILTER`                                                                                         | `(mail={{email}})`                                               |
+| `LDAP_SEARCH_FILTER`                                                                                         | `(\|(uid={{login}})(mail={{login}}))` (default)                   |
+| `LDAP_USERNAME_ATTRIBUTE`                                                                                    | `uid` (default); `sAMAccountName` for Active Directory           |
 | `LDAP_NAME_ATTRIBUTE` / `LDAP_EMAIL_ATTRIBUTE`                                                               | `displayName` / `mail`                                           |
 | `LDAP_GROUPS_ATTRIBUTE`                                                                                      | `memberOf`                                                       |
 | `LDAP_GROUP_SEARCH_BASE` / `LDAP_GROUP_SEARCH_FILTER`                                                        | `ou=groups,dc=example,dc=com` / `(member={{dn}})`                |
@@ -205,4 +207,4 @@ Configure it in the `ldap:` section of your config file (see the commented examp
 
 Use `ldaps://` or StartTLS: with plain `ldap://` passwords cross the network unencrypted, and OpsiMate logs a warning at startup. If the configuration is incomplete, LDAP stays off and the reason is logged.
 
-For directory accounts, passwords and emails are managed in the directory. OpsiMate hides the password change, admin reset and "forgot password" for them.
+For directory accounts, passwords, usernames and emails are managed in the directory. OpsiMate hides the password change, admin reset and "forgot password" for them.

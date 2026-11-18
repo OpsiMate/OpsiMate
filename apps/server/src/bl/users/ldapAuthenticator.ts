@@ -2,7 +2,15 @@ import fs from 'node:fs';
 import net from 'node:net';
 import type { ConnectionOptions } from 'node:tls';
 import { Client, ClientOptions, Entry, InvalidCredentialsError, ResultCodeError } from 'ldapts';
-import { LdapTestResult, LdapTestStep, LdapTestUser, Logger, Role } from '@OpsiMate/shared';
+import {
+	foldUsername,
+	LdapTestResult,
+	LdapTestStep,
+	LdapTestUser,
+	Logger,
+	Role,
+	usernameFromEmail,
+} from '@OpsiMate/shared';
 import { LdapConfig, LdapRoleMapping } from '../../config/config';
 import { MS_PER_SECOND } from '../../utils/time';
 
@@ -13,7 +21,12 @@ const logger = new Logger('bl/users/ldapAuthenticator');
 // Who the directory says the person is, after their password checked out.
 export interface LdapIdentity {
 	dn: string;
-	email: string;
+	// The login name OpsiMate keys the account on: the typed username, or the entry's
+	// username attribute (uid / sAMAccountName) when an email was typed.
+	username: string;
+	// The typed email, or the entry's mail attribute when a username was typed; null for
+	// an entry with no address.
+	email: string | null;
 	fullName: string;
 	// Group DNs (or names) the user belongs to.
 	groups: string[];
@@ -53,7 +66,10 @@ export type LdapClientFactory = (options: ClientOptions) => LdapClientLike;
 
 const defaultClientFactory: LdapClientFactory = (options) => new Client(options);
 
-// RFC 4515 escaping for a value placed inside a search filter: without it an email
+// What was typed is an email when it has an "@"; otherwise a username.
+const isEmailLike = (identifier: string): boolean => identifier.includes('@');
+
+// RFC 4515 escaping for a value placed inside a search filter: without it a login
 // like "*)(uid=*" would rewrite the filter (LDAP injection).
 export const escapeFilterValue = (value: string): string =>
 	value.replace(/[\\*()\0]/g, (ch) => `\\${ch.charCodeAt(0).toString(16).padStart(2, '0')}`);
@@ -122,25 +138,20 @@ export class LdapAuthenticator {
 		};
 	}
 
-	// Who the directory says this email is — entry, name, groups, role — read with the
-	// service account and no proof from the person. For assigning an alert to someone who
-	// has never logged in (webhook `owner`): the same rules as a login (one entry, listing
-	// that address, in a mapped group) minus the password. null = not a directory user.
-	async lookup(email: string): Promise<LdapIdentity | null> {
+	// Who the directory says this username or email is — entry, name, groups, role — read
+	// with the service account and no proof from the person. For assigning an alert to
+	// someone who has never logged in (webhook `owner`): the same rules as a login (one
+	// entry, listing that identity, in a mapped group) minus the password. null = not a
+	// directory user.
+	async lookup(identifier: string): Promise<LdapIdentity | null> {
 		const client = this.createClient();
 		try {
 			await this.startTlsIfConfigured(client);
 			await this.bindServiceAccount(client);
-			const entry = await this.locate(client, email, 'lookup');
+			const entry = await this.locate(client, identifier, 'lookup');
 			if (!entry) return null;
 			const groups = await this.groupsOf(client, entry);
-			return {
-				dn: entry.dn,
-				email: email.trim().toLowerCase(),
-				fullName: this.fullNameOf(entry, email),
-				groups,
-				role: resolveLdapRole(groups, this.config.role_mapping, this.config.default_role),
-			};
+			return this.identityOf(entry, identifier, groups);
 		} catch (error) {
 			if (error instanceof LdapUnavailableError) throw error;
 			throw new LdapUnavailableError(`LDAP error: ${(error as Error).message}`);
@@ -149,26 +160,36 @@ export class LdapAuthenticator {
 		}
 	}
 
-	// The one entry for an email, or null: not found, ambiguous (two entries share it), or
-	// an entry that matched the filter without listing that address itself (an entry whose
-	// self-editable mail attribute names someone else must not stand in for them).
-	private async locate(client: LdapClientLike, email: string, purpose: string): Promise<Entry | null> {
-		const searchEntries = await this.findEntries(client, email);
+	// The one entry for a username or email, or null: not found, ambiguous (two entries
+	// share it), or an entry that matched the filter without listing that identity itself
+	// (an entry whose self-editable mail attribute names someone else must not stand in
+	// for them).
+	private async locate(client: LdapClientLike, identifier: string, purpose: string): Promise<Entry | null> {
+		const searchEntries = await this.findEntries(client, identifier);
 		if (searchEntries.length !== 1) {
-			if (searchEntries.length > 1) logger.warn(`LDAP: more than one entry matches ${email}; ${purpose} refused`);
+			if (searchEntries.length > 1) {
+				logger.warn(`LDAP: more than one entry matches ${identifier}; ${purpose} refused`);
+			}
 			return null;
 		}
 		const entry = searchEntries[0];
-		if (!this.listsEmail(entry, email)) {
-			logger.warn(`LDAP: entry ${entry.dn} matched ${email} but does not list that address; ${purpose} refused`);
+		if (!this.listsIdentifier(entry, identifier)) {
+			logger.warn(`LDAP: entry ${entry.dn} matched ${identifier} but does not list it; ${purpose} refused`);
 			return null;
 		}
 		return entry;
 	}
 
-	// null = unknown user or wrong password (the caller says "invalid email or
+	// null = unknown user or wrong password (the caller says "invalid username or
 	// password" either way). Throws LdapUnavailableError when the directory can't answer.
-	async authenticate(email: string, password: string): Promise<LdapIdentity | null> {
+	// `alternatives` are further spellings of the same login to try when the first finds
+	// no entry (a bare name completed with the default email domain): one search each,
+	// and ONE bind, so a wrong password costs the directory's lockout counter one failure.
+	async authenticate(
+		identifier: string,
+		password: string,
+		alternatives: string[] = []
+	): Promise<LdapIdentity | null> {
 		// An LDAP bind with an empty password is an *unauthenticated* bind, which many
 		// servers accept as success. Never let one through as a login.
 		if (!password) return null;
@@ -177,10 +198,18 @@ export class LdapAuthenticator {
 		try {
 			await this.startTlsIfConfigured(client);
 			await this.bindServiceAccount(client);
-			// Not found, ambiguous, or not listing the typed address: refuse rather than
+			// Not found, ambiguous, or not listing the typed identity: refuse rather than
 			// guess (see locate).
-			const entry = await this.locate(client, email, 'login');
-			if (!entry) return null;
+			let found: { entry: Entry; identifier: string } | null = null;
+			for (const candidate of [identifier, ...alternatives]) {
+				const entry = await this.locate(client, candidate, 'login');
+				if (entry) {
+					found = { entry, identifier: candidate };
+					break;
+				}
+			}
+			if (!found) return null;
+			const { entry, identifier: matched } = found;
 
 			try {
 				await client.bind(entry.dn, password);
@@ -193,14 +222,7 @@ export class LdapAuthenticator {
 			// to read groups.
 			await this.bindServiceAccount(client);
 			const groups = await this.groupsOf(client, entry);
-
-			return {
-				dn: entry.dn,
-				email: email.trim().toLowerCase(),
-				fullName: this.fullNameOf(entry, email),
-				groups,
-				role: resolveLdapRole(groups, this.config.role_mapping, this.config.default_role),
-			};
+			return this.identityOf(entry, matched, groups);
 		} catch (error) {
 			if (error instanceof LdapUnavailableError) throw error;
 			throw new LdapUnavailableError(`LDAP error: ${(error as Error).message}`);
@@ -210,9 +232,9 @@ export class LdapAuthenticator {
 	}
 
 	// Settings page "Test connection": walk the same steps a login takes, stopping at the
-	// first failure, and say which one failed and why. With an email it also looks that
-	// user up and reports the role they would get. No user password is involved.
-	async probe(email?: string): Promise<LdapTestResult> {
+	// first failure, and say which one failed and why. With a username or email it also
+	// looks that user up and reports the role they would get. No user password is involved.
+	async probe(identifier?: string): Promise<LdapTestResult> {
 		const started = Date.now();
 		const steps: LdapTestStep[] = [];
 		let user: LdapTestUser | null = null;
@@ -278,18 +300,19 @@ export class LdapAuthenticator {
 				return { ok: false, latencyMs: Date.now() - started, steps, user };
 			}
 
-			if (email) {
-				const entries = await this.findEntries(client, email);
+			if (identifier) {
+				const entries = await this.findEntries(client, identifier);
+				const what = isEmailLike(identifier) ? 'email' : 'username';
 				if (entries.length === 0) {
-					fail('user_lookup', `No entry matches ${email} under the search base`);
+					fail('user_lookup', `No entry matches ${identifier} under the search base`);
 				} else if (entries.length > 1) {
-					fail('user_lookup', `More than one entry matches ${email}: login would be refused`);
-				} else if (!this.listsEmail(entries[0], email)) {
-					fail('user_lookup', `${entries[0].dn} matched, but does not list ${email} as its email`);
+					fail('user_lookup', `More than one entry matches ${identifier}: login would be refused`);
+				} else if (!this.listsIdentifier(entries[0], identifier)) {
+					fail('user_lookup', `${entries[0].dn} matched, but does not list ${identifier} as its ${what}`);
 				} else {
 					const groups = await this.groupsOf(client, entries[0]);
 					const role = resolveLdapRole(groups, this.config.role_mapping, this.config.default_role);
-					user = { dn: entries[0].dn, fullName: this.fullNameOf(entries[0], email), groups, role };
+					user = { dn: entries[0].dn, fullName: this.fullNameOf(entries[0], identifier), groups, role };
 					if (role) pass('user_lookup', `Found; would sign in as ${role}`);
 					// Reachable, but this person could not sign in: that's a failed check.
 					else
@@ -301,7 +324,7 @@ export class LdapAuthenticator {
 			}
 			return { ok: steps.every((s) => s.ok), latencyMs: Date.now() - started, steps, user };
 		} catch (error) {
-			const last = email ? 'user_lookup' : 'search_base';
+			const last = identifier ? 'user_lookup' : 'search_base';
 			fail(last, (error as Error).message);
 			return { ok: false, latencyMs: Date.now() - started, steps, user };
 		} finally {
@@ -367,27 +390,67 @@ export class LdapAuthenticator {
 		});
 	}
 
-	private async findEntries(client: LdapClientLike, email: string): Promise<Entry[]> {
-		const emailAttr = this.config.email_attribute ?? 'mail';
+	private usernameAttribute(): string {
+		return this.config.username_attribute ?? 'uid';
+	}
+
+	private emailAttribute(): string {
+		return this.config.email_attribute ?? 'mail';
+	}
+
+	// Without a configured filter: the typed value is matched against the username
+	// attribute or the email attribute, whichever it is.
+	private searchFilter(): string {
+		return (
+			this.config.search_filter ??
+			`(|(${this.usernameAttribute()}={{login}})(${this.emailAttribute()}={{login}}))`
+		);
+	}
+
+	private async findEntries(client: LdapClientLike, identifier: string): Promise<Entry[]> {
 		const nameAttr = this.config.name_attribute ?? 'displayName';
 		const groupsAttr = this.config.groups_attribute ?? 'memberOf';
 		// Function replacers: a string replacement would expand $&, $' and $` in the value.
-		const escapedEmail = escapeFilterValue(email);
-		const filter = (this.config.search_filter ?? '(mail={{email}})').replaceAll('{{email}}', () => escapedEmail);
+		const escaped = escapeFilterValue(identifier.trim());
+		const filter = this.searchFilter()
+			.replaceAll('{{login}}', () => escaped)
+			.replaceAll('{{email}}', () => escaped);
 		const { searchEntries } = await this.search(client, this.config.search_base as string, {
 			scope: 'sub',
 			filter,
-			attributes: [emailAttr, nameAttr, 'cn', groupsAttr],
+			attributes: [this.usernameAttribute(), this.emailAttribute(), nameAttr, 'cn', groupsAttr],
 			sizeLimit: 2,
 		});
 		return searchEntries;
 	}
 
-	private listsEmail(entry: Entry, email: string): boolean {
-		const typed = email.trim().toLowerCase();
-		return allValues(entry, this.config.email_attribute ?? 'mail').some(
-			(value) => value.trim().toLowerCase() === typed
-		);
+	// The entry itself names the typed identity: the typed email among its email values,
+	// or the typed username among its username values (letter case aside).
+	private listsIdentifier(entry: Entry, identifier: string): boolean {
+		const typed = identifier.trim().toLowerCase();
+		const attribute = isEmailLike(typed) ? this.emailAttribute() : this.usernameAttribute();
+		return allValues(entry, attribute).some((value) => value.trim().toLowerCase() === typed);
+	}
+
+	// The identity an entry yields for what was typed. The typed side is the one the
+	// person proved; the other comes from the entry (and may be missing: a directory
+	// user with no mail attribute gets no email).
+	private identityOf(entry: Entry, identifier: string, groups: string[]): LdapIdentity {
+		const typed = identifier.trim().toLowerCase();
+		const directoryUsername = firstValue(entry, this.usernameAttribute())?.trim();
+		const directoryEmail = firstValue(entry, this.emailAttribute())?.trim().toLowerCase() || null;
+		const email = isEmailLike(typed) ? typed : directoryEmail;
+		const username = isEmailLike(typed)
+			? foldUsername(directoryUsername || usernameFromEmail(typed))
+			: foldUsername(typed);
+		return {
+			dn: entry.dn,
+			username,
+			email,
+			fullName: this.fullNameOf(entry, identifier),
+			groups,
+			role: resolveLdapRole(groups, this.config.role_mapping, this.config.default_role),
+		};
 	}
 
 	// Runs as whoever the connection is bound as: the service account.

@@ -66,14 +66,20 @@ export const UsernameSchema = z
 	.toLowerCase()
 	.regex(USERNAME_PATTERN, { message: `Username must be ${USERNAME_RULES}` });
 
-// The username an email suggests: its local part, lowercased, anything the pattern does
-// not allow folded to "-". For callers that only sent an address, and for the migration
-// that gives every existing account a username.
-export const usernameFromEmail = (email: string): string => {
-	const local = email.trim().toLowerCase().split('@')[0] ?? '';
-	const folded = local.replace(/[^a-z0-9._-]/g, '-').slice(0, 64);
+// A name from outside (a directory's uid or sAMAccountName) as a username: lowercased,
+// anything the pattern does not allow folded to "-", padded when too short.
+export const foldUsername = (raw: string): string => {
+	const folded = raw
+		.trim()
+		.toLowerCase()
+		.replace(/[^a-z0-9._-]/g, '-')
+		.slice(0, 64);
 	return folded.length >= 2 ? folded : `user-${folded}`.slice(0, 64);
 };
+
+// The username an email suggests: its local part, folded. For callers that only sent an
+// address, and for the migration that gives every existing account a username.
+export const usernameFromEmail = (email: string): string => foldUsername(email.trim().split('@')[0] ?? '');
 
 export const USERNAME_MAX_LENGTH = 64;
 
@@ -779,8 +785,12 @@ export const UpdateLdapSettingsSchema = z
 			.string()
 			.trim()
 			.max(1000)
-			.refine((v) => v === '' || v.includes('{{email}}'), 'The search filter must contain {{email}}')
+			.refine(
+				(v) => v === '' || v.includes('{{login}}') || v.includes('{{email}}'),
+				'The search filter must contain {{login}}'
+			)
 			.optional(),
+		usernameAttribute: z.string().trim().max(100).optional(),
 		emailAttribute: z.string().trim().max(100).optional(),
 		nameAttribute: z.string().trim().max(100).optional(),
 		groupsAttribute: z.string().trim().max(100).optional(),
@@ -814,6 +824,8 @@ export const UpdateLdapSettingsSchema = z
 
 export const LdapTestRequestSchema = z
 	.object({
+		// A username or an email to look up; `email` is the same field under its old name.
+		login: z.string().trim().min(1).max(320).optional(),
 		email: z.string().trim().email().optional(),
 		// Unsaved edits to test with (see LdapTestRequest). Same shape as a save, so the
 		// page gets the same field-level errors from a test as it would from a save.
