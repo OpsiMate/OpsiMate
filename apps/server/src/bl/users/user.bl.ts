@@ -1,4 +1,4 @@
-import { UserRepository, UserUpdates } from '../../dal/userRepository';
+import { LoginRecord, UserRepository, UserUpdates } from '../../dal/userRepository';
 import bcrypt from 'bcrypt';
 import { AuditActionType, AuditResourceType, Logger, Role, User, usernameFromEmail } from '@OpsiMate/shared';
 import { MailClient, MailType } from '../../dal/external-client/mail-client';
@@ -34,9 +34,6 @@ export const usernameFor = (account: { username?: string; email?: string | null 
 	if (account.email) return usernameFromEmail(account.email);
 	throw new Error('A username or an email is required');
 };
-
-// How many numbered variants are tried before a derived username is given up on.
-const USERNAME_ALLOCATION_TRIES = 1000;
 
 // A taken username or email, as the API reports it: SQLite's UNIQUE failures (the email
 // column keeps its old constraint name; the username has a named index), or the same
@@ -157,12 +154,8 @@ export class UserBL {
 	// A username nobody holds: `base` itself, else base2, base3, ... For names OpsiMate
 	// derives (from an email, from a directory entry) — a name the caller asked for by
 	// itself is never changed behind their back; it is refused when taken.
-	private async allocateUsername(base: string): Promise<string> {
-		for (let n = 1; n <= USERNAME_ALLOCATION_TRIES; n++) {
-			const candidate = n === 1 ? base : `${base}${n}`.slice(0, 64);
-			if (!(await this.userRepo.getUserByUsername(candidate))) return candidate;
-		}
-		throw new Error(USERNAME_TAKEN);
+	private allocateUsername(base: string): Promise<string> {
+		return this.userRepo.nextFreeUsername(base);
 	}
 
 	// The account an email names, for an action on it. Exact spelling wins; otherwise the
@@ -221,17 +214,27 @@ export class UserBL {
 		return this.userRepo.updateUserRoleById(Number(user.id), newRole);
 	}
 
-	// The local account a login names. Anything with "@" is an email; a bare name is a
-	// username first and, for installations that still rely on the default login domain,
-	// the address it completes to. Either lookup ignores letter case.
-	private async findLocalLogin(identifier: string) {
+	// The local accounts a login may name, most specific first: the account whose username
+	// was typed, then the one whose address the (deprecated) default login domain
+	// completes a bare name to — an older account whose migrated username happens to be
+	// that name must not capture a login that always meant <name>@<domain>. Anything
+	// with "@" is an email only. Lookups ignore letter case.
+	private async localLoginCandidates(identifier: string): Promise<LoginRecord[]> {
 		const typed = identifier.trim();
-		if (typed === '') return undefined;
-		if (typed.includes('@')) return this.userRepo.findLoginByEmail(typed);
+		if (typed === '') return [];
+		if (typed.includes('@')) {
+			const byEmail = await this.userRepo.findLoginByEmail(typed);
+			return byEmail ? [byEmail] : [];
+		}
+		const candidates: LoginRecord[] = [];
 		const byUsername = await this.userRepo.findLoginByUsername(typed);
-		if (byUsername) return byUsername;
+		if (byUsername) candidates.push(byUsername);
 		const completed = completeLoginIdentifier(typed, this.loginDefaultEmailDomain);
-		return completed.includes('@') ? this.userRepo.findLoginByEmail(completed) : undefined;
+		if (completed.includes('@')) {
+			const byEmail = await this.userRepo.findLoginByEmail(completed);
+			if (byEmail && byEmail.user.id !== byUsername?.user.id) candidates.push(byEmail);
+		}
+		return candidates;
 	}
 
 	// A local account always signs in locally — including the first admin, which is the
@@ -239,31 +242,40 @@ export class UserBL {
 	// LDAP when it is enabled; on success their OpsiMate account is created, or brought
 	// in step with the directory (name, role), and they are signed in.
 	async login(identifier: string, password: string): Promise<User> {
-		const existing = await this.findLocalLogin(identifier);
-
-		if (existing && existing.user.authSource !== 'ldap') {
-			if (!(await bcrypt.compare(password, existing.passwordHash))) throw new Error(INVALID_LOGIN);
-			return existing.user;
+		const candidates = await this.localLoginCandidates(identifier);
+		for (const local of candidates) {
+			if (local.user.authSource === 'ldap') continue;
+			if (await bcrypt.compare(password, local.passwordHash)) return local.user;
 		}
+		const directoryAccount = candidates.find((candidate) => candidate.user.authSource === 'ldap');
+		// Only local accounts answered, and none to this password.
+		if (candidates.length > 0 && !directoryAccount) throw new Error(INVALID_LOGIN);
 		if (!this.ldap) {
 			// A directory account while LDAP is switched off: nothing can vouch for it.
 			throw new Error(INVALID_LOGIN);
 		}
-		// The directory is asked by email (a username completes to one with the default
-		// login domain); a bare name with no domain is not a directory login yet.
-		const email = completeLoginIdentifier(identifier, this.loginDefaultEmailDomain);
-		const normalizedEmail = email.trim().toLowerCase();
-		if (!normalizedEmail.includes('@')) throw new Error(INVALID_LOGIN);
+		// The directory is asked by email: a known directory account's own address, else
+		// what was typed, completed with the default login domain. A bare name that is
+		// neither is not a directory login.
+		const typed = identifier.trim().toLowerCase();
+		const completed = completeLoginIdentifier(typed, this.loginDefaultEmailDomain).toLowerCase();
+		const email = directoryAccount?.user.email?.toLowerCase() ?? (completed.includes('@') ? completed : null);
+		if (!email) throw new Error(INVALID_LOGIN);
 
-		if (this.ldapFailures?.isThrottled(normalizedEmail)) throw new TooManyLoginAttemptsError();
-		const identity = await this.ldap.authenticate(normalizedEmail, password);
+		// One throttle for every spelling of this login — the name typed and the address it
+		// stands for — so the directory's lockout counter is protected whichever is used.
+		const throttleKeys = [...new Set([typed, email])];
+		if (throttleKeys.some((key) => this.ldapFailures?.isThrottled(key))) throw new TooManyLoginAttemptsError();
+		const identity = await this.ldap.authenticate(email, password);
 		if (!identity) {
-			if (this.ldapFailures?.recordFailure(normalizedEmail) === this.ldapMaxFailures) {
-				logger.warn(`LDAP login for ${normalizedEmail} throttled after ${this.ldapMaxFailures} failures`);
+			for (const key of throttleKeys) {
+				if (this.ldapFailures?.recordFailure(key) === this.ldapMaxFailures) {
+					logger.warn(`LDAP login for ${key} throttled after ${this.ldapMaxFailures} failures`);
+				}
 			}
 			throw new Error(INVALID_LOGIN);
 		}
-		this.ldapFailures?.reset(normalizedEmail);
+		for (const key of throttleKeys) this.ldapFailures?.reset(key);
 		if (!identity.role) {
 			logger.warn(`LDAP login refused for ${identity.email}: in none of the mapped groups`);
 			throw new Error(NOT_ALLOWED_LOGIN);
@@ -433,12 +445,13 @@ export class UserBL {
 	}
 
 	async forgotPassword(email: string): Promise<void> {
-		// Exact spelling first; an address an old database holds in several spellings, none
-		// of them the typed one, gets no link — the same silence as an unknown address.
-		const matches = await this.userRepo.findUsersByEmail(email);
-		const user =
-			matches.find((match) => match.email === email.trim()) ?? (matches.length === 1 ? matches[0] : null);
-		if (matches.length > 1 && !user) {
+		// An address an old database holds in several spellings, none of them the typed one,
+		// gets no link — the same silence as an unknown address.
+		let user: User | null;
+		try {
+			user = await this.accountByEmail(email);
+		} catch (error) {
+			if (!(error instanceof Error) || error.message !== AMBIGUOUS_EMAIL) throw error;
 			logger.info('Password reset requested for an email that matches several accounts; ignored');
 			return;
 		}
@@ -452,7 +465,7 @@ export class UserBL {
 			logger.info('Password reset requested for non-existent email');
 			return;
 		}
-		// getUserByEmail found it by that address, so it has one; the guard is for the type.
+		// Found by that address, so it has one; the guard is for the type.
 		const to = user.email;
 		if (!to) return;
 

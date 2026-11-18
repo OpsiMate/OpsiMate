@@ -86,6 +86,30 @@ describe('UserBL login with a default domain', () => {
 		expect(ldapSeen).toEqual(['dana@acme.test']);
 	});
 
+	test("a bare name that is an older account's migrated username still reaches <name>@<domain> with that account's password", async () => {
+		// Two Danas: the contractor's email got "dana" at migration; company Dana is dana@acme.test.
+		db.exec('DELETE FROM users');
+		await userRepo.createUser({
+			username: 'dana',
+			email: 'dana@contractor.test',
+			passwordHash: await bcrypt.hash('contractor-pw', 4),
+			fullName: 'Dana Contractor',
+			role: Role.Viewer,
+		});
+		await userRepo.createUser({
+			username: 'dana2',
+			email: 'dana@acme.test',
+			passwordHash: await bcrypt.hash('company-pw', 4),
+			fullName: 'Dana Company',
+			role: Role.Editor,
+		});
+		expect((await userBL.login('dana', 'contractor-pw')).email).toBe('dana@contractor.test');
+		expect((await userBL.login('dana', 'company-pw')).email).toBe('dana@acme.test');
+		await expect(userBL.login('dana', 'neither')).rejects.toThrow('Invalid');
+		// Both are local: the directory was never asked.
+		expect(ldapSeen).toEqual([]);
+	});
+
 	test('a name with its own domain is not rewritten', async () => {
 		await expect(userBL.login('idan@other.test', 'local-pw')).rejects.toThrow('Invalid');
 		expect(ldapSeen).toEqual(['idan@other.test']);

@@ -102,7 +102,7 @@ A source can say who owns an alert: the generic webhook (`POST /api/v1/alerts/cu
 
 Every account has a **username**: 2-64 characters, lowercase letters, digits, dot, underscore or hyphen (`idanl`, `j.smith`, `svc-deploy`), unique ignoring case. The email is optional. A user signs in with either one in the login field; anything with an `@` is taken as an email.
 
-- Creating a user (`POST /api/v1/users`, or the Settings page) takes `username` and an optional `email`. A caller that sends only an `email` gets the address's local part as the username (`dana@company.com` → `dana`).
+- Creating a user (`POST /api/v1/users`, or the Settings page) takes `username` and an optional `email`. A caller that sends only an `email` gets the address's local part as the username (`dana@company.com` → `dana`); when that name is taken the next free numbered variant (`dana2`) is used, and the response carries the username that was assigned. A `username` asked for explicitly is never changed: it is refused when taken.
 - Existing installations are migrated on startup: every account gets the local part of its email as its username (oldest account first; a name already taken gets a numeric suffix, which the server log reports), and the email column stops being required. Everyone keeps signing in with their email as before.
 - A user **without** an email cannot receive a password-reset link or the welcome mail; an admin sets their password from the Users page instead. Directory (LDAP) accounts never needed either.
 - `PATCH /api/v1/users/role` takes `username` (or `email`); `PATCH /api/v1/users/:id` can rename the username and set or clear (`null`) the email. Directory accounts keep the identity the directory gave them.

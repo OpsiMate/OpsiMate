@@ -75,6 +75,17 @@ export const usernameFromEmail = (email: string): string => {
 	return folded.length >= 2 ? folded : `user-${folded}`.slice(0, 64);
 };
 
+export const USERNAME_MAX_LENGTH = 64;
+
+// The n-th variant of a derived username: the name itself, then name2, name3, ... The
+// suffix always fits — a 64-character name is shortened to make room, so the variants
+// are distinct and a search for a free one terminates.
+export const usernameVariant = (base: string, n: number): string => {
+	if (n <= 1) return base.slice(0, USERNAME_MAX_LENGTH);
+	const suffix = String(n);
+	return `${base.slice(0, USERNAME_MAX_LENGTH - suffix.length)}${suffix}`;
+};
+
 // A contact address that may be absent: "" and null both mean none.
 export const OptionalEmailSchema = z.preprocess(
 	(value) => (typeof value === 'string' && value.trim() === '' ? null : value),

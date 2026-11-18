@@ -219,7 +219,7 @@ const Settings: React.FC = () => {
 	// Handle bulk delete
 	const handleBulkDelete = async () => {
 		for (const userId of selectedUsers) {
-			if (users.find((u) => u.id === userId)?.email !== currentUser?.email) {
+			if (userId !== currentUser?.id) {
 				await handleDeleteUser(userId);
 			}
 		}

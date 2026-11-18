@@ -1,7 +1,7 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { InsertResult, TableInfoRow, UserRow } from './models';
-import { Logger, Role, User, UserAuthSource, usernameFromEmail } from '@OpsiMate/shared';
+import { Logger, Role, User, UserAuthSource, usernameFromEmail, usernameVariant } from '@OpsiMate/shared';
 
 const logger = new Logger('dal/userRepository');
 
@@ -146,7 +146,7 @@ export class UserRepository {
 		for (const row of rows) {
 			const base = usernameFromEmail(row.email ?? `user${row.id}`);
 			let candidate = base;
-			for (let n = 2; taken.has(candidate); n++) candidate = `${base}${n}`.slice(0, 64);
+			for (let n = 2; taken.has(candidate); n++) candidate = usernameVariant(base, n);
 			if (candidate !== base) {
 				logger.warn(`User ${row.id} (${row.email}): username "${base}" was taken, assigned "${candidate}"`);
 			}
@@ -160,10 +160,14 @@ export class UserRepository {
 	// ids included. Foreign keys are switched off around it, or dropping the old table
 	// would cascade-delete every comment, reset token and on-call membership; the
 	// pragma cannot change inside a transaction, so it brackets one. Other tables'
-	// constraints still name "users" and are whole again after the rename.
+	// constraints still name "users" and are whole again after the rename — checked by
+	// comparing foreign_key_check before and after: the app runs without the pragma, so
+	// an old database may already hold dangling rows, which are not this rebuild's to
+	// refuse; only NEW violations roll it back.
 	private rebuildWithOptionalEmail(): void {
 		const foreignKeysWereOn = (this.db.pragma('foreign_keys', { simple: true }) as number) === 1;
 		if (foreignKeysWereOn) this.db.pragma('foreign_keys = OFF');
+		const violationsBefore = (this.db.pragma('foreign_key_check') as unknown[]).length;
 		try {
 			this.db.transaction(() => {
 				// The AUTOINCREMENT watermark: dropping the table forgets it, and a rebuilt
@@ -195,9 +199,11 @@ export class UserRepository {
 						this.db.prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = 'users'`).run(seq);
 					}
 				}
-				const violations = this.db.pragma('foreign_key_check') as unknown[];
-				if (violations.length > 0) {
-					throw new Error(`users table rebuild left ${violations.length} dangling foreign key(s)`);
+				const violationsAfter = (this.db.pragma('foreign_key_check') as unknown[]).length;
+				if (violationsAfter > violationsBefore) {
+					throw new Error(
+						`users table rebuild left ${violationsAfter - violationsBefore} new dangling foreign key(s)`
+					);
 				}
 			})();
 			logger.info('users table rebuilt: email is optional now');
@@ -420,6 +426,23 @@ export class UserRepository {
 				)
 				.all(address, address) as UserRow[];
 			return rows.map(this.toSharedUser);
+		});
+	}
+
+	// A username nobody holds: `base` itself, else the first free numbered variant (see
+	// usernameVariant). One query: every name that starts with the base, compared ignoring
+	// case, since that is how the unique index compares them.
+	async nextFreeUsername(base: string): Promise<string> {
+		return runAsync(() => {
+			const escaped = base.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+			const rows = this.db
+				.prepare(`SELECT username FROM users WHERE username LIKE ? ESCAPE '\\' COLLATE NOCASE`)
+				.all(`${escaped}%`) as Pick<UserRow, 'username'>[];
+			const taken = new Set(rows.map((row) => row.username.toLowerCase()));
+			for (let n = 1; ; n++) {
+				const candidate = usernameVariant(base, n);
+				if (!taken.has(candidate.toLowerCase())) return candidate;
+			}
 		});
 	}
 

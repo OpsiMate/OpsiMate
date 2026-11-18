@@ -78,6 +78,24 @@ describe('UserBL login with LDAP', () => {
 
 	afterEach(() => db.close());
 
+	test("a provisioned directory account signs in by its username: the directory is asked by the account's address", async () => {
+		await userBL.login('dana@example.com', 'dir-pw');
+		// No default login domain here, so "dana" alone could not be completed to an address.
+		const byName = await userBL.login('dana', 'dir-pw');
+		expect(byName.email).toBe('dana@example.com');
+		expect(byName.authSource).toBe('ldap');
+		await expect(userBL.login('dana', 'wrong')).rejects.toThrow('Invalid username or password');
+	});
+
+	test('the throttle counts a login under every spelling: the typed name and the address it stands for', async () => {
+		await userBL.login('dana@example.com', 'dir-pw');
+		for (let i = 0; i < 3; i++) await expect(userBL.login('dana', 'wrong')).rejects.toThrow('Invalid');
+		for (let i = 0; i < 2; i++) await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid');
+		// Five failures in total across the two spellings: both are now throttled.
+		await expect(userBL.login('dana', 'dir-pw')).rejects.toThrow(TooManyLoginAttemptsError);
+		await expect(userBL.login('DANA@example.com', 'dir-pw')).rejects.toThrow(TooManyLoginAttemptsError);
+	});
+
 	test('first directory login creates the account with the mapped role, marked ldap', async () => {
 		const user = await userBL.login('Dana@Example.com', 'dir-pw');
 		expect(user).toMatchObject({ email: 'dana@example.com', fullName: 'Dana Directory', role: Role.Editor });

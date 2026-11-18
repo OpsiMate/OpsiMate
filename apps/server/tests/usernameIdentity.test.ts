@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import Database from 'better-sqlite3';
 import jwt from 'jsonwebtoken';
 import { SuperTest, Test } from 'supertest';
-import { Role, User } from '@OpsiMate/shared';
+import { Role, User, usernameVariant } from '@OpsiMate/shared';
 import { UserRepository } from '../src/dal/userRepository';
 import { setupDB, setupExpressApp } from './setup';
 
@@ -146,6 +146,55 @@ describe('users table migration', () => {
 		const indexes = legacy.prepare(`PRAGMA index_list(users)`).all() as { name: string }[];
 		expect(indexes.map((i) => i.name)).not.toContain('users_email_unique_nocase');
 		legacy.close();
+	});
+
+	test('numbered variants always fit: a 64-character name is shortened for its suffix, so the search ends', async () => {
+		const long = 'a'.repeat(64);
+		expect(usernameVariant(long, 1)).toBe(long);
+		expect(usernameVariant(long, 2)).toBe(`${'a'.repeat(63)}2`);
+		expect(usernameVariant(long, 10)).toBe(`${'a'.repeat(62)}10`);
+		expect(usernameVariant('dana', 3)).toBe('dana3');
+
+		const db = new Database(':memory:');
+		db.exec(`CREATE TABLE users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			full_name TEXT NOT NULL,
+			role TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`);
+		db.exec(
+			`INSERT INTO users (email, password_hash, full_name, role) VALUES ('${long}@one.test', 'h', 'A', 'admin'), ('${long.toUpperCase()}@two.test', 'h', 'B', 'viewer')`
+		);
+		await new UserRepository(db).initUsersTable();
+		const rows = db.prepare('SELECT username FROM users ORDER BY id').all() as Pick<UserIdentityRow, 'username'>[];
+		expect(rows.map((r) => r.username)).toEqual([long, `${'a'.repeat(63)}2`]);
+		db.close();
+	});
+
+	test('an old database with dangling references (the app runs without foreign_keys) still upgrades', async () => {
+		const db = new Database(':memory:');
+		db.exec(`CREATE TABLE users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			full_name TEXT NOT NULL,
+			role TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`);
+		db.exec(
+			`CREATE TABLE notes (id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE)`
+		);
+		db.exec(`INSERT INTO users (email, password_hash, full_name, role) VALUES ('a@x.test', 'h', 'A', 'admin')`);
+		// A note by a user deleted while foreign keys were off: dangling before the upgrade.
+		// (better-sqlite3 enforces foreign keys by default, so switch them off to seed it.)
+		db.pragma('foreign_keys = OFF');
+		db.exec(`INSERT INTO notes (user_id) VALUES (1), (42)`);
+		db.pragma('foreign_keys = ON');
+		await expect(new UserRepository(db).initUsersTable()).resolves.toBeUndefined();
+		expect(db.prepare('SELECT COUNT(*) AS n FROM notes').get()).toEqual({ n: 2 });
+		db.close();
 	});
 
 	test('a fresh database gets the final shape straight away', async () => {
