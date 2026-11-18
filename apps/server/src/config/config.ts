@@ -291,6 +291,9 @@ export function validateLdapConfig(ldap: LdapConfig): string[] {
 	const problems: string[] = [];
 	if (!ldap.url || !/^ldaps?:\/\//i.test(ldap.url)) problems.push('url (ldap:// or ldaps://)');
 	if (!ldap.search_base) problems.push('search_base');
+	for (const key of ['username_attribute', 'email_attribute', 'name_attribute', 'groups_attribute'] as const) {
+		if (ldap[key] !== undefined && typeof ldap[key] !== 'string') problems.push(`${key} (an attribute name)`);
+	}
 	if (ldap.bind_dn && !ldap.bind_password) problems.push('bind_password (bind_dn is set)');
 	if (ldap.default_role && !LDAP_ROLES.includes(ldap.default_role)) problems.push('default_role');
 	if (ldap.search_filter && !ldap.search_filter.includes('{{login}}') && !ldap.search_filter.includes('{{email}}'))

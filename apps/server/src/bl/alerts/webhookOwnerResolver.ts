@@ -45,9 +45,12 @@ export class WebhookOwnerResolver {
 		try {
 			user = await this.userBL.findOrProvisionUser(typed, completed !== typed ? [completed] : []);
 		} catch (error) {
-			if (!(error instanceof LdapUnavailableError)) throw error;
-			// Not an answer: nothing is remembered, so the next webhook retries.
-			logger.warn(`Webhook owner ${typed}: the directory could not be asked (${error.message})`);
+			// Not an answer — the directory could not be asked, or provisioning failed on
+			// the way (the database, a race): nothing is remembered, so the next webhook
+			// retries. The alert itself is ingested regardless.
+			const reason =
+				error instanceof LdapUnavailableError ? 'the directory could not be asked' : 'provisioning failed';
+			logger.warn(`Webhook owner ${typed}: ${reason} (${(error as Error).message})`);
 			return null;
 		}
 		if (!user) logger.debug(`Webhook owner ${typed} matches no user`);

@@ -21,11 +21,14 @@ const logger = new Logger('bl/users/ldapAuthenticator');
 // Who the directory says the person is, after their password checked out.
 export interface LdapIdentity {
 	dn: string;
-	// The login name OpsiMate keys the account on: the typed username, or the entry's
-	// username attribute (uid / sAMAccountName) when an email was typed.
+	// The directory object's stable id (entryUUID on OpenLDAP/FreeIPA, objectGUID on Active
+	// Directory, as hex), which survives renames and is never reused for a new entry at
+	// the same DN; null when the directory exposes neither.
+	objectId: string | null;
+	// The login name OpsiMate keys the account on: the entry's username attribute (uid /
+	// sAMAccountName), falling back to its address's local part.
 	username: string;
-	// The typed email, or the entry's mail attribute when a username was typed; null for
-	// an entry with no address.
+	// The entry's first address; null for an entry with no address.
 	email: string | null;
 	fullName: string;
 	// Group DNs (or names) the user belongs to.
@@ -137,6 +140,21 @@ const rawAttribute = (entry: Entry, attribute: string): unknown => {
 };
 
 const asText = (value: unknown): string => (Buffer.isBuffer(value) ? value.toString('utf8') : String(value));
+
+// The operational attributes that identify a directory object for good: OpenLDAP and
+// FreeIPA expose entryUUID, Active Directory objectGUID (16 bytes, read as hex). Both
+// are asked for; whichever the server returns becomes the identity's objectId.
+const OBJECT_ID_ATTRIBUTES = ['entryUUID', 'objectGUID'] as const;
+const objectIdOf = (entry: Entry): string | null => {
+	const uuid = rawAttribute(entry, 'entryUUID');
+	const first = (value: unknown): unknown => (Array.isArray(value) ? (value as unknown[])[0] : value);
+	const uuidValue = first(uuid);
+	if (uuidValue !== undefined && uuidValue !== null && uuidValue !== '')
+		return asText(uuidValue).trim().toLowerCase();
+	const guid = first(rawAttribute(entry, 'objectGUID'));
+	if (guid === undefined || guid === null || guid === '') return null;
+	return Buffer.isBuffer(guid) ? `guid:${guid.toString('hex')}` : `guid:${asText(guid).trim().toLowerCase()}`;
+};
 
 const firstValue = (entry: Entry, attribute: string): string | undefined => {
 	const raw = rawAttribute(entry, attribute);
@@ -461,7 +479,14 @@ export class LdapAuthenticator {
 		const { searchEntries } = await this.search(client, this.config.search_base as string, {
 			scope: 'sub',
 			filter,
-			attributes: [this.usernameAttribute(), this.emailAttribute(), nameAttr, 'cn', groupsAttr],
+			attributes: [
+				this.usernameAttribute(),
+				this.emailAttribute(),
+				nameAttr,
+				'cn',
+				groupsAttr,
+				...OBJECT_ID_ATTRIBUTES,
+			],
 			sizeLimit: 2,
 		});
 		return searchEntries;
@@ -486,9 +511,14 @@ export class LdapAuthenticator {
 		const directoryUsername = firstValue(entry, this.usernameAttribute())?.trim();
 		const directoryEmail = firstValue(entry, this.emailAttribute())?.trim().toLowerCase() || null;
 		const email = directoryEmail ?? (isEmailLike(typed) ? typed : null);
-		const username = foldUsername(directoryUsername || (isEmailLike(typed) ? usernameFromEmail(typed) : typed));
+		// Without a username attribute the name comes from the entry's own address — the
+		// same one every time — and only an entry listing no address at all falls back to
+		// what was typed.
+		const fallbackName = directoryEmail ?? (isEmailLike(typed) ? typed : null);
+		const username = foldUsername(directoryUsername || (fallbackName ? usernameFromEmail(fallbackName) : typed));
 		return {
 			dn: entry.dn,
+			objectId: objectIdOf(entry),
 			username,
 			email,
 			fullName: this.fullNameOf(entry, identifier),

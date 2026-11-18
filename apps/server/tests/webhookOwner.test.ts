@@ -269,6 +269,7 @@ describe('owner from the webhook (directory users)', () => {
 			if (identifier === 'dana' || identifier === 'dana@acme.test') {
 				return Promise.resolve({
 					dn: 'cn=dana,dc=x',
+					objectId: 'uuid-dana',
 					username: 'dana',
 					email: 'dana@acme.test',
 					fullName: 'Dana Directory',
@@ -279,6 +280,7 @@ describe('owner from the webhook (directory users)', () => {
 			if (identifier === 'guest' || identifier === 'guest@acme.test') {
 				return Promise.resolve({
 					dn: 'cn=guest,dc=x',
+					objectId: 'uuid-guest',
 					username: 'guest',
 					email: 'guest@acme.test',
 					fullName: 'Guest',
@@ -343,6 +345,22 @@ describe('owner from the webhook (directory users)', () => {
 		expect((await resolver.resolve('local'))?.username).toBe('local');
 		// A found-but-refused entry ends the search; an unknown name goes on to the address.
 		expect(lookups).toEqual(['guest', 'nobody', 'nobody@acme.test']);
+	});
+
+	test('a provisioning failure on the way (the database) is not remembered either', async () => {
+		const resolver = new WebhookOwnerResolver(userBL, () => null);
+		const original = userRepo.createUser.bind(userRepo);
+		let failedOnce = false;
+		const spy = vi.spyOn(userRepo, 'createUser').mockImplementation(async (row) => {
+			if (!failedOnce) {
+				failedOnce = true;
+				throw new Error('SQLITE_BUSY: database is locked');
+			}
+			return original(row);
+		});
+		expect(await resolver.resolve('dana')).toBeNull();
+		expect((await resolver.resolve('dana'))?.username).toBe('dana');
+		spy.mockRestore();
 	});
 
 	test('a directory that is down means no owner, not an error — and is not remembered: the same resolver asks again', async () => {

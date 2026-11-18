@@ -84,6 +84,7 @@ class FakeClient implements LdapClientLike {
 				searchEntries: users.map((u) => ({
 					dn: u.dn,
 					uid: uidOf(u),
+					entryUUID: `uuid-${uidOf(u)}`,
 					...(u.mail ? { mail: u.mails ? [u.mail, ...u.mails] : u.mail } : {}),
 					...(u.displayName ? { displayName: u.displayName } : {}),
 					cn: u.cn ?? u.mail ?? uidOf(u),
@@ -217,6 +218,21 @@ describe('LdapAuthenticator', () => {
 		const byAlias = await auth.authenticate('hubert@example.com', 'alice-pw');
 		expect(byAlias).toMatchObject({ username: 'alice', email: 'alice@example.com' });
 		expect((await auth.authenticate('alice', 'alice-pw'))?.email).toBe('alice@example.com');
+	});
+
+	test("without a username attribute the name comes from the entry's own address, whichever alias signed in", async () => {
+		const dir: FakeDirectory = {
+			...DIR,
+			users: [{ ...DIR.users[0], mails: ['alice.ops@example.com'] }],
+		};
+		const { auth } = make({ ...CONFIG, username_attribute: 'nonesuch' }, dir);
+		expect((await auth.authenticate('alice.ops@example.com', 'alice-pw'))?.username).toBe('alice');
+		expect((await auth.authenticate('alice@example.com', 'alice-pw'))?.username).toBe('alice');
+	});
+
+	test('the object id is the entryUUID when the directory returns one', async () => {
+		const { auth } = make();
+		expect((await auth.authenticate('alice', 'alice-pw'))?.objectId).toBe('uuid-alice');
 	});
 
 	test('attribute names are read ignoring case, as LDAP defines them', async () => {
@@ -474,6 +490,16 @@ describe('resolveLdapConfig', () => {
 		expect(c.enabled).toBe(true);
 		expect(c.role_mapping?.admin).toEqual(['cn=a,dc=x', 'cn=b,dc=x']);
 		expect(c.role_mapping?.viewer).toEqual(['everyone']);
+	});
+
+	test('a list where an attribute name belongs switches LDAP off with a reason', () => {
+		const config = resolveLdapConfig({
+			enabled: true,
+			url: 'ldaps://x',
+			search_base: 'dc=x',
+			username_attribute: ['uid', 'sAMAccountName'] as unknown as string,
+		});
+		expect(config.enabled).toBe(false);
 	});
 
 	test('a blank attribute name means the default, not an attribute called ""', () => {

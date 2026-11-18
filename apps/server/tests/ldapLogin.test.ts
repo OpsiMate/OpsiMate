@@ -24,6 +24,8 @@ interface StubAnswer {
 
 class StubDirectory {
 	calls = 0;
+	// Password checks that actually reached the directory.
+	binds = 0;
 	down = false;
 	answers = new Map<string, StubAnswer>();
 	authenticate(
@@ -39,17 +41,22 @@ class StubDirectory {
 		if (!answer) return Promise.resolve(null);
 		if (guard && !guard.allow(answer.identity.dn))
 			return Promise.reject(new LdapThrottledError(answer.identity.dn));
-		if (answer.password !== password) {
-			guard?.failed(answer.identity.dn);
-			return Promise.resolve(null);
-		}
-		guard?.succeeded(answer.identity.dn);
-		return Promise.resolve(answer.identity);
+		this.binds++;
+		// The bind crosses the network: let the other attempts queue up behind it.
+		return new Promise((resolve) => setTimeout(resolve, 5)).then(() => {
+			if (answer.password !== password) {
+				guard?.failed(answer.identity.dn);
+				return null;
+			}
+			guard?.succeeded(answer.identity.dn);
+			return answer.identity;
+		});
 	}
 }
 
 const identity = (email: string, fullName: string, role: Role | null): LdapIdentity => ({
 	dn: `uid=${email.split('@')[0]},dc=example,dc=com`,
+	objectId: `uuid-${email.split('@')[0]}`,
 	username: email.split('@')[0],
 	email,
 	fullName,
@@ -265,6 +272,68 @@ describe('UserBL login with LDAP', () => {
 		expect((await userBL.login('dana', 'dir-pw')).email).toBeNull();
 	});
 
+	test('concurrent wrong guesses for one entry reserve their attempts: no more binds than the limit reach the directory', async () => {
+		directory.answers.set('dana', directory.answers.get('dana@example.com')!);
+		const attempts = Array.from({ length: 8 }, (_, i) =>
+			userBL.login(i % 2 ? 'dana' : 'dana@example.com', 'wrong')
+		);
+		const outcomes = await Promise.allSettled(attempts);
+		const throttled = outcomes.filter(
+			(o) => o.status === 'rejected' && (o.reason as Error) instanceof TooManyLoginAttemptsError
+		).length;
+		// Five reservations are all the limit allows; the other three never bound.
+		expect(throttled).toBe(3);
+		expect(directory.binds).toBe(5);
+	});
+
+	test("legacy email field: the completed address is checked first, even when the bare name is another directory account's username", async () => {
+		// "alex" is user A's username (provisioned); alex@example.com belongs to user B.
+		await userRepo.createUser({
+			username: 'alex',
+			email: 'alex.a@example.com',
+			passwordHash: '!ldap',
+			fullName: 'Alex A',
+			role: Role.Viewer,
+			authSource: 'ldap',
+			ldapDn: 'uid=alex,dc=example,dc=com',
+			ldapObjectId: 'uuid-alex',
+		});
+		directory.answers.set('alex@example.com', {
+			password: 'b-pw',
+			identity: {
+				...identity('alex@example.com', 'Alex B', Role.Editor),
+				username: 'alexb',
+				dn: 'uid=alexb,dc=example,dc=com',
+				objectId: 'uuid-alexb',
+			},
+		});
+		const withDomain = new UserBL(
+			userRepo,
+			{ sendMail } as unknown as MailClient,
+			new PasswordResetsRepository(db),
+			new AuditBL(new AuditLogRepository(db)),
+			'example.com'
+		);
+		withDomain.setLdapAuthenticator(directory as unknown as LdapAuthenticator);
+		const b = await withDomain.login('alex', 'b-pw', { legacyEmailField: true });
+		expect(b).toMatchObject({ username: 'alexb', email: 'alex@example.com' });
+	});
+
+	test('a new entry at an old DN is not the old account: object ids tell them apart', async () => {
+		const dana = await userBL.login('dana@example.com', 'dir-pw');
+		directory.answers.set('eve@example.com', {
+			password: 'eve-pw',
+			identity: {
+				...identity('eve@example.com', 'Eve', Role.Viewer),
+				dn: 'uid=dana,dc=example,dc=com',
+				objectId: 'uuid-eve',
+			},
+		});
+		const eve = await userBL.login('eve@example.com', 'eve-pw');
+		expect(eve.id).not.toBe(dana.id);
+		expect((await userRepo.getUserById(Number(dana.id)))?.username).toBe('dana');
+	});
+
 	test('a directory entry with no email gets an account without one', async () => {
 		directory.answers.set('svc', {
 			password: 'dir-pw',
@@ -369,14 +438,30 @@ describe('UserBL login with LDAP', () => {
 		expect(sendMail).not.toHaveBeenCalled();
 	});
 
-	test('an account stays with its directory entry: another DN with the same email is refused', async () => {
+	test('an account stays with its directory object: another entry with the same email is refused, the same object moved is not', async () => {
 		await userBL.login('dana@example.com', 'dir-pw');
+		// A different object (new entryUUID) that now lists her address.
 		directory.answers.set('dana@example.com', {
 			password: 'dir-pw',
-			identity: { ...identity('dana@example.com', 'New Dana', Role.Admin), dn: 'uid=dana2,dc=example,dc=com' },
+			identity: {
+				...identity('dana@example.com', 'New Dana', Role.Admin),
+				dn: 'uid=dana2,dc=example,dc=com',
+				objectId: 'uuid-someone-else',
+			},
 		});
 		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toThrow('Invalid username or password');
 		expect(await userRepo.getUserByEmail('dana@example.com')).toMatchObject({ fullName: 'Dana Directory' });
+		// The same object (same entryUUID) moved to another DN is still her account.
+		directory.answers.set('dana@example.com', {
+			password: 'dir-pw',
+			identity: {
+				...identity('dana@example.com', 'Dana Moved', Role.Editor),
+				dn: 'uid=dana,ou=moved,dc=example,dc=com',
+			},
+		});
+		const moved = await userBL.login('dana@example.com', 'dir-pw');
+		expect(moved.fullName).toBe('Dana Moved');
+		expect(await userRepo.countUsers()).toBe(2);
 	});
 
 	test('a local account is protected whatever the letter case of its email', async () => {

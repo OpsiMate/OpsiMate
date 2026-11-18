@@ -22,6 +22,9 @@ export interface DirectoryAccountLink {
 	id: number;
 	authSource: UserAuthSource;
 	ldapDn: string | null;
+	// The directory object's stable id (see LdapIdentity.objectId); null until a login
+	// after this column existed recorded it.
+	ldapObjectId: string | null;
 }
 
 export interface NewUserRow {
@@ -33,6 +36,7 @@ export interface NewUserRow {
 	role: Role;
 	authSource?: UserAuthSource;
 	ldapDn?: string | null;
+	ldapObjectId?: string | null;
 }
 
 export interface UserUpdates {
@@ -49,6 +53,14 @@ export interface LoginRecord {
 }
 
 const USER_COLUMNS = 'id, username, email, full_name, role, created_at, phone_number, auth_source';
+const LINK_COLUMNS = 'id, auth_source, ldap_dn, ldap_object_id';
+
+const toLink = (row: UserRow): DirectoryAccountLink => ({
+	id: Number(row.id),
+	authSource: row.auth_source === 'ldap' ? 'ldap' : 'local',
+	ldapDn: row.ldap_dn ?? null,
+	ldapObjectId: row.ldap_object_id ?? null,
+});
 
 // The table as a fresh database gets it. username is the identity (unique ignoring case,
 // see the index below); email is optional and unique when present (SQLite's UNIQUE lets
@@ -64,7 +76,8 @@ const CREATE_USERS_TABLE = (name: string) => `
 		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 		phone_number TEXT,
 		auth_source TEXT NOT NULL DEFAULT 'local',
-		ldap_dn TEXT
+		ldap_dn TEXT,
+		ldap_object_id TEXT
 	)`;
 
 export class UserRepository {
@@ -94,6 +107,11 @@ export class UserRepository {
 			// different entry with the same identity must not get this account.
 			if (!has('ldap_dn')) {
 				this.db.prepare(`ALTER TABLE users ADD COLUMN ldap_dn TEXT`).run();
+			}
+			// The directory object's stable id behind an LDAP account (entryUUID / objectGUID):
+			// a DN can be reused by a new entry, this cannot. Filled in at the next login.
+			if (!has('ldap_object_id')) {
+				this.db.prepare(`ALTER TABLE users ADD COLUMN ldap_object_id TEXT`).run();
 			}
 			// Accounts used to be keyed on the email. Every row gets a username (the local
 			// part of its address), and the email column stops being required.
@@ -227,7 +245,7 @@ export class UserRepository {
 	async createUser(row: NewUserRow): Promise<InsertResult> {
 		return runAsync<InsertResult>(() => {
 			const stmt = this.db.prepare(
-				'INSERT INTO users (username, email, password_hash, full_name, role, auth_source, ldap_dn) VALUES (?, ?, ?, ?, ?, ?, ?)'
+				'INSERT INTO users (username, email, password_hash, full_name, role, auth_source, ldap_dn, ldap_object_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
 			);
 			const result = stmt.run(
 				row.username.toLowerCase(),
@@ -236,7 +254,8 @@ export class UserRepository {
 				row.fullName,
 				row.role,
 				row.authSource ?? 'local',
-				row.ldapDn ?? null
+				row.ldapDn ?? null,
+				row.ldapObjectId ?? null
 			);
 			return { lastID: result.lastInsertRowid as number };
 		});
@@ -407,16 +426,9 @@ export class UserRepository {
 	async findDirectoryLinkByDn(dn: string): Promise<DirectoryAccountLink | null> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare(
-					'SELECT id, auth_source, ldap_dn FROM users WHERE ldap_dn = ? COLLATE NOCASE ORDER BY id LIMIT 1'
-				)
+				.prepare(`SELECT ${LINK_COLUMNS} FROM users WHERE ldap_dn = ? COLLATE NOCASE ORDER BY id LIMIT 1`)
 				.get(dn.trim()) as UserRow | undefined;
-			if (!row) return null;
-			return {
-				id: Number(row.id),
-				authSource: row.auth_source === 'ldap' ? 'ldap' : 'local',
-				ldapDn: row.ldap_dn ?? null,
-			};
+			return row ? toLink(row) : null;
 		});
 	}
 
@@ -424,14 +436,9 @@ export class UserRepository {
 	async findDirectoryLinkByUsername(username: string): Promise<DirectoryAccountLink | null> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare('SELECT id, auth_source, ldap_dn FROM users WHERE username = ? COLLATE NOCASE')
+				.prepare(`SELECT ${LINK_COLUMNS} FROM users WHERE username = ? COLLATE NOCASE`)
 				.get(username.trim()) as UserRow | undefined;
-			if (!row) return null;
-			return {
-				id: Number(row.id),
-				authSource: row.auth_source === 'ldap' ? 'ldap' : 'local',
-				ldapDn: row.ldap_dn ?? null,
-			};
+			return row ? toLink(row) : null;
 		});
 	}
 
@@ -440,22 +447,29 @@ export class UserRepository {
 	async findDirectoryLink(email: string): Promise<DirectoryAccountLink | null> {
 		return runAsync(() => {
 			const row = this.db
-				.prepare(
-					'SELECT id, auth_source, ldap_dn FROM users WHERE email = ? COLLATE NOCASE ORDER BY id LIMIT 1'
-				)
+				.prepare(`SELECT ${LINK_COLUMNS} FROM users WHERE email = ? COLLATE NOCASE ORDER BY id LIMIT 1`)
 				.get(email) as UserRow | undefined;
-			if (!row) return null;
-			return {
-				id: Number(row.id),
-				authSource: row.auth_source === 'ldap' ? 'ldap' : 'local',
-				ldapDn: row.ldap_dn ?? null,
-			};
+			return row ? toLink(row) : null;
 		});
 	}
 
-	async setLdapDn(userId: number, dn: string): Promise<void> {
+	// Where the account's directory entry lives now (DN) and which object it is (stable id).
+	async setDirectoryLink(userId: number, dn: string, objectId: string | null): Promise<void> {
 		return runAsync(() => {
-			this.db.prepare('UPDATE users SET ldap_dn = ? WHERE id = ?').run(dn, userId);
+			this.db
+				.prepare('UPDATE users SET ldap_dn = ?, ldap_object_id = COALESCE(?, ldap_object_id) WHERE id = ?')
+				.run(dn, objectId, userId);
+		});
+	}
+
+	// The account a directory object already has, whatever it is called or wherever it
+	// sits now.
+	async findDirectoryLinkByObjectId(objectId: string): Promise<DirectoryAccountLink | null> {
+		return runAsync(() => {
+			const row = this.db
+				.prepare(`SELECT ${LINK_COLUMNS} FROM users WHERE ldap_object_id = ? ORDER BY id LIMIT 1`)
+				.get(objectId) as UserRow | undefined;
+			return row ? toLink(row) : null;
 		});
 	}
 

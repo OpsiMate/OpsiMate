@@ -41,6 +41,7 @@ describe('UserBL login with a default domain', () => {
 			if (asked.includes('dana@acme.test') && password === 'dir-pw') {
 				return Promise.resolve({
 					dn: 'cn=dana,dc=x',
+					objectId: 'uuid-dana',
 					username: 'dana',
 					email: 'dana@acme.test',
 					fullName: 'Dana',
