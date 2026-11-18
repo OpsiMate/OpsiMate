@@ -62,7 +62,13 @@ describe('UserBL login with a default domain', () => {
 	beforeEach(async () => {
 		db.exec('DELETE FROM users');
 		ldapSeen.length = 0;
-		await userRepo.createUser('idan@acme.test', await bcrypt.hash('local-pw', 4), 'Idan', Role.Admin);
+		await userRepo.createUser({
+			username: 'idan',
+			email: 'idan@acme.test',
+			passwordHash: await bcrypt.hash('local-pw', 4),
+			fullName: 'Idan',
+			role: Role.Admin,
+		});
 	});
 
 	afterAll(() => db.close());
@@ -107,8 +113,19 @@ describe('login API without a default domain', () => {
 		db.close();
 	});
 
-	test('a bare name is not a validation error — it is simply not a known login', async () => {
-		const res = await app.post('/api/v1/users/login').send({ email: 'admin', password: 'securepassword' });
+	test('a bare name is a username first: the address local part signs in with no domain configured', async () => {
+		// Registered by email only, so the username is the local part ("admin").
+		const asUsername = await app.post('/api/v1/users/login').send({ email: 'admin', password: 'securepassword' });
+		expect(asUsername.status).toBe(200);
+		expect(asUsername.body.data.username).toBe('admin');
+		const viaIdentifier = await app
+			.post('/api/v1/users/login')
+			.send({ identifier: 'Admin', password: 'securepassword' });
+		expect(viaIdentifier.status).toBe(200);
+	});
+
+	test('an unknown bare name is not a validation error — it is simply not a known login', async () => {
+		const res = await app.post('/api/v1/users/login').send({ email: 'nobody', password: 'securepassword' });
 		expect(res.status).toBe(401);
 		const ok = await app.post('/api/v1/users/login').send({ email: 'admin@acme.test', password: 'securepassword' });
 		expect(ok.status).toBe(200);

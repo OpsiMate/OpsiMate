@@ -220,8 +220,22 @@ describe('Settings user role labels', () => {
 
 	test('names each user role dropdown and the bulk role dropdown', async () => {
 		const users: User[] = [
-			{ id: 1, email: 'alice@example.com', fullName: 'Alice', role: Role.Viewer, createdAt: '2026-01-01' },
-			{ id: 2, email: 'bob@example.com', fullName: 'Bob', role: Role.Editor, createdAt: '2026-01-01' },
+			{
+				id: 1,
+				username: 'alice',
+				email: 'alice@example.com',
+				fullName: 'Alice',
+				role: Role.Viewer,
+				createdAt: '2026-01-01',
+			},
+			{
+				id: 2,
+				username: 'bob',
+				email: 'bob@example.com',
+				fullName: 'Bob',
+				role: Role.Editor,
+				createdAt: '2026-01-01',
+			},
 		];
 		vi.spyOn(api, 'apiRequest').mockImplementation(async (path) => ({
 			success: true,

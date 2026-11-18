@@ -53,7 +53,10 @@ const Oncall = () => {
 			(team) =>
 				team.name.toLowerCase().includes(term) ||
 				team.members.some(
-					(m) => m.fullName.toLowerCase().includes(term) || m.email.toLowerCase().includes(term)
+					(m) =>
+						m.fullName.toLowerCase().includes(term) ||
+						m.username.toLowerCase().includes(term) ||
+						(m.email ?? '').toLowerCase().includes(term)
 				)
 		);
 	}, [teams, searchTerm]);

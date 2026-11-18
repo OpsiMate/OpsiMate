@@ -90,7 +90,8 @@ export type ResolvedAlertRow = {
 
 export type UserRow = {
 	id: number;
-	email: string;
+	username: string;
+	email: string | null;
 	password_hash: string;
 	full_name: string;
 	role: Role;
@@ -115,7 +116,8 @@ export type OncallTeamMemberRow = {
 	user_id: number;
 	position: number;
 	full_name: string;
-	email: string;
+	username: string;
+	email: string | null;
 	phone_number: string | null;
 };
 

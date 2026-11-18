@@ -54,37 +54,103 @@ export const CustomFieldIdSchema = z.object({
 
 export const RoleSchema = z.nativeEnum(Role);
 
-export const CreateUserSchema = z.object({
-	email: z.string().email(),
-	fullName: z.string().min(1),
-	password: z
-		.string()
-		.min(6)
-		.refine((val) => !/\s/.test(val), {
-			message: 'Password must not contain spaces',
-		}),
-	role: RoleSchema,
-});
+// The login name. Lowercase letters, digits, dot, underscore and hyphen — what directories
+// hand out (idanl, j.smith, svc-deploy) — 2 to 64 characters, stored lowercased so IdanL
+// and idanl are one account. No "@": that is how a login field tells a username from an
+// email.
+export const USERNAME_PATTERN = /^[a-z0-9._-]{2,64}$/;
+export const USERNAME_RULES = '2-64 characters: lowercase letters, digits, dot, underscore or hyphen';
+export const UsernameSchema = z
+	.string()
+	.trim()
+	.toLowerCase()
+	.regex(USERNAME_PATTERN, { message: `Username must be ${USERNAME_RULES}` });
 
-export const UpdateUserRoleSchema = z.object({
-	email: z.string().email(),
-	newRole: RoleSchema,
-});
+// The username an email suggests: its local part, lowercased, anything the pattern does
+// not allow folded to "-". For callers that only sent an address, and for the migration
+// that gives every existing account a username.
+export const usernameFromEmail = (email: string): string => {
+	const local = email.trim().toLowerCase().split('@')[0] ?? '';
+	const folded = local.replace(/[^a-z0-9._-]/g, '-').slice(0, 64);
+	return folded.length >= 2 ? folded : `user-${folded}`.slice(0, 64);
+};
 
-export const RegisterSchema = CreateUserSchema.omit({ role: true });
+// A contact address that may be absent: "" and null both mean none.
+export const OptionalEmailSchema = z.preprocess(
+	(value) => (typeof value === 'string' && value.trim() === '' ? null : value),
+	z.string().trim().email().nullable().optional()
+);
+
+// Username first; a caller that sends only an email (older clients, scripts) still works:
+// the server takes the address's local part as the username.
+const identityFields = {
+	username: UsernameSchema.optional(),
+	email: OptionalEmailSchema,
+};
+const hasAnIdentity = (val: { username?: string; email?: string | null }): boolean =>
+	val.username !== undefined || (val.email !== undefined && val.email !== null);
+const IDENTITY_REQUIRED = 'A username (or an email) is required';
+
+export const CreateUserSchema = z
+	.object({
+		...identityFields,
+		fullName: z.string().min(1),
+		password: z
+			.string()
+			.min(6)
+			.refine((val) => !/\s/.test(val), {
+				message: 'Password must not contain spaces',
+			}),
+		role: RoleSchema,
+	})
+	.refine(hasAnIdentity, { message: IDENTITY_REQUIRED, path: ['username'] });
+
+// The account to change: by username, or by email for older callers.
+export const UpdateUserRoleSchema = z
+	.object({
+		username: UsernameSchema.optional(),
+		email: z.string().trim().email().optional(),
+		newRole: RoleSchema,
+	})
+	.refine(hasAnIdentity, { message: IDENTITY_REQUIRED, path: ['username'] });
+
+export const RegisterSchema = z
+	.object({
+		...identityFields,
+		fullName: z.string().min(1),
+		password: z
+			.string()
+			.min(6)
+			.refine((val) => !/\s/.test(val), {
+				message: 'Password must not contain spaces',
+			}),
+	})
+	.refine(hasAnIdentity, { message: IDENTITY_REQUIRED, path: ['username'] });
 
 // Login only checks that a password was sent: strength rules belong to setting a
 // password, not to presenting one — and directory (LDAP) passwords follow the
 // directory's own rules (they may be shorter, or contain spaces).
-export const LoginSchema = z.object({
-	// The email, or a bare name the server completes with the installation's default
-	// login domain (login.default_email_domain); which of the two is the server's call.
-	email: z.string().trim().min(1).max(320),
-	// No maximum: none of the password-setting paths has one, so a cap here could
-	// lock out a password that was accepted when set. express.json's body limit
-	// (100kb) already bounds the request.
-	password: z.string().min(1),
-});
+export const LoginSchema = z
+	.object({
+		// Username or email in one field; "@" tells them apart. A bare name may also be
+		// completed with the installation's default login domain (login.default_email_domain)
+		// when no account carries it as a username; which applies is the server's call.
+		identifier: z.string().trim().min(1).max(320).optional(),
+		// The same field under its old name, for clients that still send `email`.
+		email: z.string().trim().min(1).max(320).optional(),
+		// No maximum: none of the password-setting paths has one, so a cap here could
+		// lock out a password that was accepted when set. express.json's body limit
+		// (100kb) already bounds the request.
+		password: z.string().min(1),
+	})
+	.refine((val) => val.identifier !== undefined || val.email !== undefined, {
+		message: 'A username or email is required',
+		path: ['identifier'],
+	});
+
+// What a login request names, whichever field it used.
+export const loginIdentifierOf = (login: { identifier?: string; email?: string }): string =>
+	login.identifier ?? login.email ?? '';
 
 export const UpdateProfileSchema = z.object({
 	fullName: z.string().min(1, 'Full name is required'),
@@ -143,12 +209,21 @@ export const AdminResetPasswordSchema = ResetPasswordSchema.pick({ newPassword: 
 export const AdminUpdateUserSchema = z
 	.object({
 		fullName: z.string().min(1).optional(),
-		email: z.string().email().optional(),
+		username: UsernameSchema.optional(),
+		// null clears the address.
+		email: OptionalEmailSchema,
 		role: RoleSchema.optional(),
 	})
-	.refine((val) => val.fullName !== undefined || val.email !== undefined || val.role !== undefined, {
-		message: 'At least one field (fullName, email, or role) must be provided',
-	});
+	.refine(
+		(val) =>
+			val.fullName !== undefined ||
+			val.username !== undefined ||
+			val.email !== undefined ||
+			val.role !== undefined,
+		{
+			message: 'At least one field (fullName, username, email, or role) must be provided',
+		}
+	);
 
 export const CreateDashboardSchema = z.object({
 	name: z.string(),

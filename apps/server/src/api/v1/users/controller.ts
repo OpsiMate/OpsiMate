@@ -7,6 +7,7 @@ import {
 	INVALID_LOGIN,
 	NOT_ALLOWED_LOGIN,
 	TooManyLoginAttemptsError,
+	uniqueViolationMessage,
 	UserBL,
 } from '../../../bl/users/user.bl';
 import {
@@ -17,6 +18,7 @@ import {
 	UpdateUserRoleSchema,
 	UpdateProfileSchema,
 	ForgotPasswordSchema,
+	loginIdentifierOf,
 	ValidateResetTokenSchema,
 	ResetPasswordSchema,
 	AdminUpdateUserSchema,
@@ -35,17 +37,18 @@ export class UsersController {
 
 	registerHandler = async (req: Request, res: Response) => {
 		try {
-			const { email, fullName, password } = RegisterSchema.parse(req.body);
-			const result = await this.userBL.register(email, fullName, password);
+			const { username, email, fullName, password } = RegisterSchema.parse(req.body);
+			const result = await this.userBL.register({ username, email, fullName, password });
 			const token = jwt.sign(result, JWT_SECRET, { expiresIn: '7d' });
 			return res.status(201).json({ success: true, data: result, token });
 		} catch (error) {
+			const taken = uniqueViolationMessage(error);
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			} else if (error instanceof Error && error.message === 'Registration is disabled after first admin') {
 				return res.status(403).json({ success: false, error: error.message });
-			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
-				return res.status(400).json({ success: false, error: 'Email already registered' });
+			} else if (taken) {
+				return res.status(400).json({ success: false, error: taken });
 			} else {
 				logger.error('Error registering user:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -55,14 +58,15 @@ export class UsersController {
 
 	createUserHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
-			const { email, fullName, password, role } = CreateUserSchema.parse(req.body);
-			const result = await this.userBL.createUser(email, fullName, password, role);
+			const { username, email, fullName, password, role } = CreateUserSchema.parse(req.body);
+			const result = await this.userBL.createUser({ username, email, fullName, password }, role);
 			return res.status(201).json({ success: true, data: result });
 		} catch (error) {
+			const taken = uniqueViolationMessage(error);
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
-			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
-				return res.status(400).json({ success: false, error: 'Email already registered' });
+			} else if (taken) {
+				return res.status(400).json({ success: false, error: taken });
 			} else {
 				logger.error('Error creating user:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });
@@ -72,8 +76,8 @@ export class UsersController {
 
 	updateUserRoleHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
-			const { email, newRole } = UpdateUserRoleSchema.parse(req.body);
-			const updated = await this.userBL.updateUserRole(email, newRole);
+			const { username, email, newRole } = UpdateUserRoleSchema.parse(req.body);
+			const updated = await this.userBL.updateUserRole(username ?? email ?? '', newRole);
 			if (!updated) {
 				return res.status(404).json({ success: false, error: 'User not found' });
 			}
@@ -90,8 +94,8 @@ export class UsersController {
 
 	loginHandler = async (req: Request, res: Response) => {
 		try {
-			const { email, password } = LoginSchema.parse(req.body);
-			const user = await this.userBL.login(email, password);
+			const login = LoginSchema.parse(req.body);
+			const user = await this.userBL.login(loginIdentifierOf(login), login.password);
 			const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
 			return res.status(200).json({ success: true, data: user, token });
 		} catch (error) {
@@ -275,14 +279,14 @@ export class UsersController {
 		const userId = parsedUserId.data;
 
 		try {
-			const { fullName, email, role } = AdminUpdateUserSchema.parse(req.body);
+			const { fullName, username, email, role } = AdminUpdateUserSchema.parse(req.body);
 
 			const user = await this.userBL.getUserById(userId);
 			if (!user) {
 				return res.status(404).json({ success: false, error: 'User not found' });
 			}
 
-			const updatedUser = await this.userBL.updateUser(userId, { fullName, email, role });
+			const updatedUser = await this.userBL.updateUser(userId, { fullName, username, email, role });
 
 			return res.status(200).json({
 				success: true,
@@ -290,10 +294,11 @@ export class UsersController {
 				message: 'User updated successfully',
 			});
 		} catch (error) {
+			const taken = uniqueViolationMessage(error);
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
-			} else if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
-				return res.status(400).json({ success: false, error: 'Email already registered' });
+			} else if (taken) {
+				return res.status(400).json({ success: false, error: taken });
 			} else if (error instanceof DirectoryManagedError) {
 				return res.status(400).json({ success: false, error: error.message });
 			} else {

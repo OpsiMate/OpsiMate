@@ -1,0 +1,264 @@
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import Database from 'better-sqlite3';
+import jwt from 'jsonwebtoken';
+import { SuperTest, Test } from 'supertest';
+import { User } from '@OpsiMate/shared';
+import { UserRepository } from '../src/dal/userRepository';
+import { setupDB, setupExpressApp } from './setup';
+
+// Accounts are keyed on a username; the email is optional. An installation that keyed
+// them on the email is migrated in place, and a user without any address signs in,
+// is listed and is administered like anyone else.
+
+interface UserIdentityRow {
+	id: number;
+	username: string;
+	email: string | null;
+}
+
+describe('users table migration', () => {
+	test('an email-keyed table is upgraded: usernames from the local part, suffix on collision, rows and foreign keys intact', async () => {
+		const db = new Database(':memory:');
+		db.pragma('foreign_keys = ON');
+		// The table as versions before usernames created it.
+		db.exec(`CREATE TABLE users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			full_name TEXT NOT NULL,
+			role TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`);
+		db.exec(`INSERT INTO users (email, password_hash, full_name, role) VALUES
+			('Dana@acme.test', 'h', 'Dana', 'admin'),
+			('dana@other.test', 'h', 'Dana Two', 'editor'),
+			('J.Smith+ops@acme.test', 'h', 'J', 'viewer')`);
+		// Something that references users with ON DELETE CASCADE, as comments, reset
+		// tokens and on-call memberships do: the rebuild must not cascade them away.
+		db.exec(`CREATE TABLE notes (
+			id INTEGER PRIMARY KEY,
+			user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			body TEXT
+		)`);
+		db.exec(`INSERT INTO notes (user_id, body) VALUES (1, 'a'), (2, 'b'), (3, 'c')`);
+
+		await new UserRepository(db).initUsersTable();
+
+		const rows = db.prepare('SELECT id, username, email FROM users ORDER BY id').all() as UserIdentityRow[];
+		expect(rows).toEqual([
+			{ id: 1, username: 'dana', email: 'Dana@acme.test' },
+			{ id: 2, username: 'dana2', email: 'dana@other.test' },
+			{ id: 3, username: 'j.smith-ops', email: 'J.Smith+ops@acme.test' },
+		]);
+		expect(db.prepare('SELECT COUNT(*) AS n FROM notes').get()).toEqual({ n: 3 });
+		expect(db.pragma('foreign_keys', { simple: true })).toBe(1);
+
+		// Email optional now (two accounts without one), username unique ignoring case.
+		const insert = db.prepare(
+			`INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?, NULL, 'h', ?, 'viewer')`
+		);
+		expect(() => insert.run('nomail', 'No Mail')).not.toThrow();
+		expect(() => insert.run('nomail2', 'No Mail 2')).not.toThrow();
+		expect(() => insert.run('DANA', 'Dup')).toThrow(/UNIQUE/);
+		// Deleting a user still cascades to what references it.
+		db.prepare('DELETE FROM users WHERE id = 3').run();
+		expect(db.prepare('SELECT COUNT(*) AS n FROM notes').get()).toEqual({ n: 2 });
+
+		// Running the init again is a no-op.
+		await new UserRepository(db).initUsersTable();
+		expect(db.prepare('SELECT COUNT(*) AS n FROM users').get()).toEqual({ n: 4 });
+		db.close();
+	});
+
+	test('a fresh database gets the final shape straight away', async () => {
+		const db = await setupDB();
+		const columns = db.prepare('PRAGMA table_info(users)').all() as { name: string; notnull: number }[];
+		expect(columns.find((c) => c.name === 'username')?.notnull).toBe(1);
+		expect(columns.find((c) => c.name === 'email')?.notnull).toBe(0);
+		db.close();
+	});
+});
+
+describe('username identity (API)', () => {
+	let app: SuperTest<Test>;
+	let db: Database.Database;
+	let adminToken: string;
+	const auth = () => ({ Authorization: `Bearer ${adminToken}` });
+
+	beforeAll(async () => {
+		db = await setupDB();
+		app = await setupExpressApp(db);
+		// The first admin: a username and no email at all.
+		const registered = await app
+			.post('/api/v1/users/register')
+			.send({ username: 'IdanL', fullName: 'Idan', password: 'securepassword' });
+		expect(registered.status).toBe(201);
+		expect(registered.body.data.username).toBe('idanl');
+		expect(registered.body.data.email).toBeNull();
+		adminToken = registered.body.token;
+	});
+
+	afterAll(() => db.close());
+
+	test('signs in by username in any letter case, with the identifier field or the legacy email field; the token carries the username', async () => {
+		for (const body of [
+			{ identifier: 'idanl', password: 'securepassword' },
+			{ identifier: 'IDANL', password: 'securepassword' },
+			{ email: 'idanl', password: 'securepassword' },
+		]) {
+			const res = await app.post('/api/v1/users/login').send(body);
+			expect(res.status).toBe(200);
+			expect(res.body.data.username).toBe('idanl');
+			expect((jwt.decode(res.body.token) as User).username).toBe('idanl');
+		}
+		const wrong = await app.post('/api/v1/users/login').send({ identifier: 'idanl', password: 'nope' });
+		expect(wrong.status).toBe(401);
+		expect(wrong.body.error).toBe('Invalid username or password');
+		const noLogin = await app.post('/api/v1/users/login').send({ password: 'securepassword' });
+		expect(noLogin.status).toBe(400);
+	});
+
+	test('an admin creates users with a username and optional email, or by email only (local part becomes the username)', async () => {
+		const withBoth = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({
+				username: 'dana.l',
+				email: 'Dana@Example.com',
+				fullName: 'Dana',
+				password: 'securepassword',
+				role: 'editor',
+			});
+		expect(withBoth.status).toBe(201);
+		expect(withBoth.body.data).toMatchObject({ username: 'dana.l', email: 'Dana@Example.com' });
+
+		const byEmail = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({ email: 'noa@example.com', fullName: 'Noa', password: 'securepassword', role: 'viewer' });
+		expect(byEmail.status).toBe(201);
+		expect(byEmail.body.data).toMatchObject({ username: 'noa', email: 'noa@example.com' });
+
+		const noMail = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({
+				username: 'svc-deploy',
+				email: '',
+				fullName: 'Deploy bot',
+				password: 'securepassword',
+				role: 'operation',
+			});
+		expect(noMail.status).toBe(201);
+		expect(noMail.body.data).toMatchObject({ username: 'svc-deploy', email: null });
+
+		// Both sign in: by email (any case) and by username.
+		expect(
+			(await app.post('/api/v1/users/login').send({ identifier: 'dana@example.com', password: 'securepassword' }))
+				.status
+		).toBe(200);
+		expect(
+			(await app.post('/api/v1/users/login').send({ identifier: 'svc-deploy', password: 'securepassword' }))
+				.status
+		).toBe(200);
+	});
+
+	test('taken or invalid identities are refused with a reason', async () => {
+		const takenUsername = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({ username: 'DANA.L', fullName: 'X', password: 'securepassword', role: 'viewer' });
+		expect(takenUsername.status).toBe(400);
+		expect(takenUsername.body.error).toBe('Username already taken');
+
+		const takenEmail = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({
+				username: 'someone',
+				email: 'dana@example.com',
+				fullName: 'X',
+				password: 'securepassword',
+				role: 'viewer',
+			});
+		expect(takenEmail.status).toBe(400);
+		expect(takenEmail.body.error).toBe('Email already registered');
+
+		for (const username of ['has space', 'at@sign', 'x', 'Ünïcode']) {
+			const invalid = await app
+				.post('/api/v1/users')
+				.set(auth())
+				.send({ username, fullName: 'X', password: 'securepassword', role: 'viewer' });
+			expect(invalid.status).toBe(400);
+			expect(invalid.body.error).toBe('Validation error');
+		}
+		const nothing = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({ fullName: 'X', password: 'securepassword', role: 'viewer' });
+		expect(nothing.status).toBe(400);
+	});
+
+	test('the users list carries username and a null email for accounts without one', async () => {
+		const res = await app.get('/api/v1/users').set(auth());
+		expect(res.status).toBe(200);
+		const byName = Object.fromEntries((res.body.data as User[]).map((u) => [u.username, u.email]));
+		expect(byName).toMatchObject({
+			idanl: null,
+			'dana.l': 'Dana@Example.com',
+			noa: 'noa@example.com',
+			'svc-deploy': null,
+		});
+	});
+
+	test('roles change by username (or email); an admin renames a username and sets or clears the email', async () => {
+		const byUsername = await app
+			.patch('/api/v1/users/role')
+			.set(auth())
+			.send({ username: 'noa', newRole: 'editor' });
+		expect(byUsername.status).toBe(200);
+		const byEmail = await app
+			.patch('/api/v1/users/role')
+			.set(auth())
+			.send({ email: 'noa@example.com', newRole: 'viewer' });
+		expect(byEmail.status).toBe(200);
+		const unknown = await app
+			.patch('/api/v1/users/role')
+			.set(auth())
+			.send({ username: 'nobody', newRole: 'viewer' });
+		expect(unknown.status).toBe(404);
+
+		const users = (await app.get('/api/v1/users').set(auth())).body.data as User[];
+		const noa = users.find((u) => u.username === 'noa')!;
+		const renamed = await app.patch(`/api/v1/users/${noa.id}`).set(auth()).send({ username: 'Noa.B', email: null });
+		expect(renamed.status).toBe(200);
+		expect(renamed.body.data).toMatchObject({ username: 'noa.b', email: null, role: 'viewer' });
+		const collide = await app.patch(`/api/v1/users/${noa.id}`).set(auth()).send({ username: 'dana.l' });
+		expect(collide.status).toBe(400);
+		expect(collide.body.error).toBe('Username already taken');
+		const withMail = await app.patch(`/api/v1/users/${noa.id}`).set(auth()).send({ email: 'noa.b@example.com' });
+		expect(withMail.status).toBe(200);
+		expect(withMail.body.data.email).toBe('noa.b@example.com');
+		// Signs in under the new name, not the old.
+		expect(
+			(await app.post('/api/v1/users/login').send({ identifier: 'noa.b', password: 'securepassword' })).status
+		).toBe(200);
+		expect(
+			(await app.post('/api/v1/users/login').send({ identifier: 'noa', password: 'securepassword' })).status
+		).toBe(401);
+	});
+
+	test('an admin sets the password of an account that has no email (its only reset path)', async () => {
+		const users = (await app.get('/api/v1/users').set(auth())).body.data as User[];
+		const bot = users.find((u) => u.username === 'svc-deploy')!;
+		const reset = await app
+			.patch(`/api/v1/users/${bot.id}/reset-password`)
+			.set(auth())
+			.send({ newPassword: 'another-password' });
+		expect(reset.status).toBe(200);
+		expect(
+			(await app.post('/api/v1/users/login').send({ identifier: 'svc-deploy', password: 'another-password' }))
+				.status
+		).toBe(200);
+	});
+});

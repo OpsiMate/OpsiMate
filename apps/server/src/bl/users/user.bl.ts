@@ -1,6 +1,6 @@
-import { UserRepository } from '../../dal/userRepository';
+import { UserRepository, UserUpdates } from '../../dal/userRepository';
 import bcrypt from 'bcrypt';
-import { AuditActionType, AuditResourceType, Logger, Role, User } from '@OpsiMate/shared';
+import { AuditActionType, AuditResourceType, Logger, Role, User, usernameFromEmail } from '@OpsiMate/shared';
 import { MailClient, MailType } from '../../dal/external-client/mail-client';
 import { PasswordResetsRepository } from '../../dal/passwordResetsRepository';
 import { AuditBL } from '../audit/audit.bl';
@@ -12,7 +12,37 @@ import { MS_PER_MINUTE } from '../../utils/time';
 // Work factor used for every password hash created by this module.
 const BCRYPT_SALT_ROUNDS = 10;
 
-export const INVALID_LOGIN = 'Invalid email or password';
+export const INVALID_LOGIN = 'Invalid username or password';
+export const USERNAME_TAKEN = 'Username already taken';
+export const EMAIL_TAKEN = 'Email already registered';
+
+// A new local account as the API describes it: a username, or only an email (older
+// clients, scripts) from which the username is taken.
+export interface NewAccount {
+	username?: string;
+	email?: string | null;
+	fullName: string;
+	password: string;
+}
+
+// The login name a new account gets: the one given, else the email's local part.
+export const usernameFor = (account: { username?: string; email?: string | null }): string => {
+	if (account.username) return account.username.trim().toLowerCase();
+	if (account.email) return usernameFromEmail(account.email);
+	throw new Error('A username or an email is required');
+};
+
+// A taken username or email, as the API reports it: SQLite's UNIQUE failures (the email
+// column keeps its old constraint name; the username has a named index), or the same
+// finding made before the write.
+export const uniqueViolationMessage = (error: unknown): string | null => {
+	const message = error instanceof Error ? error.message : '';
+	if (message === USERNAME_TAKEN || message === EMAIL_TAKEN) return message;
+	if (!message.includes('UNIQUE constraint failed')) return null;
+	if (message.includes('users.email')) return EMAIL_TAKEN;
+	if (message.includes('users_username_unique') || message.includes('users.username')) return USERNAME_TAKEN;
+	return null;
+};
 export const NOT_ALLOWED_LOGIN = 'Your directory account is not allowed to use OpsiMate';
 // Stored as password_hash for directory accounts: not a bcrypt hash, so bcrypt.compare
 // is false for every input — the account can only sign in through LDAP.
@@ -39,9 +69,10 @@ export class TooManyLoginAttemptsError extends Error {
 
 export const DEFAULT_LDAP_MAX_FAILURES = 5;
 
-// What was typed at login, as the email the account is keyed on: a name without "@"
-// becomes <name>@<default domain> when an installation has one. Anything with "@" (or
-// no domain configured) is taken as typed, and fails the lookup as it always did.
+// What was typed at login, as an email: a name without "@" becomes <name>@<default
+// domain> when an installation has one. Anything with "@" (or no domain configured) is
+// taken as typed. Since usernames exist this is a fallback (deprecated): a bare name is
+// first a username, and only then, for installations that relied on it, an address.
 export const completeLoginIdentifier = (identifier: string, defaultDomain: string | null | undefined): string => {
 	const typed = identifier.trim();
 	if (!defaultDomain || typed === '' || typed.includes('@')) return typed;
@@ -97,40 +128,71 @@ export class UserBL {
 		private loginDefaultEmailDomain: string | null = null
 	) {}
 
-	async register(email: string, fullName: string, password: string): Promise<User> {
+	async register(account: NewAccount): Promise<User> {
 		const userCount = await this.userRepo.countUsers();
 		if (userCount > 0) {
 			throw new Error('Registration is disabled after first admin');
 		}
-		const hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-		const result = await this.userRepo.createUser(email, hash, fullName, Role.Admin);
-		const user = await this.userRepo.getUserById(result.lastID);
-		if (!user) throw new Error('User creation failed');
-		this.onUsersChanged?.();
+		const user = await this.createLocalAccount(account, Role.Admin);
 
-		// Send welcome email
-		void this.mailClient
-			.sendMail({
-				to: user.email,
-				mailType: MailType.WELCOME,
-				userName: user.fullName,
-			})
-			.catch((error) => logger.error('Failed to send welcome email', error));
+		// A welcome mail, when there is an address to send it to.
+		if (user.email) {
+			void this.mailClient
+				.sendMail({
+					to: user.email,
+					mailType: MailType.WELCOME,
+					userName: user.fullName,
+				})
+				.catch((error) => logger.error('Failed to send welcome email', error));
+		}
 
 		return user;
 	}
 
-	async createUser(email: string, fullName: string, password: string, role: Role): Promise<User> {
-		const hash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
-		const result = await this.userRepo.createUser(email, hash, fullName, role);
+	async createUser(account: NewAccount, role: Role): Promise<User> {
+		return this.createLocalAccount(account, role);
+	}
+
+	// The email column's UNIQUE is case-sensitive while every lookup ignores case, so
+	// Dana@x and dana@x must not both get in: checked here, before the write.
+	private async assertEmailFree(email: string, exceptUserId?: number): Promise<void> {
+		const holder = await this.userRepo.getUserByEmail(email);
+		if (holder && Number(holder.id) !== exceptUserId) throw new Error(EMAIL_TAKEN);
+	}
+
+	private async createLocalAccount(account: NewAccount, role: Role): Promise<User> {
+		const email = account.email?.trim() || null;
+		if (email) await this.assertEmailFree(email);
+		const hash = await bcrypt.hash(account.password, BCRYPT_SALT_ROUNDS);
+		const result = await this.userRepo.createUser({
+			username: usernameFor(account),
+			email,
+			passwordHash: hash,
+			fullName: account.fullName,
+			role,
+		});
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
 		this.onUsersChanged?.();
 		return user;
 	}
 
-	async updateUserRole(email: string, newRole: Role): Promise<boolean> {
-		return this.userRepo.updateUserRole(email, newRole);
+	// By username, or by email for older callers.
+	async updateUserRole(identifier: string, newRole: Role): Promise<boolean> {
+		return this.userRepo.updateUserRole(identifier, newRole);
+	}
+
+	// The local account a login names. Anything with "@" is an email; a bare name is a
+	// username first and, for installations that still rely on the default login domain,
+	// the address it completes to. Either lookup ignores letter case.
+	private async findLocalLogin(identifier: string) {
+		const typed = identifier.trim();
+		if (typed === '') return undefined;
+		if (typed.includes('@')) return this.userRepo.findLoginByEmail(typed);
+		const byUsername = await this.userRepo.findLoginByUsername(typed);
+		if (byUsername) return byUsername;
+		const completed = completeLoginIdentifier(typed, this.loginDefaultEmailDomain);
+		return completed.includes('@') ? this.userRepo.findLoginByEmail(completed) : undefined;
 	}
 
 	// A local account always signs in locally — including the first admin, which is the
@@ -138,11 +200,7 @@ export class UserBL {
 	// LDAP when it is enabled; on success their OpsiMate account is created, or brought
 	// in step with the directory (name, role), and they are signed in.
 	async login(identifier: string, password: string): Promise<User> {
-		const email = completeLoginIdentifier(identifier, this.loginDefaultEmailDomain);
-		const normalizedEmail = email.trim().toLowerCase();
-		const existing =
-			(await this.userRepo.loginVerification(email)) ??
-			(normalizedEmail !== email ? await this.userRepo.loginVerification(normalizedEmail) : undefined);
+		const existing = await this.findLocalLogin(identifier);
 
 		if (existing && existing.user.authSource !== 'ldap') {
 			if (!(await bcrypt.compare(password, existing.passwordHash))) throw new Error(INVALID_LOGIN);
@@ -152,6 +210,11 @@ export class UserBL {
 			// A directory account while LDAP is switched off: nothing can vouch for it.
 			throw new Error(INVALID_LOGIN);
 		}
+		// The directory is asked by email (a username completes to one with the default
+		// login domain); a bare name with no domain is not a directory login yet.
+		const email = completeLoginIdentifier(identifier, this.loginDefaultEmailDomain);
+		const normalizedEmail = email.trim().toLowerCase();
+		if (!normalizedEmail.includes('@')) throw new Error(INVALID_LOGIN);
 
 		if (this.ldapFailures?.isThrottled(normalizedEmail)) throw new TooManyLoginAttemptsError();
 		const identity = await this.ldap.authenticate(normalizedEmail, password);
@@ -216,7 +279,15 @@ export class UserBL {
 		}
 		try {
 			// No usable password hash: this account can only ever sign in through LDAP.
-			const result = await this.userRepo.createUser(email, DIRECTORY_PASSWORD_HASH, fullName, role, 'ldap', dn);
+			const result = await this.userRepo.createUser({
+				username: usernameFromEmail(email),
+				email,
+				passwordHash: DIRECTORY_PASSWORD_HASH,
+				fullName,
+				role,
+				authSource: 'ldap',
+				ldapDn: dn,
+			});
 			const created = await this.userRepo.getUserById(result.lastID);
 			if (!created) throw new Error('User creation failed');
 			logger.info(`Provisioned ${email} from LDAP as ${role}`);
@@ -254,15 +325,22 @@ export class UserBL {
 		await this.userRepo.updateUserPassword(userId, hashedPassword);
 	}
 
-	async updateUser(userId: number, updates: { fullName?: string; email?: string; role?: Role }): Promise<User> {
-		// The email is what links a directory account to its LDAP entry. The edit form
-		// always sends it, so only an actual change is refused.
-		if (updates.email !== undefined) {
+	async updateUser(userId: number, updates: UserUpdates): Promise<User> {
+		// The username and email are what link a directory account to its LDAP entry. The
+		// edit form always sends them, so only an actual change is refused.
+		if (updates.email !== undefined || updates.username !== undefined) {
 			const current = await this.userRepo.getUserById(userId);
-			if (current?.authSource === 'ldap' && updates.email.trim().toLowerCase() !== current.email.toLowerCase()) {
-				throw new DirectoryManagedError('Its email');
+			if (current?.authSource === 'ldap') {
+				const emailChanges =
+					updates.email !== undefined &&
+					(updates.email?.trim().toLowerCase() ?? null) !== (current.email?.toLowerCase() ?? null);
+				if (emailChanges) throw new DirectoryManagedError('Its email');
+				const usernameChanges =
+					updates.username !== undefined && updates.username.trim().toLowerCase() !== current.username;
+				if (usernameChanges) throw new DirectoryManagedError('Its username');
 			}
 		}
+		if (updates.email) await this.assertEmailFree(updates.email, userId);
 		await this.userRepo.updateUser(userId, updates);
 		const updatedUser = await this.userRepo.getUserById(userId);
 		if (!updatedUser) {
@@ -326,6 +404,9 @@ export class UserBL {
 			logger.info('Password reset requested for non-existent email');
 			return;
 		}
+		// getUserByEmail found it by that address, so it has one; the guard is for the type.
+		const to = user.email;
+		if (!to) return;
 
 		let resetPasswordConfig: ReturnType<typeof generatePasswordResetInfo> | undefined;
 		try {
@@ -339,7 +420,7 @@ export class UserBL {
 			});
 
 			await this.mailClient.sendMail({
-				to: user.email,
+				to,
 				subject: 'Password Reset Request',
 				mailType: MailType.PASSWORD_RESET,
 				token: resetPasswordConfig.encryptedToken,
@@ -410,12 +491,12 @@ export class UserBL {
 				throw new Error('User not found');
 			}
 
-			const userLoginInfo = await this.userRepo.loginVerification(user.email);
-			if (!userLoginInfo) {
+			const currentHash = await this.userRepo.getPasswordHash(Number(user.id));
+			if (!currentHash) {
 				throw new Error('User login info not found');
 			}
 
-			const isSamePassword = await bcrypt.compare(newPassword, userLoginInfo.passwordHash);
+			const isSamePassword = await bcrypt.compare(newPassword, currentHash);
 
 			if (isSamePassword) {
 				throw new Error('You cannot reuse an old password');
@@ -430,7 +511,7 @@ export class UserBL {
 				resourceId: String(user.id),
 				userId: Number(user.id),
 				userName: user.fullName,
-				resourceName: user.email,
+				resourceName: user.username,
 				details: 'User reset their password via email link',
 			});
 		} catch (error) {

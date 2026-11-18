@@ -14,7 +14,8 @@ async function createUserAndLogin(
 	fullName: string
 ): Promise<string> {
 	const passwordHash = await bcrypt.hash(password, 10);
-	db.prepare('INSERT INTO users (email, password_hash, full_name, role) VALUES (?, ?, ?, ?)').run(
+	db.prepare('INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?, ?, ?, ?, ?)').run(
+		email.split('@')[0],
 		email,
 		passwordHash,
 		fullName,

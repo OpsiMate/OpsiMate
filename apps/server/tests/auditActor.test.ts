@@ -4,6 +4,7 @@ import { API_TOKEN_ACTOR_ID, API_TOKEN_ACTOR_NAME, toAuditActor } from '../src/b
 
 const buildUser = (overrides: Partial<User> = {}): User => ({
 	id: '42',
+	username: 'ada',
 	email: 'ada@example.com',
 	fullName: 'Ada Lovelace',
 	role: Role.Admin,

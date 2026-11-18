@@ -155,16 +155,16 @@ const Settings: React.FC = () => {
 		fetchUsers();
 	}, [fetchUsers]);
 
-	const handleRoleUpdate = async (email: string, newRole: Role) => {
-		setUpdatingUser(email);
+	const handleRoleUpdate = async (username: string, newRole: Role) => {
+		setUpdatingUser(username);
 		clearErrors();
 
 		try {
-			const response = await apiRequest('/users/role', 'PATCH', { email, newRole });
+			const response = await apiRequest('/users/role', 'PATCH', { username, newRole });
 			if (response.success) {
 				// Update the local state
 				setUsers((prevUsers) =>
-					prevUsers.map((user) => (user.email === email ? { ...user, role: newRole as Role } : user))
+					prevUsers.map((user) => (user.username === username ? { ...user, role: newRole as Role } : user))
 				);
 			} else {
 				handleApiResponse(response);
@@ -201,15 +201,16 @@ const Settings: React.FC = () => {
 	const filteredUsers = users.filter(
 		(user) =>
 			user.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-			user.email.toLowerCase().includes(searchQuery.toLowerCase())
+			user.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+			(user.email ?? '').toLowerCase().includes(searchQuery.toLowerCase())
 	);
 
 	// Handle bulk role update
 	const handleBulkRoleUpdate = async (newRole: Role) => {
 		for (const userId of selectedUsers) {
 			const user = users.find((u) => u.id === userId);
-			if (user && user.email !== currentUser?.email) {
-				await handleRoleUpdate(user.email, newRole);
+			if (user && user.id !== currentUser?.id) {
+				await handleRoleUpdate(user.username, newRole);
 			}
 		}
 		setSelectedUsers([]);
@@ -442,7 +443,7 @@ const Settings: React.FC = () => {
 																				);
 																			}
 																		}}
-																		disabled={user.email === currentUser?.email}
+																		disabled={user.id === currentUser?.id}
 																		className="cursor-pointer"
 																	/>
 																</TableCell>

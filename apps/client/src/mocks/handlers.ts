@@ -212,7 +212,8 @@ const toOncallTeam = (team: OncallTeamState): OncallTeam => {
 		return {
 			userId,
 			fullName: user?.fullName ?? `user #${userId}`,
-			email: user?.email ?? '',
+			username: user?.username ?? `user${userId}`,
+			email: user?.email ?? null,
 			phoneNumber: user?.phoneNumber ?? null,
 			priority: ((position - shift + count) % count) + 1,
 		};

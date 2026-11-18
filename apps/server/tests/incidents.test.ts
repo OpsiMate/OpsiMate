@@ -233,7 +233,7 @@ describe('incident ownership', () => {
 		otherUserId = Number(
 			db
 				.prepare(
-					`INSERT INTO users (email, password_hash, full_name, role) VALUES (?, 'x', 'Other User', 'viewer')`
+					`INSERT INTO users (username, email, password_hash, full_name, role) VALUES ('other', ?, 'x', 'Other User', 'viewer')`
 				)
 				.run('other@example.com').lastInsertRowid
 		);

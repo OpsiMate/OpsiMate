@@ -67,7 +67,13 @@ describe('UserBL login with LDAP', () => {
 		});
 		userBL.setLdapAuthenticator(directory as unknown as LdapAuthenticator);
 		const hash = await bcrypt.hash('local-pw', 4);
-		await userRepo.createUser('admin@example.com', hash, 'Local Admin', Role.Admin);
+		await userRepo.createUser({
+			username: 'admin',
+			email: 'admin@example.com',
+			passwordHash: hash,
+			fullName: 'Local Admin',
+			role: Role.Admin,
+		});
 	});
 
 	afterEach(() => db.close());
@@ -92,8 +98,8 @@ describe('UserBL login with LDAP', () => {
 	});
 
 	test('wrong directory password and unknown users are "invalid"; nothing is created', async () => {
-		await expect(userBL.login('dana@example.com', 'nope')).rejects.toThrow('Invalid email or password');
-		await expect(userBL.login('ghost@example.com', 'x')).rejects.toThrow('Invalid email or password');
+		await expect(userBL.login('dana@example.com', 'nope')).rejects.toThrow('Invalid username or password');
+		await expect(userBL.login('ghost@example.com', 'x')).rejects.toThrow('Invalid username or password');
 		expect(await userRepo.countUsers()).toBe(1);
 	});
 
@@ -106,7 +112,7 @@ describe('UserBL login with LDAP', () => {
 		directory.down = true;
 		const admin = await userBL.login('admin@example.com', 'local-pw');
 		expect(admin.authSource).toBe('local');
-		await expect(userBL.login('admin@example.com', 'wrong')).rejects.toThrow('Invalid email or password');
+		await expect(userBL.login('admin@example.com', 'wrong')).rejects.toThrow('Invalid username or password');
 		expect(directory.calls).toBe(0);
 		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toBeInstanceOf(LdapUnavailableError);
 	});
@@ -116,14 +122,14 @@ describe('UserBL login with LDAP', () => {
 			password: 'dir-pw',
 			identity: identity('admin@example.com', 'Impostor', Role.Admin),
 		});
-		await expect(userBL.login('admin@example.com', 'dir-pw')).rejects.toThrow('Invalid email or password');
+		await expect(userBL.login('admin@example.com', 'dir-pw')).rejects.toThrow('Invalid username or password');
 		expect(directory.calls).toBe(0);
 		// Nor through the directory answering with a different email than the one typed.
 		directory.answers.set('alias@example.com', {
 			password: 'dir-pw',
 			identity: identity('admin@example.com', 'Impostor', Role.Admin),
 		});
-		await expect(userBL.login('alias@example.com', 'dir-pw')).rejects.toThrow('Invalid email or password');
+		await expect(userBL.login('alias@example.com', 'dir-pw')).rejects.toThrow('Invalid username or password');
 		const admin = await userRepo.getUserByEmail('admin@example.com');
 		expect(admin).toMatchObject({ fullName: 'Local Admin', authSource: 'local' });
 	});
@@ -131,8 +137,8 @@ describe('UserBL login with LDAP', () => {
 	test('with LDAP switched off, directory accounts cannot sign in (their stored hash is unusable)', async () => {
 		await userBL.login('dana@example.com', 'dir-pw');
 		userBL.setLdapAuthenticator(null);
-		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toThrow('Invalid email or password');
-		await expect(userBL.login('dana@example.com', '!ldap')).rejects.toThrow('Invalid email or password');
+		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toThrow('Invalid username or password');
+		await expect(userBL.login('dana@example.com', '!ldap')).rejects.toThrow('Invalid username or password');
 	});
 
 	test('passwords and emails of directory accounts are managed by the directory', async () => {
@@ -163,17 +169,23 @@ describe('UserBL login with LDAP', () => {
 			password: 'dir-pw',
 			identity: { ...identity('dana@example.com', 'New Dana', Role.Admin), dn: 'uid=dana2,dc=example,dc=com' },
 		});
-		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toThrow('Invalid email or password');
+		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toThrow('Invalid username or password');
 		expect(await userRepo.getUserByEmail('dana@example.com')).toMatchObject({ fullName: 'Dana Directory' });
 	});
 
 	test('a local account is protected whatever the letter case of its email', async () => {
-		await userRepo.createUser('Case@Example.com', await bcrypt.hash('x', 4), 'Local Case', Role.Viewer);
+		await userRepo.createUser({
+			username: 'case',
+			email: 'Case@Example.com',
+			passwordHash: await bcrypt.hash('x', 4),
+			fullName: 'Local Case',
+			role: Role.Viewer,
+		});
 		directory.answers.set('case@example.com', {
 			password: 'dir-pw',
 			identity: identity('case@example.com', 'Directory Case', Role.Admin),
 		});
-		await expect(userBL.login('case@example.com', 'dir-pw')).rejects.toThrow('Invalid email or password');
+		await expect(userBL.login('case@example.com', 'dir-pw')).rejects.toThrow('Invalid username or password');
 		expect(await userRepo.countUsers()).toBe(2);
 	});
 
@@ -188,7 +200,7 @@ describe('UserBL login with LDAP', () => {
 
 	test('after 5 failed directory logins the email is throttled without asking the directory', async () => {
 		for (let i = 0; i < 5; i++) {
-			await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid email or password');
+			await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid username or password');
 		}
 		const callsBefore = directory.calls;
 		await expect(userBL.login('Dana@example.com', 'dir-pw')).rejects.toBeInstanceOf(TooManyLoginAttemptsError);
@@ -213,7 +225,7 @@ describe('UserBL login with LDAP', () => {
 
 		userBL.setLdapAuthenticator(directory as unknown as LdapAuthenticator, 0);
 		for (let i = 0; i < 20; i++) {
-			await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid email or password');
+			await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid username or password');
 		}
 		await expect(userBL.login('dana@example.com', 'dir-pw')).resolves.toMatchObject({ email: 'dana@example.com' });
 	});
@@ -221,7 +233,7 @@ describe('UserBL login with LDAP', () => {
 	test('re-applying settings with the same limit keeps the failure counters', async () => {
 		for (let i = 0; i < 4; i++) await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow();
 		userBL.setLdapAuthenticator(directory as unknown as LdapAuthenticator, 5);
-		await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid email or password');
+		await expect(userBL.login('dana@example.com', 'wrong')).rejects.toThrow('Invalid username or password');
 		await expect(userBL.login('dana@example.com', 'dir-pw')).rejects.toBeInstanceOf(TooManyLoginAttemptsError);
 	});
 });

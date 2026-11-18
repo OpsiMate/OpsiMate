@@ -1,4 +1,5 @@
 import { AUTH_TOKEN_STORAGE_KEY } from './auth';
+import type { UserInfo } from '@/hooks/queries/users/useUsers';
 import {
 	AiConfig,
 	AiFilterResult,
@@ -819,9 +820,7 @@ export const secretsApi = {
 export const usersApi = {
 	// Get all users
 	getAllUsers: () => {
-		return apiRequest<{ id: string; email: string; fullName: string; role: string; phoneNumber?: string | null }[]>(
-			'/users'
-		);
+		return apiRequest<UserInfo[]>('/users');
 	},
 };
 

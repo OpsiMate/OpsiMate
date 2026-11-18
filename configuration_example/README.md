@@ -98,16 +98,25 @@ A source can say who owns an alert: the generic webhook (`POST /api/v1/alerts/cu
 - Sending `owner` **empty** (`""` or `null`, or an empty `owner` label) **removes** the owner — also one a person set by hand — and takes the alert out of its incident. The response says `unassigned`; when there was an owner to remove, the history reads "Owner removed" and the `owner_unassigned` callback fires (on an alert nobody owns it is a no-op). Like everything about the owner, a removal that fails never fails the webhook: the response says `kept`, meaning the removal was not confirmed — check the alert, or send the empty `owner` again. Within one backend instance, webhooks for the same alert apply their `owner` in arrival order even when a directory lookup is slow, so an assignment followed by a removal ends unowned — a later name still never replaces an existing owner. A sender that updates the same alert in quick succession should wait for each response before sending the next; across several backend replicas that is the only ordering guarantee.
 - Nobody matching, or the directory being down, never fails the webhook: the alert is stored unassigned and the response's `owner` field says `not_found` (otherwise `assigned`, `kept` or `unassigned`). No `owner_assigned` callback fires for a webhook owner — that is for a person's decision.
 
-## Login with a Short Name
+## Usernames, and Accounts without an Email
 
-Typing a full email at every login is tedious when everyone shares one domain. Set the installation's domain and a bare name completes to an address before the normal login runs:
+Every account has a **username**: 2-64 characters, lowercase letters, digits, dot, underscore or hyphen (`idanl`, `j.smith`, `svc-deploy`), unique ignoring case. The email is optional. A user signs in with either one in the login field; anything with an `@` is taken as an email.
+
+- Creating a user (`POST /api/v1/users`, or the Settings page) takes `username` and an optional `email`. A caller that sends only an `email` gets the address's local part as the username (`dana@company.com` → `dana`).
+- Existing installations are migrated on startup: every account gets the local part of its email as its username (oldest account first; a name already taken gets a numeric suffix, which the server log reports), and the email column stops being required. Everyone keeps signing in with their email as before.
+- A user **without** an email cannot receive a password-reset link or the welcome mail; an admin sets their password from the Users page instead. Directory (LDAP) accounts never needed either.
+- `PATCH /api/v1/users/role` takes `username` (or `email`); `PATCH /api/v1/users/:id` can rename the username and set or clear (`null`) the email. Directory accounts keep the identity the directory gave them.
+
+### Login with a Short Name (deprecated)
+
+Before usernames, a bare name could be completed with the installation's domain:
 
 ```yaml
 login:
   default_email_domain: company.com # or LOGIN_DEFAULT_EMAIL_DOMAIN=company.com
 ```
 
-`idan` then signs in as `idan@company.com` — local accounts and directory (LDAP) accounts alike, since the directory lookup receives the completed address. Anything typed with an `@` is used as is, so people with another domain still sign in with their full email. Unset, the login takes the full email only, as before. The login page shows what a bare name will mean as it is typed.
+`idan` then also tries `idan@company.com` — after the username lookup, for local accounts and directory (LDAP) accounts alike, since the directory lookup receives the completed address. Kept so webhooks and logins that relied on it keep working; new installations do not need it, as a bare name is a username.
 
 ## LDAP / Active Directory Login
 
