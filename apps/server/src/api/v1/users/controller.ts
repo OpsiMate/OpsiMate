@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { isZodError } from '../../../utils/isZodError';
 import { routeParam } from '../../../utils/routeParams';
 import {
+	AMBIGUOUS_EMAIL,
 	DirectoryManagedError,
 	INVALID_LOGIN,
 	NOT_ALLOWED_LOGIN,
@@ -85,6 +86,8 @@ export class UsersController {
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
+			} else if (error instanceof Error && error.message === AMBIGUOUS_EMAIL) {
+				return res.status(409).json({ success: false, error: error.message });
 			} else {
 				logger.error('Error updating user role:', error);
 				return res.status(500).json({ success: false, error: 'Internal server error' });

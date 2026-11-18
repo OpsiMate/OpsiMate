@@ -85,10 +85,11 @@ export class UserRepository {
 			}
 			// Accounts used to be keyed on the email. Every row gets a username (the local
 			// part of its address), and the email column stops being required.
-			if (!has('username')) {
-				this.db.prepare(`ALTER TABLE users ADD COLUMN username TEXT`).run();
-				this.backfillUsernames();
-			}
+			if (!has('username')) this.db.prepare(`ALTER TABLE users ADD COLUMN username TEXT`).run();
+			// Always, not only right after adding the column: a start-up that stopped between
+			// the two left rows without a username, and the rebuild below copies into a NOT
+			// NULL column. Fills the missing ones only; assigned names are kept.
+			this.backfillUsernames();
 			const emailColumn = (this.db.prepare(`PRAGMA table_info(users)`).all() as TableInfoRow[]).find(
 				(col) => col.name === 'email'
 			);
@@ -99,7 +100,31 @@ export class UserRepository {
 			this.db
 				.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique ON users (username COLLATE NOCASE)`)
 				.run();
+			this.ensureEmailUniqueIgnoringCase();
 		});
+	}
+
+	// Every lookup treats Dana@x and dana@x as one address, so the database should refuse
+	// the second as well — two concurrent creates could otherwise both pass the check made
+	// before the write. An old database may already hold such variants; they cannot be
+	// merged here, so the index is skipped with a warning naming them (the column's own
+	// case-sensitive UNIQUE still holds), and added once an admin has sorted them out.
+	private ensureEmailUniqueIgnoringCase(): void {
+		const variants = this.db
+			.prepare(
+				`SELECT lower(email) AS address, COUNT(*) AS n FROM users WHERE email IS NOT NULL GROUP BY lower(email) HAVING n > 1`
+			)
+			.all() as { address: string; n: number }[];
+		if (variants.length > 0) {
+			logger.warn(
+				`Emails that differ only by letter case belong to several accounts: ${variants.map((v) => v.address).join(', ')}. ` +
+					'Give each its own address so the email can be made unique ignoring case.'
+			);
+			return;
+		}
+		this.db
+			.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique_nocase ON users (email COLLATE NOCASE)`)
+			.run();
 	}
 
 	// Every account without a username gets one from its email's local part; a name
@@ -141,6 +166,13 @@ export class UserRepository {
 		if (foreignKeysWereOn) this.db.pragma('foreign_keys = OFF');
 		try {
 			this.db.transaction(() => {
+				// The AUTOINCREMENT watermark: dropping the table forgets it, and a rebuilt
+				// table could then hand a deleted account's id to a new one — which an
+				// unexpired token of the old account would resolve to.
+				const watermark = (
+					this.db.prepare(`SELECT seq FROM sqlite_sequence WHERE name = 'users'`).get() as
+						{ seq: number } | undefined
+				)?.seq;
 				this.db.prepare(`DROP TABLE IF EXISTS users_new`).run();
 				this.db.prepare(CREATE_USERS_TABLE('users_new')).run();
 				this.db
@@ -151,6 +183,18 @@ export class UserRepository {
 					.run();
 				this.db.prepare(`DROP TABLE users`).run();
 				this.db.prepare(`ALTER TABLE users_new RENAME TO users`).run();
+				if (watermark !== undefined) {
+					const current = (
+						this.db.prepare(`SELECT seq FROM sqlite_sequence WHERE name = 'users'`).get() as
+							{ seq: number } | undefined
+					)?.seq;
+					const seq = Math.max(watermark, current ?? 0);
+					if (current === undefined) {
+						this.db.prepare(`INSERT INTO sqlite_sequence (name, seq) VALUES ('users', ?)`).run(seq);
+					} else {
+						this.db.prepare(`UPDATE sqlite_sequence SET seq = ? WHERE name = 'users'`).run(seq);
+					}
+				}
 				const violations = this.db.pragma('foreign_key_check') as unknown[];
 				if (violations.length > 0) {
 					throw new Error(`users table rebuild left ${violations.length} dangling foreign key(s)`);
@@ -191,13 +235,14 @@ export class UserRepository {
 	}
 
 	// The account behind an email, with its password hash, for a login. Ignoring case:
-	// addresses are case-insensitive in practice, and the first match by id wins should
-	// an old database hold two spellings.
+	// addresses are case-insensitive in practice. Should an old database hold two
+	// spellings, the one typed exactly wins, then the oldest.
 	async findLoginByEmail(email: string): Promise<LoginRecord | undefined> {
 		return runAsync(() => {
+			const address = email.trim();
 			const row = this.db
-				.prepare('SELECT * FROM users WHERE email = ? COLLATE NOCASE ORDER BY id LIMIT 1')
-				.get(email.trim()) as UserRow | undefined;
+				.prepare('SELECT * FROM users WHERE email = ? COLLATE NOCASE ORDER BY (email = ?) DESC, id LIMIT 1')
+				.get(address, address) as UserRow | undefined;
 			return row ? { user: this.toSharedUser(row), passwordHash: row.password_hash } : undefined;
 		});
 	}
@@ -218,14 +263,9 @@ export class UserRepository {
 		});
 	}
 
-	// By username, or by email for older callers; "@" tells them apart.
-	async updateUserRole(identifier: string, newRole: Role): Promise<boolean> {
+	async updateUserRoleById(userId: number, newRole: Role): Promise<boolean> {
 		return runAsync(() => {
-			const typed = identifier.trim();
-			const stmt = typed.includes('@')
-				? this.db.prepare('UPDATE users SET role = ? WHERE email = ? COLLATE NOCASE')
-				: this.db.prepare('UPDATE users SET role = ? WHERE username = ? COLLATE NOCASE');
-			return stmt.run(newRole, typed).changes > 0;
+			return this.db.prepare('UPDATE users SET role = ? WHERE id = ?').run(newRole, userId).changes > 0;
 		});
 	}
 
@@ -356,12 +396,30 @@ export class UserRepository {
 		});
 	}
 
+	// The account behind an address, ignoring case; the exact spelling first, then the oldest.
 	async getUserByEmail(email: string): Promise<User | null> {
 		return runAsync(() => {
+			const address = email.trim();
 			const row = this.db
-				.prepare(`SELECT ${USER_COLUMNS} FROM users WHERE email = ? COLLATE NOCASE ORDER BY id LIMIT 1`)
-				.get(email.trim()) as UserRow | undefined;
+				.prepare(
+					`SELECT ${USER_COLUMNS} FROM users WHERE email = ? COLLATE NOCASE ORDER BY (email = ?) DESC, id LIMIT 1`
+				)
+				.get(address, address) as UserRow | undefined;
 			return row ? this.toSharedUser(row) : null;
+		});
+	}
+
+	// Every account whose address matches ignoring case — more than one only in an old
+	// database that let spellings coexist. Exact spelling first.
+	async findUsersByEmail(email: string): Promise<User[]> {
+		return runAsync(() => {
+			const address = email.trim();
+			const rows = this.db
+				.prepare(
+					`SELECT ${USER_COLUMNS} FROM users WHERE email = ? COLLATE NOCASE ORDER BY (email = ?) DESC, id`
+				)
+				.all(address, address) as UserRow[];
+			return rows.map(this.toSharedUser);
 		});
 	}
 

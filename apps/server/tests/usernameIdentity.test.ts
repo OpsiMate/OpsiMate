@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import Database from 'better-sqlite3';
 import jwt from 'jsonwebtoken';
 import { SuperTest, Test } from 'supertest';
-import { User } from '@OpsiMate/shared';
+import { Role, User } from '@OpsiMate/shared';
 import { UserRepository } from '../src/dal/userRepository';
 import { setupDB, setupExpressApp } from './setup';
 
@@ -68,6 +68,84 @@ describe('users table migration', () => {
 		await new UserRepository(db).initUsersTable();
 		expect(db.prepare('SELECT COUNT(*) AS n FROM users').get()).toEqual({ n: 4 });
 		db.close();
+	});
+
+	test('an upgrade that stopped half-way resumes: rows still without a username get one, assigned names stay', async () => {
+		const db = new Database(':memory:');
+		db.exec(`CREATE TABLE users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			full_name TEXT NOT NULL,
+			role TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			username TEXT
+		)`);
+		// The column was added and one row filled before the process died.
+		db.exec(`INSERT INTO users (email, password_hash, full_name, role, username) VALUES
+			('dana@acme.test', 'h', 'Dana', 'admin', 'dana-kept'),
+			('noa@acme.test', 'h', 'Noa', 'editor', NULL)`);
+		await new UserRepository(db).initUsersTable();
+		const rows = db.prepare('SELECT username, email FROM users ORDER BY id').all() as UserIdentityRow[];
+		expect(rows.map((r) => r.username)).toEqual(['dana-kept', 'noa']);
+		expect(
+			(db.prepare('PRAGMA table_info(users)').all() as { name: string; notnull: number }[]).find(
+				(c) => c.name === 'email'
+			)?.notnull
+		).toBe(0);
+		db.close();
+	});
+
+	test("the rebuild keeps the id watermark: a deleted account's id is never handed to a new one", async () => {
+		const db = new Database(':memory:');
+		db.exec(`CREATE TABLE users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			full_name TEXT NOT NULL,
+			role TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`);
+		db.exec(
+			`INSERT INTO users (email, password_hash, full_name, role) VALUES ('a@x.test', 'h', 'A', 'admin'), ('b@x.test', 'h', 'B', 'viewer')`
+		);
+		db.exec(`DELETE FROM users WHERE id = 2`);
+		await new UserRepository(db).initUsersTable();
+		const inserted = db
+			.prepare(
+				`INSERT INTO users (username, email, password_hash, full_name, role) VALUES ('c', NULL, 'h', 'C', 'viewer')`
+			)
+			.run();
+		expect(Number(inserted.lastInsertRowid)).toBe(3);
+		db.close();
+	});
+
+	test('emails are unique ignoring case on a clean database; an old database with case variants keeps them and is warned', async () => {
+		const clean = await setupDB();
+		const insert = clean.prepare(
+			`INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?, ?, 'h', 'X', 'viewer')`
+		);
+		insert.run('one', 'Dana@acme.test');
+		expect(() => insert.run('two', 'dana@acme.test')).toThrow(/UNIQUE/);
+		clean.close();
+
+		const legacy = new Database(':memory:');
+		legacy.exec(`CREATE TABLE users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT NOT NULL UNIQUE,
+			password_hash TEXT NOT NULL,
+			full_name TEXT NOT NULL,
+			role TEXT NOT NULL,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		)`);
+		legacy.exec(
+			`INSERT INTO users (email, password_hash, full_name, role) VALUES ('Dana@acme.test', 'h', 'Dana', 'admin'), ('dana@acme.test', 'h', 'Dana Two', 'viewer')`
+		);
+		await new UserRepository(legacy).initUsersTable();
+		expect(legacy.prepare('SELECT COUNT(*) AS n FROM users').get()).toEqual({ n: 2 });
+		const indexes = legacy.prepare(`PRAGMA index_list(users)`).all() as { name: string }[];
+		expect(indexes.map((i) => i.name)).not.toContain('users_email_unique_nocase');
+		legacy.close();
 	});
 
 	test('a fresh database gets the final shape straight away', async () => {
@@ -157,6 +235,33 @@ describe('username identity (API)', () => {
 		).toBe(200);
 	});
 
+	test('an email-only create whose local part is taken gets a numbered username; an explicit one is refused', async () => {
+		// "noa" exists (created above by email). Another noa at a different domain:
+		const second = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({ email: 'noa@other.example', fullName: 'Noa Two', password: 'securepassword', role: 'viewer' });
+		expect(second.status).toBe(201);
+		expect(second.body.data.username).toBe('noa2');
+		const third = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({ email: 'noa@third.example', fullName: 'Noa Three', password: 'securepassword', role: 'viewer' });
+		expect(third.body.data.username).toBe('noa3');
+		const explicit = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({
+				username: 'noa',
+				email: 'noa@fourth.example',
+				fullName: 'X',
+				password: 'securepassword',
+				role: 'viewer',
+			});
+		expect(explicit.status).toBe(400);
+		expect(explicit.body.error).toBe('Username already taken');
+	});
+
 	test('taken or invalid identities are refused with a reason', async () => {
 		const takenUsername = await app
 			.post('/api/v1/users')
@@ -237,6 +342,31 @@ describe('username identity (API)', () => {
 		expect(
 			(await app.post('/api/v1/users/login').send({ identifier: 'noa', password: 'securepassword' })).status
 		).toBe(401);
+	});
+
+	test('an old database with Dana@x and dana@x: an action by the exact spelling hits that account; a third spelling is refused', async () => {
+		// Seeded straight into the table, as an old database would have left them — such a
+		// database has no case-insensitive email index (see ensureEmailUniqueIgnoringCase).
+		db.exec('DROP INDEX IF EXISTS users_email_unique_nocase');
+		const seed = db.prepare(
+			`INSERT INTO users (username, email, password_hash, full_name, role) VALUES (?, ?, 'h', ?, 'viewer')`
+		);
+		seed.run('case-a', 'Case@acme.test', 'Case A');
+		seed.run('case-b', 'case@acme.test', 'Case B');
+		const exact = await app
+			.patch('/api/v1/users/role')
+			.set(auth())
+			.send({ email: 'case@acme.test', newRole: 'editor' });
+		expect(exact.status).toBe(200);
+		const users = (await app.get('/api/v1/users').set(auth())).body.data as User[];
+		expect(users.find((u) => u.username === 'case-b')?.role).toBe('editor');
+		expect(users.find((u) => u.username === 'case-a')?.role).toBe('viewer');
+		const ambiguous = await app
+			.patch('/api/v1/users/role')
+			.set(auth())
+			.send({ email: 'CASE@ACME.TEST', newRole: 'admin' });
+		expect(ambiguous.status).toBe(409);
+		expect(users.filter((u) => u.role === Role.Admin).map((u) => u.username)).toEqual(['idanl']);
 	});
 
 	test('an admin sets the password of an account that has no email (its only reset path)', async () => {

@@ -449,7 +449,7 @@ const Settings: React.FC = () => {
 																</TableCell>
 																<TableCell className="font-medium">
 																	{user.fullName}
-																	{user.email === currentUser?.email && (
+																	{user.id === currentUser?.id && (
 																		<Badge
 																			variant="outline"
 																			className="ml-2 text-xs"
@@ -490,18 +490,18 @@ const Settings: React.FC = () => {
 																			value={user.role}
 																			onValueChange={(newRole) =>
 																				handleRoleUpdate(
-																					user.email,
+																					user.username,
 																					newRole as Role
 																				)
 																			}
 																			disabled={
-																				updatingUser === user.email ||
-																				user.email === currentUser?.email
+																				updatingUser === user.username ||
+																				user.id === currentUser?.id
 																			}
 																		>
 																			<SelectTrigger
 																				className="w-32"
-																				aria-label={`${USER_ROLE_LABEL_PREFIX}${user.email}`}
+																				aria-label={`${USER_ROLE_LABEL_PREFIX}${user.username}`}
 																			>
 																				<SelectValue />
 																			</SelectTrigger>
@@ -520,102 +520,98 @@ const Settings: React.FC = () => {
 																				</SelectItem>
 																			</SelectContent>
 																		</Select>
-																		{isAdmin &&
-																			user.email !== currentUser?.email && (
-																				<>
+																		{isAdmin && user.id !== currentUser?.id && (
+																			<>
+																				<Button
+																					variant="ghost"
+																					size="icon"
+																					onClick={() => {
+																						setUserToEdit(user);
+																						setShowEditModal(true);
+																					}}
+																					title="Edit user"
+																					className="hover:bg-muted hover:text-foreground"
+																				>
+																					<Edit className="h-4 w-4" />
+																				</Button>
+																				{user.authSource !== 'ldap' && (
 																					<Button
 																						variant="ghost"
 																						size="icon"
 																						onClick={() => {
-																							setUserToEdit(user);
-																							setShowEditModal(true);
+																							setUserToResetPassword(
+																								user
+																							);
+																							setShowResetPasswordModal(
+																								true
+																							);
 																						}}
-																						title="Edit user"
+																						title="Reset password"
 																						className="hover:bg-muted hover:text-foreground"
 																					>
-																						<Edit className="h-4 w-4" />
+																						<KeyRound className="h-4 w-4" />
 																					</Button>
-																					{user.authSource !== 'ldap' && (
+																				)}
+																				<AlertDialog>
+																					<AlertDialogTrigger asChild>
 																						<Button
 																							variant="ghost"
 																							size="icon"
-																							onClick={() => {
-																								setUserToResetPassword(
-																									user
-																								);
-																								setShowResetPasswordModal(
-																									true
-																								);
-																							}}
-																							title="Reset password"
-																							className="hover:bg-muted hover:text-foreground"
+																							className="hover:bg-muted hover:text-destructive"
+																							title="Delete user"
+																							onClick={() =>
+																								setUserToDelete(user)
+																							}
 																						>
-																							<KeyRound className="h-4 w-4" />
+																							<Trash2 className="h-4 w-4" />
 																						</Button>
-																					)}
-																					<AlertDialog>
-																						<AlertDialogTrigger asChild>
-																							<Button
-																								variant="ghost"
-																								size="icon"
-																								className="hover:bg-muted hover:text-destructive"
-																								title="Delete user"
+																					</AlertDialogTrigger>
+																					<AlertDialogContent>
+																						<AlertDialogHeader>
+																							<AlertDialogTitle>
+																								Delete User
+																							</AlertDialogTitle>
+																							<AlertDialogDescription>
+																								Are you sure you want to
+																								delete{' '}
+																								<b>
+																									{
+																										userToDelete?.fullName
+																									}
+																								</b>
+																								? This action cannot be
+																								undone.
+																							</AlertDialogDescription>
+																						</AlertDialogHeader>
+																						<AlertDialogFooter>
+																							<AlertDialogCancel
+																								disabled={deleting}
 																								onClick={() =>
 																									setUserToDelete(
-																										user
+																										null
 																									)
 																								}
 																							>
-																								<Trash2 className="h-4 w-4" />
-																							</Button>
-																						</AlertDialogTrigger>
-																						<AlertDialogContent>
-																							<AlertDialogHeader>
-																								<AlertDialogTitle>
-																									Delete User
-																								</AlertDialogTitle>
-																								<AlertDialogDescription>
-																									Are you sure you
-																									want to delete{' '}
-																									<b>
-																										{
-																											userToDelete?.fullName
-																										}
-																									</b>
-																									? This action cannot
-																									be undone.
-																								</AlertDialogDescription>
-																							</AlertDialogHeader>
-																							<AlertDialogFooter>
-																								<AlertDialogCancel
-																									disabled={deleting}
-																									onClick={() =>
-																										setUserToDelete(
-																											null
-																										)
-																									}
-																								>
-																									Cancel
-																								</AlertDialogCancel>
-																								<AlertDialogAction
-																									className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
-																									disabled={deleting}
-																									onClick={() =>
-																										handleDeleteUser(
-																											userToDelete!
-																												.id
-																										)
-																									}
-																								>
-																									{deleting
-																										? 'Deleting...'
-																										: 'Delete'}
-																								</AlertDialogAction>
-																							</AlertDialogFooter>
-																						</AlertDialogContent>
-																					</AlertDialog>
-																				</>
-																			)}
+																								Cancel
+																							</AlertDialogCancel>
+																							<AlertDialogAction
+																								className="bg-red-600 hover:bg-red-700 focus:ring-red-400"
+																								disabled={deleting}
+																								onClick={() =>
+																									handleDeleteUser(
+																										userToDelete!.id
+																									)
+																								}
+																							>
+																								{deleting
+																									? 'Deleting...'
+																									: 'Delete'}
+																							</AlertDialogAction>
+																						</AlertDialogFooter>
+																					</AlertDialogContent>
+																				</AlertDialog>
+																			</>
+																		)}
 																	</div>
 																</TableCell>
 															</TableRow>

@@ -247,7 +247,7 @@ describe('Settings user role labels', () => {
 		await screen.findByRole('row', { name: /alice@example.com/ });
 		for (const account of users) {
 			const row = screen.getByRole('row', { name: new RegExp(account.email) });
-			const select = screen.getByRole('combobox', { name: `Role for ${account.email}` });
+			const select = screen.getByRole('combobox', { name: `Role for ${account.username}` });
 			expect(within(row).getByRole('combobox')).toBe(select);
 		}
 

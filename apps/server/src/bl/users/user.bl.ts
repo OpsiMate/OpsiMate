@@ -15,6 +15,9 @@ const BCRYPT_SALT_ROUNDS = 10;
 export const INVALID_LOGIN = 'Invalid username or password';
 export const USERNAME_TAKEN = 'Username already taken';
 export const EMAIL_TAKEN = 'Email already registered';
+// An old database can hold Dana@x and dana@x as two accounts; a request naming the
+// address in a third spelling cannot tell which it means.
+export const AMBIGUOUS_EMAIL = 'That email belongs to more than one account; use the username';
 
 // A new local account as the API describes it: a username, or only an email (older
 // clients, scripts) from which the username is taken.
@@ -25,12 +28,15 @@ export interface NewAccount {
 	password: string;
 }
 
-// The login name a new account gets: the one given, else the email's local part.
+// The login name a new account asked for: the one given, else the email's local part.
 export const usernameFor = (account: { username?: string; email?: string | null }): string => {
 	if (account.username) return account.username.trim().toLowerCase();
 	if (account.email) return usernameFromEmail(account.email);
 	throw new Error('A username or an email is required');
 };
+
+// How many numbered variants are tried before a derived username is given up on.
+const USERNAME_ALLOCATION_TRIES = 1000;
 
 // A taken username or email, as the API reports it: SQLite's UNIQUE failures (the email
 // column keeps its old constraint name; the username has a named index), or the same
@@ -148,12 +154,36 @@ export class UserBL {
 		if (holder && Number(holder.id) !== exceptUserId) throw new Error(EMAIL_TAKEN);
 	}
 
+	// A username nobody holds: `base` itself, else base2, base3, ... For names OpsiMate
+	// derives (from an email, from a directory entry) — a name the caller asked for by
+	// itself is never changed behind their back; it is refused when taken.
+	private async allocateUsername(base: string): Promise<string> {
+		for (let n = 1; n <= USERNAME_ALLOCATION_TRIES; n++) {
+			const candidate = n === 1 ? base : `${base}${n}`.slice(0, 64);
+			if (!(await this.userRepo.getUserByUsername(candidate))) return candidate;
+		}
+		throw new Error(USERNAME_TAKEN);
+	}
+
+	// The account an email names, for an action on it. Exact spelling wins; otherwise the
+	// address must match a single account ignoring case — several (an old database's
+	// spellings) is a question the caller has to settle by username.
+	private async accountByEmail(email: string): Promise<User | null> {
+		const matches = await this.userRepo.findUsersByEmail(email);
+		const exact = matches.find((user) => user.email === email.trim());
+		if (exact) return exact;
+		if (matches.length > 1) throw new Error(AMBIGUOUS_EMAIL);
+		return matches[0] ?? null;
+	}
+
 	private async createLocalAccount(account: NewAccount, role: Role): Promise<User> {
 		const email = account.email?.trim() || null;
 		if (email) await this.assertEmailFree(email);
+		const requested = usernameFor(account);
+		const username = account.username ? requested : await this.allocateUsername(requested);
 		const hash = await bcrypt.hash(account.password, BCRYPT_SALT_ROUNDS);
 		const result = await this.userRepo.createUser({
-			username: usernameFor(account),
+			username,
 			email,
 			passwordHash: hash,
 			fullName: account.fullName,
@@ -180,9 +210,15 @@ export class UserBL {
 			.catch((error) => logger.error('Failed to send welcome email', error));
 	}
 
-	// By username, or by email for older callers.
+	// By username, or by email for older callers. One account, resolved first: an address
+	// that an old database holds in several spellings must not change several roles.
 	async updateUserRole(identifier: string, newRole: Role): Promise<boolean> {
-		return this.userRepo.updateUserRole(identifier, newRole);
+		const typed = identifier.trim();
+		const user = typed.includes('@')
+			? await this.accountByEmail(typed)
+			: await this.userRepo.getUserByUsername(typed);
+		if (!user) return false;
+		return this.userRepo.updateUserRoleById(Number(user.id), newRole);
 	}
 
 	// The local account a login names. Anything with "@" is an email; a bare name is a
@@ -281,9 +317,10 @@ export class UserBL {
 			return this.syncDirectoryAccount(link.id, fullName, role);
 		}
 		try {
-			// No usable password hash: this account can only ever sign in through LDAP.
+			// No usable password hash: this account can only ever sign in through LDAP. The
+			// username is the address's local part, numbered when a local account has it.
 			const result = await this.userRepo.createUser({
-				username: usernameFromEmail(email),
+				username: await this.allocateUsername(usernameFromEmail(email)),
 				email,
 				passwordHash: DIRECTORY_PASSWORD_HASH,
 				fullName,
@@ -396,7 +433,15 @@ export class UserBL {
 	}
 
 	async forgotPassword(email: string): Promise<void> {
-		const user = await this.userRepo.getUserByEmail(email);
+		// Exact spelling first; an address an old database holds in several spellings, none
+		// of them the typed one, gets no link — the same silence as an unknown address.
+		const matches = await this.userRepo.findUsersByEmail(email);
+		const user =
+			matches.find((match) => match.email === email.trim()) ?? (matches.length === 1 ? matches[0] : null);
+		if (matches.length > 1 && !user) {
+			logger.info('Password reset requested for an email that matches several accounts; ignored');
+			return;
+		}
 		if (user?.authSource === 'ldap') {
 			// Same silent answer as for an unknown email: no reset link for a password
 			// OpsiMate does not hold.
