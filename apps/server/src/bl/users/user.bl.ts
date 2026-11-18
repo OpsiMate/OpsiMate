@@ -18,9 +18,6 @@ export const EMAIL_TAKEN = 'Email already registered';
 // An old database can hold Dana@x and dana@x as two accounts; a request naming the
 // address in a third spelling cannot tell which it means.
 export const AMBIGUOUS_EMAIL = 'That email belongs to more than one account; use the username';
-// How many times a first directory login re-allocates its derived username when another
-// first login took the same number in between.
-const PROVISION_USERNAME_ATTEMPTS = 3;
 
 // How a login request named the account (see UserBL.login).
 export interface LoginOptions {
