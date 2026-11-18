@@ -1,6 +1,6 @@
 import { AppVersionInfo } from '@OpsiMate/shared';
 import { Request, Response, Router } from 'express';
-import { getLoginDefaultEmailDomain, isEmailEnabled } from '../config/config';
+import { isEmailEnabled } from '../config/config';
 
 const router = Router();
 
@@ -28,8 +28,6 @@ function emailStatusHandler(req: Request, res: Response) {
 		success: true,
 		data: {
 			isEmailEnabled: emailEnabled,
-			// Lets the login page say "email or username" and what a bare name will mean.
-			loginDefaultEmailDomain: getLoginDefaultEmailDomain(),
 		},
 	});
 }

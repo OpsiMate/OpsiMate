@@ -1,3 +1,4 @@
+import { USERNAME_RULES } from '@OpsiMate/shared';
 // Types for validation error details from server
 export interface ValidationErrorDetail {
 	code: string;
@@ -42,6 +43,9 @@ const FIELD_ERROR_MESSAGES: Record<string, Record<string, string>> = {
 	username: {
 		too_small: 'Username is required',
 		invalid_type: 'Username is required',
+		// The server's rule, when the browser's own check was bypassed.
+		invalid_string: `Username must be ${USERNAME_RULES}`,
+		too_big: `Username must be ${USERNAME_RULES}`,
 	},
 	privateKeyFilename: {
 		too_small: 'Private key filename is required',

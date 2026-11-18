@@ -7,8 +7,8 @@ import { render, screen, waitFor } from './test-utils';
 // name is a username and only that — the (deprecated) default email domain completes
 // logins sent through the legacy email field, not this form, so nothing is suggested.
 
-const statusResponse = (loginDefaultEmailDomain: string | null) =>
-	new Response(JSON.stringify({ success: true, data: { isEmailEnabled: false, loginDefaultEmailDomain } }), {
+const statusResponse = () =>
+	new Response(JSON.stringify({ success: true, data: { isEmailEnabled: false } }), {
 		status: 200,
 		headers: { 'content-type': 'application/json' },
 	});
@@ -22,11 +22,8 @@ afterEach(() => {
 });
 
 describe('Login field', () => {
-	test.each([
-		['with a default email domain', 'acme.test'],
-		['without one', null],
-	])('takes a username or an email and suggests no completed address, %s', async (_label, domain) => {
-		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(statusResponse(domain)));
+	test('takes a username or an email, as typed, and suggests nothing', async () => {
+		vi.stubGlobal('fetch', vi.fn().mockResolvedValue(statusResponse()));
 		const user = userEvent.setup();
 		render(<Login />);
 		await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalled());
@@ -35,7 +32,7 @@ describe('Login field', () => {
 		expect(field).toHaveAttribute('type', 'text');
 		expect(field).toHaveAttribute('autocomplete', 'username');
 		await user.type(field, 'idan');
-		expect(screen.queryByText(/acme\.test/)).not.toBeInTheDocument();
+		expect(screen.queryByText(/@/)).not.toBeInTheDocument();
 		await user.clear(field);
 		await user.type(field, 'idan@other.test');
 		expect(field).toHaveValue('idan@other.test');

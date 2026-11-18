@@ -24,6 +24,7 @@ interface AddUserModalProps {
 
 export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalProps) => {
 	const roleId = useId();
+	const usernameId = useId();
 	const [formData, setFormData] = useState({
 		username: '',
 		email: '',
@@ -108,9 +109,9 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div className="space-y-2">
-							<Label htmlFor="username">Username</Label>
+							<Label htmlFor={usernameId}>Username</Label>
 							<Input
-								id="username"
+								id={usernameId}
 								type="text"
 								autoComplete="off"
 								value={formData.username}
@@ -121,7 +122,6 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 								minLength={USERNAME_MIN_LENGTH}
 								maxLength={USERNAME_MAX_LENGTH}
 								pattern={USERNAME_HTML_PATTERN}
-								title={USERNAME_RULES}
 								aria-invalid={!!errors.username}
 								disabled={creatingUser}
 							/>

@@ -152,11 +152,12 @@ export const RegisterSchema = z
 // directory's own rules (they may be shorter, or contain spaces).
 export const LoginSchema = z
 	.object({
-		// Username or email in one field; "@" tells them apart. A bare name may also be
-		// completed with the installation's default login domain (login.default_email_domain)
-		// when no account carries it as a username; which applies is the server's call.
+		// Username or email in one field; "@" tells them apart. A bare name is a username
+		// and only that.
 		identifier: z.string().trim().min(1).max(320).optional(),
-		// The same field under its old name, for clients that still send `email`.
+		// The field under its old name, for clients that still send `email`. Here a bare
+		// name may also be completed with the installation's (deprecated) default login
+		// domain, as it always was; which applies is the server's call.
 		email: z.string().trim().min(1).max(320).optional(),
 		// No maximum: none of the password-setting paths has one, so a cap here could
 		// lock out a password that was accepted when set. express.json's body limit
