@@ -117,25 +117,30 @@ export const RowActions = ({
 						</DropdownMenuItem>
 					)}
 					{onDeleteAlert && canShowDelete && (
-						<DropdownMenuItem
-							onClick={handleDelete}
-							disabled={autoFixed}
-							title={autoFixed ? AUTO_FIX_RESOLVE_REFUSED : undefined}
-							className={isActive ? '' : 'text-destructive focus:text-destructive'}
-						>
-							{isActive ? (
-								<>
-									<CheckCircle2 className="mr-2 h-3 w-3" />
-									Resolve
-									{autoFixed && <span className="ml-2 text-xs text-muted-foreground">auto fix</span>}
-								</>
-							) : (
-								<>
-									<Trash2 className="mr-2 h-3 w-3" />
-									Delete
-								</>
-							)}
-						</DropdownMenuItem>
+						// A disabled item takes no pointer events, so the reason rides on a
+						// wrapper that does.
+						<div title={autoFixed ? AUTO_FIX_RESOLVE_REFUSED : undefined}>
+							<DropdownMenuItem
+								onClick={handleDelete}
+								disabled={autoFixed}
+								className={isActive ? '' : 'text-destructive focus:text-destructive'}
+							>
+								{isActive ? (
+									<>
+										<CheckCircle2 className="mr-2 h-3 w-3" />
+										Resolve
+										{autoFixed && (
+											<span className="ml-2 text-xs text-muted-foreground">auto fix</span>
+										)}
+									</>
+								) : (
+									<>
+										<Trash2 className="mr-2 h-3 w-3" />
+										Delete
+									</>
+								)}
+							</DropdownMenuItem>
+						</div>
 					)}
 					{onRemoveFromIncident && (
 						<DropdownMenuItem

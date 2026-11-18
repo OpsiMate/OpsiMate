@@ -1123,8 +1123,13 @@ export class AlertBL {
 				return false;
 			}
 			// A signed-in person (an actor with an id) cannot resolve an auto-fixed alert; a
-			// source reporting recovery — webhooks, the API token — has no user and can.
-			if (manualActor?.id != null && isAutoFixed(alert)) throw new AutoFixResolveError([alert.id]);
+			// source reporting recovery — webhooks, the API token — has no user and can. The
+			// fix tag is read as the user sees it: enrichment rules may add or replace it,
+			// and the snapshot, the UI and the bulk preflight all judge the enriched value.
+			if (manualActor?.id != null) {
+				const effective = this.enrichmentBL ? (await this.enrichmentBL.applyEnrichments([alert]))[0] : alert;
+				if (isAutoFixed(effective)) throw new AutoFixResolveError([alert.id]);
+			}
 
 			// Insert into resolved table
 			await this.resolvedAlertRepo.insertResolvedAlert(

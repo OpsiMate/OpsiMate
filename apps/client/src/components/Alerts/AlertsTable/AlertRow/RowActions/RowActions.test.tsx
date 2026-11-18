@@ -65,7 +65,11 @@ describe('RowActions on an auto-fixed alert', () => {
 		await user.click(screen.getByRole('button', { name: 'More actions' }));
 		const resolve = await screen.findByRole('menuitem', { name: /Resolve/ });
 		expect(resolve).toHaveAttribute('aria-disabled', 'true');
-		expect(resolve).toHaveAttribute('title', 'This alert is fixed automatically; only its source can resolve it');
+		// The reason sits on the pointer-enabled wrapper (the disabled item takes no pointer events).
+		expect(resolve.closest('[title]')).toHaveAttribute(
+			'title',
+			'This alert is fixed automatically; only its source can resolve it'
+		);
 		expect(resolve).toHaveTextContent('auto fix');
 		await user.click(resolve);
 		expect(onDeleteAlert).not.toHaveBeenCalled();

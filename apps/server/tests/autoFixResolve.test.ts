@@ -102,10 +102,49 @@ describe('a person cannot resolve an auto-fixed alert', () => {
 	test('bulk resolve by query is refused the same way when the query reaches an auto-fixed alert', async () => {
 		await postCustom(firing('q-auto', 'auto'));
 		await postCustom(firing('q-plain'));
-		const res = await postBulk({ action: 'resolve', query: { filters: { env: ['prod'] } } });
+		await postCustom({ ...firing('q-other'), tags: { env: 'staging' } });
+		const res = await postBulk({ action: 'resolve', query: { filters: { 'tagKey:env': ['prod'] } } });
 		expect(res.status).toBe(409);
 		expect(res.body.autoFixedAlertIds).toEqual(['q-auto']);
 		expect(await isFiring('q-plain')).toBe(true);
+		// Out of the query's reach, an auto-fixed alert does not block it.
+		const staging = await postBulk({ action: 'resolve', query: { filters: { 'tagKey:env': ['staging'] } } });
+		expect(staging.status).toBe(200);
+		expect(staging.body.data).toMatchObject({ matched: 1, succeeded: 1 });
+	});
+
+	test('the fix tag is judged as enriched — what the user sees — in both directions', async () => {
+		const rule = async (body: Record<string, unknown>) => {
+			const res = await app.post('/api/v1/enrichments').set('Authorization', auth()).send(body);
+			expect(res.status).toBe(201);
+			return res.body.data.id as number;
+		};
+		const toAuto = await rule({
+			name: 'self-healing disks',
+			nameContains: 'Enriched Auto',
+			addFields: [{ key: 'fix', value: 'auto' }],
+		});
+		const toManual = await rule({
+			name: 'needs hands after all',
+			nameContains: 'Enriched Manual',
+			addFields: [{ key: 'fix', value: 'manual' }],
+		});
+		try {
+			// Stored without a fix, enriched to auto: refused, singly and in a bulk.
+			await postCustom({ ...firing('enr-auto'), alertName: 'Enriched Auto disk' });
+			expect((await resolveAsUser('enr-auto')).status).toBe(409);
+			const bulk = await postBulk({ action: 'resolve', ids: ['enr-auto'] });
+			expect(bulk.status).toBe(409);
+			expect(await isFiring('enr-auto')).toBe(true);
+			// Stored as auto, enriched to manual: a person may resolve it.
+			await postCustom({ ...firing('enr-manual', 'auto'), alertName: 'Enriched Manual disk' });
+			expect((await resolveAsUser('enr-manual')).status).toBe(200);
+			expect(await isResolved('enr-manual')).toBe(true);
+		} finally {
+			for (const id of [toAuto, toManual]) {
+				await app.delete(`/api/v1/enrichments/${id}`).set('Authorization', auth());
+			}
+		}
 	});
 
 	test('other actions on an auto-fixed alert are untouched: silence, comment, owner', async () => {
