@@ -505,13 +505,15 @@ export class UserBL {
 		const current = await this.userRepo.getUserById(userId);
 		if (!current) throw new Error('User not found');
 		const role = identity.role ?? current.role;
-		// The directory's address. An entry that lists none keeps the stored one: "no value"
-		// is also what a misnamed attribute or a service account that cannot read mail
-		// looks like, and that must not strip every directory user of their address.
-		let email = identity.email ?? current.email;
-		if (email && email.toLowerCase() !== current.email?.toLowerCase()) {
+		// The directory's address. An entry that lists none keeps the stored one (undefined =
+		// not written): "no value" is also what a misnamed attribute or a service account
+		// that cannot read mail looks like, and that must not strip every directory user of
+		// their address. An address someone else holds is not taken either.
+		let email: string | null | undefined = identity.email ?? undefined;
+		if (email && email.toLowerCase() === current.email?.toLowerCase()) email = undefined;
+		if (email) {
 			const holder = await this.userRepo.getUserByEmail(email);
-			if (holder && holder.id !== current.id) email = current.email;
+			if (holder && holder.id !== current.id) email = undefined;
 		}
 		let username = current.username;
 		if (identity.username !== current.username) {
@@ -521,7 +523,7 @@ export class UserBL {
 		if (
 			current.fullName === identity.fullName &&
 			current.role === role &&
-			current.email === email &&
+			email === undefined &&
 			current.username === username
 		) {
 			return current;

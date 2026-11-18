@@ -234,8 +234,8 @@ const envList = (value: string | undefined): string[] | undefined =>
 // choice it would keep every login email-only. It is the default, not an override, and
 // wherever settings are read it is dropped so the current default applies.
 export const LEGACY_DEFAULT_SEARCH_FILTER = '(mail={{email}})';
-export const isLegacyDefaultSearchFilter = (filter: string | undefined): boolean =>
-	filter !== undefined && filter.trim() === LEGACY_DEFAULT_SEARCH_FILTER;
+export const isLegacyDefaultSearchFilter = (filter: unknown): boolean =>
+	typeof filter === 'string' && filter.trim() === LEGACY_DEFAULT_SEARCH_FILTER;
 
 export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig {
 	const env = process.env;
@@ -248,8 +248,13 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (env.LDAP_BIND_DN) ldap.bind_dn = env.LDAP_BIND_DN;
 	if (env.LDAP_BIND_PASSWORD) ldap.bind_password = env.LDAP_BIND_PASSWORD;
 	if (env.LDAP_SEARCH_BASE) ldap.search_base = env.LDAP_SEARCH_BASE;
+	// YAML's empty value (`search_filter:`) is null: no filter. The old default copied
+	// from the file is the default, not an override. An environment value is a choice
+	// made now and stands as written — "(mail={{email}})" there means email-only.
+	if ((ldap.search_filter as unknown) === null || isLegacyDefaultSearchFilter(ldap.search_filter)) {
+		delete ldap.search_filter;
+	}
 	if (env.LDAP_SEARCH_FILTER) ldap.search_filter = env.LDAP_SEARCH_FILTER;
-	if (isLegacyDefaultSearchFilter(ldap.search_filter)) delete ldap.search_filter;
 	if (env.LDAP_USERNAME_ATTRIBUTE) ldap.username_attribute = env.LDAP_USERNAME_ATTRIBUTE;
 	if (env.LDAP_EMAIL_ATTRIBUTE) ldap.email_attribute = env.LDAP_EMAIL_ATTRIBUTE;
 	if (env.LDAP_NAME_ATTRIBUTE) ldap.name_attribute = env.LDAP_NAME_ATTRIBUTE;
@@ -322,7 +327,11 @@ export function validateLdapConfig(ldap: LdapConfig): string[] {
 	}
 	if (ldap.bind_dn && !ldap.bind_password) problems.push('bind_password (bind_dn is set)');
 	if (ldap.default_role && !LDAP_ROLES.includes(ldap.default_role)) problems.push('default_role');
-	if (ldap.search_filter && !ldap.search_filter.includes('{{login}}') && !ldap.search_filter.includes('{{email}}'))
+	if (
+		ldap.search_filter !== undefined &&
+		(typeof ldap.search_filter !== 'string' ||
+			(!ldap.search_filter.includes('{{login}}') && !ldap.search_filter.includes('{{email}}')))
+	)
 		problems.push('search_filter must contain {{login}}');
 	if (ldap.group_search_filter && !ldap.group_search_filter.includes('{{dn}}')) {
 		problems.push('group_search_filter must contain {{dn}}');

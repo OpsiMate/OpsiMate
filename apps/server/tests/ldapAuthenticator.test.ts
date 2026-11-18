@@ -618,6 +618,24 @@ describe('resolveLdapConfig', () => {
 		expect(resolveLdapConfig({ enabled: false, search_filter: '(uid={{email}})' }).search_filter).toBe(
 			'(uid={{email}})'
 		);
+		// YAML's empty value is null: no filter, and no crash while loading.
+		expect(
+			resolveLdapConfig({ enabled: false, search_filter: null as unknown as string }).search_filter
+		).toBeUndefined();
+		// The environment is a choice made now: email-only on purpose stays email-only.
+		process.env.LDAP_SEARCH_FILTER = '(mail={{email}})';
+		expect(resolveLdapConfig({ enabled: false }).search_filter).toBe('(mail={{email}})');
+		delete process.env.LDAP_SEARCH_FILTER;
+		// A filter that is not a string is a configuration problem, not a crash.
+		expect(
+			resolveLdapConfig({
+				enabled: true,
+				url: 'ldaps://x',
+				search_base: 'dc=x',
+				default_role: 'viewer',
+				search_filter: 5 as unknown as string,
+			}).enabled
+		).toBe(false);
 	});
 
 	test('a blank attribute name means the default, not an attribute called ""', () => {
