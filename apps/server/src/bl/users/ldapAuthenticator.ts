@@ -69,6 +69,13 @@ const defaultClientFactory: LdapClientFactory = (options) => new Client(options)
 // What was typed is an email when it has an "@"; otherwise a username.
 const isEmailLike = (identifier: string): boolean => identifier.includes('@');
 
+// The directory attributes a login is matched against when the config names none, and
+// the filter built from them. Shared with the Settings page, which shows these defaults.
+export const DEFAULT_USERNAME_ATTRIBUTE = 'uid';
+export const DEFAULT_EMAIL_ATTRIBUTE = 'mail';
+export const defaultSearchFilter = (config: Pick<LdapConfig, 'username_attribute' | 'email_attribute'>): string =>
+	`(|(${config.username_attribute ?? DEFAULT_USERNAME_ATTRIBUTE}={{login}})(${config.email_attribute ?? DEFAULT_EMAIL_ATTRIBUTE}={{login}}))`;
+
 // RFC 4515 escaping for a value placed inside a search filter: without it a login
 // like "*)(uid=*" would rewrite the filter (LDAP injection).
 export const escapeFilterValue = (value: string): string =>
@@ -141,17 +148,21 @@ export class LdapAuthenticator {
 	// Who the directory says this username or email is — entry, name, groups, role — read
 	// with the service account and no proof from the person. For assigning an alert to
 	// someone who has never logged in (webhook `owner`): the same rules as a login (one
-	// entry, listing that identity, in a mapped group) minus the password. null = not a
-	// directory user.
-	async lookup(identifier: string): Promise<LdapIdentity | null> {
+	// entry, listing that identity, in a mapped group) minus the password. `alternatives`
+	// are further spellings tried, one search each, when the first finds no entry. null =
+	// not a directory user.
+	async lookup(identifier: string, alternatives: string[] = []): Promise<LdapIdentity | null> {
 		const client = this.createClient();
 		try {
 			await this.startTlsIfConfigured(client);
 			await this.bindServiceAccount(client);
-			const entry = await this.locate(client, identifier, 'lookup');
-			if (!entry) return null;
-			const groups = await this.groupsOf(client, entry);
-			return this.identityOf(entry, identifier, groups);
+			for (const candidate of [identifier, ...alternatives]) {
+				const entry = await this.locate(client, candidate, 'lookup');
+				if (!entry) continue;
+				const groups = await this.groupsOf(client, entry);
+				return this.identityOf(entry, candidate, groups);
+			}
+			return null;
 		} catch (error) {
 			if (error instanceof LdapUnavailableError) throw error;
 			throw new LdapUnavailableError(`LDAP error: ${(error as Error).message}`);
@@ -391,20 +402,17 @@ export class LdapAuthenticator {
 	}
 
 	private usernameAttribute(): string {
-		return this.config.username_attribute ?? 'uid';
+		return this.config.username_attribute ?? DEFAULT_USERNAME_ATTRIBUTE;
 	}
 
 	private emailAttribute(): string {
-		return this.config.email_attribute ?? 'mail';
+		return this.config.email_attribute ?? DEFAULT_EMAIL_ATTRIBUTE;
 	}
 
 	// Without a configured filter: the typed value is matched against the username
 	// attribute or the email attribute, whichever it is.
 	private searchFilter(): string {
-		return (
-			this.config.search_filter ??
-			`(|(${this.usernameAttribute()}={{login}})(${this.emailAttribute()}={{login}}))`
-		);
+		return this.config.search_filter ?? defaultSearchFilter(this.config);
 	}
 
 	private async findEntries(client: LdapClientLike, identifier: string): Promise<Entry[]> {
@@ -432,17 +440,17 @@ export class LdapAuthenticator {
 		return allValues(entry, attribute).some((value) => value.trim().toLowerCase() === typed);
 	}
 
-	// The identity an entry yields for what was typed. The typed side is the one the
-	// person proved; the other comes from the entry (and may be missing: a directory
-	// user with no mail attribute gets no email).
+	// The identity an entry yields. The username is the entry's own (its first username
+	// attribute value), whichever side was typed — so one entry always maps to one
+	// account; the typed name was already checked against those values by
+	// listsIdentifier. The email is the typed address, else the entry's (and may be
+	// missing: a directory user with no mail attribute gets no email).
 	private identityOf(entry: Entry, identifier: string, groups: string[]): LdapIdentity {
 		const typed = identifier.trim().toLowerCase();
 		const directoryUsername = firstValue(entry, this.usernameAttribute())?.trim();
 		const directoryEmail = firstValue(entry, this.emailAttribute())?.trim().toLowerCase() || null;
 		const email = isEmailLike(typed) ? typed : directoryEmail;
-		const username = isEmailLike(typed)
-			? foldUsername(directoryUsername || usernameFromEmail(typed))
-			: foldUsername(typed);
+		const username = foldUsername(directoryUsername || (isEmailLike(typed) ? usernameFromEmail(typed) : typed));
 		return {
 			dn: entry.dn,
 			username,

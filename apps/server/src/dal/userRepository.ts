@@ -387,13 +387,19 @@ export class UserRepository {
 		};
 	};
 
-	// An LDAP login keeps the local copy in step with the directory: name, role and
-	// email are the directory's on every login.
-	async syncDirectoryUser(userId: number, fullName: string, role: string, email: string | null): Promise<void> {
+	// An LDAP login keeps the local copy in step with the directory: name, role, email
+	// and username are the directory's on every login.
+	async syncDirectoryUser(
+		userId: number,
+		fullName: string,
+		role: string,
+		email: string | null,
+		username: string
+	): Promise<void> {
 		return runAsync(() => {
 			this.db
-				.prepare('UPDATE users SET full_name = ?, role = ?, email = ? WHERE id = ?')
-				.run(fullName, role, email, userId);
+				.prepare('UPDATE users SET full_name = ?, role = ?, email = ?, username = ? WHERE id = ?')
+				.run(fullName, role, email, username.toLowerCase(), userId);
 		});
 	}
 
