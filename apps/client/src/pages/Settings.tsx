@@ -123,6 +123,10 @@ const Settings: React.FC = () => {
 	const [showAddUserModal, setShowAddUserModal] = useState(false);
 	const { generalError, clearErrors, handleApiResponse } = useFormErrors();
 	const currentUser = getCurrentUser();
+	// The API hands ids back as strings while the token (and the playground's) carries a
+	// number: the same account, compared as text.
+	const isCurrentUser = (id: number | string | undefined) =>
+		id !== undefined && currentUser !== null && String(id) === String(currentUser.id);
 	const [userToDelete, setUserToDelete] = useState<User | null>(null);
 	const [deleting, setDeleting] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
@@ -209,7 +213,7 @@ const Settings: React.FC = () => {
 	const handleBulkRoleUpdate = async (newRole: Role) => {
 		for (const userId of selectedUsers) {
 			const user = users.find((u) => u.id === userId);
-			if (user && user.id !== currentUser?.id) {
+			if (user && !isCurrentUser(user.id)) {
 				await handleRoleUpdate(user.username, newRole);
 			}
 		}
@@ -219,7 +223,7 @@ const Settings: React.FC = () => {
 	// Handle bulk delete
 	const handleBulkDelete = async () => {
 		for (const userId of selectedUsers) {
-			if (userId !== currentUser?.id) {
+			if (!isCurrentUser(userId)) {
 				await handleDeleteUser(userId);
 			}
 		}
@@ -443,13 +447,13 @@ const Settings: React.FC = () => {
 																				);
 																			}
 																		}}
-																		disabled={user.id === currentUser?.id}
+																		disabled={isCurrentUser(user.id)}
 																		className="cursor-pointer"
 																	/>
 																</TableCell>
 																<TableCell className="font-medium">
 																	{user.fullName}
-																	{user.id === currentUser?.id && (
+																	{isCurrentUser(user.id) && (
 																		<Badge
 																			variant="outline"
 																			className="ml-2 text-xs"
@@ -496,7 +500,7 @@ const Settings: React.FC = () => {
 																			}
 																			disabled={
 																				updatingUser === user.username ||
-																				user.id === currentUser?.id
+																				isCurrentUser(user.id)
 																			}
 																		>
 																			<SelectTrigger
@@ -520,7 +524,7 @@ const Settings: React.FC = () => {
 																				</SelectItem>
 																			</SelectContent>
 																		</Select>
-																		{isAdmin && user.id !== currentUser?.id && (
+																		{isAdmin && !isCurrentUser(user.id) && (
 																			<>
 																				<Button
 																					variant="ghost"
