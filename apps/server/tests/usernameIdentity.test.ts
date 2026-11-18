@@ -119,16 +119,13 @@ describe('username identity (API)', () => {
 	});
 
 	test('an admin creates users with a username and optional email, or by email only (local part becomes the username)', async () => {
-		const withBoth = await app
-			.post('/api/v1/users')
-			.set(auth())
-			.send({
-				username: 'dana.l',
-				email: 'Dana@Example.com',
-				fullName: 'Dana',
-				password: 'securepassword',
-				role: 'editor',
-			});
+		const withBoth = await app.post('/api/v1/users').set(auth()).send({
+			username: 'dana.l',
+			email: 'Dana@Example.com',
+			fullName: 'Dana',
+			password: 'securepassword',
+			role: 'editor',
+		});
 		expect(withBoth.status).toBe(201);
 		expect(withBoth.body.data).toMatchObject({ username: 'dana.l', email: 'Dana@Example.com' });
 
@@ -139,16 +136,13 @@ describe('username identity (API)', () => {
 		expect(byEmail.status).toBe(201);
 		expect(byEmail.body.data).toMatchObject({ username: 'noa', email: 'noa@example.com' });
 
-		const noMail = await app
-			.post('/api/v1/users')
-			.set(auth())
-			.send({
-				username: 'svc-deploy',
-				email: '',
-				fullName: 'Deploy bot',
-				password: 'securepassword',
-				role: 'operation',
-			});
+		const noMail = await app.post('/api/v1/users').set(auth()).send({
+			username: 'svc-deploy',
+			email: '',
+			fullName: 'Deploy bot',
+			password: 'securepassword',
+			role: 'operation',
+		});
 		expect(noMail.status).toBe(201);
 		expect(noMail.body.data).toMatchObject({ username: 'svc-deploy', email: null });
 
@@ -171,16 +165,13 @@ describe('username identity (API)', () => {
 		expect(takenUsername.status).toBe(400);
 		expect(takenUsername.body.error).toBe('Username already taken');
 
-		const takenEmail = await app
-			.post('/api/v1/users')
-			.set(auth())
-			.send({
-				username: 'someone',
-				email: 'dana@example.com',
-				fullName: 'X',
-				password: 'securepassword',
-				role: 'viewer',
-			});
+		const takenEmail = await app.post('/api/v1/users').set(auth()).send({
+			username: 'someone',
+			email: 'dana@example.com',
+			fullName: 'X',
+			password: 'securepassword',
+			role: 'viewer',
+		});
 		expect(takenEmail.status).toBe(400);
 		expect(takenEmail.body.error).toBe('Email already registered');
 
