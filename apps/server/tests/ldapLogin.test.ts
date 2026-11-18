@@ -20,16 +20,18 @@ class StubDirectory {
 	calls = 0;
 	down = false;
 	answers = new Map<string, StubAnswer>();
-	authenticate(email: string, password: string): Promise<LdapIdentity | null> {
+	authenticate(identifier: string, password: string, alternatives: string[] = []): Promise<LdapIdentity | null> {
 		this.calls++;
 		if (this.down) return Promise.reject(new LdapUnavailableError('connect ECONNREFUSED'));
-		const answer = this.answers.get(email);
+		const key = [identifier, ...alternatives].find((candidate) => this.answers.has(candidate));
+		const answer = key ? this.answers.get(key) : undefined;
 		return Promise.resolve(answer && answer.password === password ? answer.identity : null);
 	}
 }
 
 const identity = (email: string, fullName: string, role: Role | null): LdapIdentity => ({
 	dn: `uid=${email.split('@')[0]},dc=example,dc=com`,
+	username: email.split('@')[0],
 	email,
 	fullName,
 	groups: [],
@@ -114,10 +116,15 @@ describe('UserBL login with LDAP', () => {
 			fullName: 'Dana Contractor',
 			role: Role.Viewer,
 		});
+		// Company Dana's directory username is her own; the contractor merely has "dana".
+		directory.answers.set('dana@example.com', {
+			password: 'dir-pw',
+			identity: { ...identity('dana@example.com', 'Dana Directory', Role.Editor), username: 'dlevi' },
+		});
 		// Legacy field, bare name: the contractor's password does not match, so the
-		// directory is asked for dana@example.com and provisions company Dana.
+		// directory is asked (for "dana", then dana@example.com) and provisions company Dana.
 		const user = await withDomain.login('dana', 'dir-pw', { legacyEmailField: true });
-		expect(user).toMatchObject({ email: 'dana@example.com', authSource: 'ldap', username: 'dana2' });
+		expect(user).toMatchObject({ email: 'dana@example.com', authSource: 'ldap', username: 'dlevi' });
 		// A local account that owns the completed ADDRESS does block it.
 		await userRepo.createUser({
 			username: 'noa',
@@ -135,29 +142,41 @@ describe('UserBL login with LDAP', () => {
 		expect(directory.calls).toBe(before);
 	});
 
-	test('a first login whose derived username was taken in between allocates again instead of failing', async () => {
-		const original = userRepo.createUser.bind(userRepo);
-		let interceptedOnce = false;
-		vi.spyOn(userRepo, 'createUser').mockImplementation(async (row) => {
-			if (!interceptedOnce) {
-				interceptedOnce = true;
-				// Another first login takes "dana" right before ours; ours then hits the real
-				// UNIQUE error and must come back with the next free name.
-				await original({
-					username: row.username,
-					email: 'dana@other.example',
-					passwordHash: '!ldap',
-					fullName: 'Other Dana',
-					role: Role.Viewer,
-					authSource: 'ldap',
-					ldapDn: 'uid=dana,dc=other,dc=example',
-				});
-			}
-			return original(row);
+	test('a directory login by username provisions the account under that username, with the directory email', async () => {
+		directory.answers.set('noa', {
+			password: 'dir-pw',
+			identity: { ...identity('noa@example.com', 'Noa Directory', Role.Viewer), username: 'noa' },
 		});
-		const user = await userBL.login('dana@example.com', 'dir-pw');
-		expect(user).toMatchObject({ email: 'dana@example.com', authSource: 'ldap', username: 'dana2' });
-		expect(interceptedOnce).toBe(true);
+		const user = await userBL.login('Noa', 'dir-pw');
+		expect(user).toMatchObject({
+			username: 'noa',
+			email: 'noa@example.com',
+			authSource: 'ldap',
+			role: Role.Viewer,
+		});
+		// Signs in again by email too: one account.
+		directory.answers.set('noa@example.com', directory.answers.get('noa')!);
+		expect((await userBL.login('noa@example.com', 'dir-pw')).id).toBe(user.id);
+		expect(await userRepo.countUsers()).toBe(2);
+	});
+
+	test('a directory entry with no email gets an account without one', async () => {
+		directory.answers.set('svc', {
+			password: 'dir-pw',
+			identity: { ...identity('svc@example.com', 'Service', Role.Operation), username: 'svc', email: null },
+		});
+		const user = await userBL.login('svc', 'dir-pw');
+		expect(user).toMatchObject({ username: 'svc', email: null, authSource: 'ldap' });
+	});
+
+	test("a directory entry with a local account's username cannot take that account over", async () => {
+		// "admin" is the local admin's username.
+		directory.answers.set('admin', {
+			password: 'dir-pw',
+			identity: { ...identity('admin@elsewhere.example', 'Impostor', Role.Admin), username: 'admin' },
+		});
+		await expect(userBL.login('admin', 'dir-pw')).rejects.toThrow('Invalid username or password');
+		expect((await userRepo.getUserByUsername('admin'))?.authSource).toBe('local');
 	});
 
 	test('first directory login creates the account with the mapped role, marked ldap', async () => {

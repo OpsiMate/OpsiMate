@@ -23,8 +23,8 @@ export interface LdapTlsConfig {
 	ca?: string;
 }
 
-// Directory login. Users sign in with their email and directory password; the
-// account is created in OpsiMate on first login, with the role from role_mapping.
+// Directory login. Users sign in with their username or email and directory password;
+// the account is created in OpsiMate on first login, with the role from role_mapping.
 export interface LdapConfig {
 	enabled: boolean;
 	// ldap://host:389 or ldaps://host:636
@@ -34,10 +34,13 @@ export interface LdapConfig {
 	// Service account used to look users up. Omit both for an anonymous search.
 	bind_dn?: string;
 	bind_password?: string;
-	// Where users live, and how to find one by the email typed at login.
+	// Where users live, and how to find one by what was typed at login (a username or
+	// an email).
 	search_base?: string;
-	// {{email}} is replaced by the (escaped) email. Default: (mail={{email}})
+	// {{login}} is replaced by the (escaped) typed value; {{email}} is its old name and
+	// means the same. Default: (|(<username_attribute>={{login}})(<email_attribute>={{login}}))
 	search_filter?: string;
+	username_attribute?: string; // default: uid (sAMAccountName on Active Directory)
 	email_attribute?: string; // default: mail
 	name_attribute?: string; // default: displayName (falls back to cn)
 	// Groups: read from the user's memberOf attribute, and/or searched for.
@@ -237,6 +240,7 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (env.LDAP_BIND_PASSWORD) ldap.bind_password = env.LDAP_BIND_PASSWORD;
 	if (env.LDAP_SEARCH_BASE) ldap.search_base = env.LDAP_SEARCH_BASE;
 	if (env.LDAP_SEARCH_FILTER) ldap.search_filter = env.LDAP_SEARCH_FILTER;
+	if (env.LDAP_USERNAME_ATTRIBUTE) ldap.username_attribute = env.LDAP_USERNAME_ATTRIBUTE;
 	if (env.LDAP_EMAIL_ATTRIBUTE) ldap.email_attribute = env.LDAP_EMAIL_ATTRIBUTE;
 	if (env.LDAP_NAME_ATTRIBUTE) ldap.name_attribute = env.LDAP_NAME_ATTRIBUTE;
 	if (env.LDAP_GROUPS_ATTRIBUTE) ldap.groups_attribute = env.LDAP_GROUPS_ATTRIBUTE;
@@ -285,8 +289,8 @@ export function validateLdapConfig(ldap: LdapConfig): string[] {
 	if (!ldap.search_base) problems.push('search_base');
 	if (ldap.bind_dn && !ldap.bind_password) problems.push('bind_password (bind_dn is set)');
 	if (ldap.default_role && !LDAP_ROLES.includes(ldap.default_role)) problems.push('default_role');
-	if (ldap.search_filter && !ldap.search_filter.includes('{{email}}'))
-		problems.push('search_filter must contain {{email}}');
+	if (ldap.search_filter && !ldap.search_filter.includes('{{login}}') && !ldap.search_filter.includes('{{email}}'))
+		problems.push('search_filter must contain {{login}}');
 	if (ldap.group_search_filter && !ldap.group_search_filter.includes('{{dn}}')) {
 		problems.push('group_search_filter must contain {{dn}}');
 	}

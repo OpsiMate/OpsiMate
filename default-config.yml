@@ -42,8 +42,8 @@ mailer:
     rejectUnauthorized: true
 
 # LDAP / Active Directory login (optional, off by default)
-# Directory users sign in with their email + directory password; their OpsiMate account
-# is created on first login and its role follows their groups at every login.
+# Directory users sign in with their username or email + directory password; their
+# OpsiMate account is created on first login and its role follows their groups at every login.
 # Local accounts (e.g. the first admin) keep signing in locally even when LDAP is down.
 # Every key can also be set with an LDAP_* environment variable (see configuration_example/README.md).
 # ldap:
@@ -53,7 +53,9 @@ mailer:
 #   bind_dn: "cn=opsimate,ou=service,dc=example,dc=com"  # read-only service account
 #   bind_password: "change-me"
 #   search_base: "ou=people,dc=example,dc=com"
-#   search_filter: "(mail={{email}})"        # AD: "(&(objectClass=user)(mail={{email}}))"
+#   # search_filter: "(|(uid={{login}})(mail={{login}}))"   # default; AD: "(&(objectClass=user)(|(sAMAccountName={{login}})(mail={{login}})))"
+#   username_attribute: "uid"                # the login name; AD: sAMAccountName
+#   email_attribute: "mail"
 #   name_attribute: "displayName"
 #   groups_attribute: "memberOf"             # AD / OpenLDAP with the memberOf overlay
 #   # group_search_base: "ou=groups,dc=example,dc=com"   # directories without memberOf
@@ -63,7 +65,7 @@ mailer:
 #     editor: ["sre"]
 #     viewer: ["engineering"]
 #   # default_role: viewer                   # for users in none of the groups; omit to refuse them
-#   login_max_failures: 5                   # per email per 15 min, below your directory lockout; 0 = no limit
+#   login_max_failures: 5                   # per login per 15 min, below your directory lockout; 0 = no limit
 #   tls:
 #     rejectUnauthorized: true
 #     # ca_file: "/app/data/ldap-ca.pem"

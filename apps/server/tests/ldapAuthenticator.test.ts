@@ -16,7 +16,10 @@ import { LdapConfig, resolveLdapConfig } from '../src/config/config';
 // A scripted LDAP client: records every call, answers from a small directory.
 interface FakeUser {
 	dn: string;
-	mail: string;
+	// The login name (uid); defaults to the first component of the DN.
+	uid?: string;
+	// Absent for an entry with no address.
+	mail?: string;
 	displayName?: string;
 	cn?: string;
 	password: string;
@@ -56,17 +59,29 @@ class FakeClient implements LdapClientLike {
 	}
 	search(base: string, options: LdapSearchOptions): Promise<LdapSearchResult> {
 		this.calls.push(`search ${base} ${options.filter}`);
-		const mailMatch = /^\(mail=(.*)\)$/.exec(options.filter);
-		if (mailMatch) {
-			const users = this.dir.users.filter(
-				(u) => escapeFilterValue(u.searchAs ?? u.mail).toLowerCase() === mailMatch[1].toLowerCase()
+		// A user filter: one or more (attr=value) terms, possibly OR-ed: (mail=x), (uid=x),
+		// (|(uid=x)(mail=x)). A user matches when any term names it.
+		const terms = [...options.filter.matchAll(/\((uid|mail)=([^()]*)\)/g)].map((m) => ({
+			attribute: m[1],
+			value: m[2].toLowerCase(),
+		}));
+		if (terms.length > 0 && !options.filter.startsWith('(member=')) {
+			const uidOf = (u: FakeUser) => u.uid ?? u.dn.split(',')[0].split('=')[1];
+			const users = this.dir.users.filter((u) =>
+				terms.some(({ attribute, value }) =>
+					attribute === 'mail'
+						? (u.searchAs ?? u.mail) !== undefined &&
+							escapeFilterValue((u.searchAs ?? u.mail) as string).toLowerCase() === value
+						: escapeFilterValue(uidOf(u)).toLowerCase() === value
+				)
 			);
 			return Promise.resolve({
 				searchEntries: users.map((u) => ({
 					dn: u.dn,
-					mail: u.mail,
+					uid: uidOf(u),
+					...(u.mail ? { mail: u.mail } : {}),
 					...(u.displayName ? { displayName: u.displayName } : {}),
-					cn: u.cn ?? u.mail,
+					cn: u.cn ?? u.mail ?? uidOf(u),
 					memberOf: u.memberOf ?? [],
 				})),
 			});
@@ -157,11 +172,61 @@ describe('resolveLdapRole', () => {
 });
 
 describe('LdapAuthenticator', () => {
-	test('valid credentials: identity with name, email and the mapped role; connection closed', async () => {
+	test('valid credentials: identity with username, name, email and the mapped role; connection closed', async () => {
 		const { auth, clients } = make();
 		const id = await auth.authenticate('alice@example.com', 'alice-pw');
-		expect(id).toMatchObject({ email: 'alice@example.com', fullName: 'Alice Admin', role: Role.Admin });
+		expect(id).toMatchObject({
+			username: 'alice',
+			email: 'alice@example.com',
+			fullName: 'Alice Admin',
+			role: Role.Admin,
+		});
 		expect(clients[0].calls.at(-1)).toBe('unbind');
+	});
+
+	test('a username signs in too: matched on uid, the email read from the entry', async () => {
+		const { auth, clients } = make();
+		const id = await auth.authenticate('Alice', 'alice-pw');
+		expect(id).toMatchObject({ username: 'alice', email: 'alice@example.com', role: Role.Admin });
+		expect(clients[0].calls.find((c) => c.startsWith('search'))).toContain('(|(uid=Alice)(mail=Alice))');
+	});
+
+	test('an entry with no mail attribute yields an identity without an email', async () => {
+		const dir: FakeDirectory = {
+			...DIR,
+			users: [{ dn: 'uid=svc-deploy,ou=people,dc=example,dc=com', password: 'svc-pw', memberOf: [] }],
+		};
+		const { auth } = make({ ...CONFIG, default_role: 'operation' }, dir);
+		expect(await auth.authenticate('svc-deploy', 'svc-pw')).toMatchObject({
+			username: 'svc-deploy',
+			email: null,
+			fullName: 'svc-deploy',
+			role: Role.Operation,
+		});
+	});
+
+	test('alternatives: a bare name not in the directory is retried as the completed address, with one bind', async () => {
+		const { auth, clients } = make();
+		const id = await auth.authenticate('bob-typo', 'bob pw with spaces', ['bob@example.com']);
+		expect(id?.username).toBe('bob');
+		expect(clients[0].calls.filter((c) => c.startsWith('bind uid='))).toHaveLength(1);
+	});
+
+	test('a legacy mail-only filter still works for emails and simply finds no entry for a username', async () => {
+		const { auth, clients } = make({ ...CONFIG, search_filter: '(mail={{email}})' });
+		expect((await auth.authenticate('alice@example.com', 'alice-pw'))?.username).toBe('alice');
+		expect(await auth.authenticate('alice', 'alice-pw')).toBeNull();
+		expect(clients[1].calls.find((c) => c.startsWith('search'))).toContain('(mail=alice)');
+	});
+
+	test('an entry whose uid is not the typed username is refused, as a mail mismatch is', async () => {
+		const dir: FakeDirectory = {
+			...DIR,
+			users: [{ ...DIR.users[0], uid: 'alice', searchAs: 'victim' }],
+		};
+		// The filter matches "victim" through the entry's self-edited extra value; the uid says alice.
+		const { auth } = make({ ...CONFIG, search_filter: '(|(uid={{login}})(mail={{login}}))' }, dir);
+		expect(await auth.authenticate('victim', 'alice-pw')).toBeNull();
 	});
 
 	test('wrong password → null; unknown user → null', async () => {
@@ -288,12 +353,15 @@ describe('LdapAuthenticator hardening', () => {
 });
 
 describe('LdapAuthenticator.probe (Settings page test)', () => {
-	test('all steps pass and the user lookup reports the role they would get', async () => {
+	test('all steps pass and the user lookup reports the role they would get — by email or by username', async () => {
 		const { auth } = make();
 		const result = await auth.probe('alice@example.com');
 		expect(result.ok).toBe(true);
 		expect(result.steps.map((s) => s.step)).toEqual(['connect', 'service_bind', 'search_base', 'user_lookup']);
 		expect(result.user).toMatchObject({ dn: 'uid=alice,ou=people,dc=example,dc=com', role: Role.Admin });
+		const byName = await make().auth.probe('alice');
+		expect(byName.ok).toBe(true);
+		expect(byName.user).toMatchObject({ dn: 'uid=alice,ou=people,dc=example,dc=com', role: Role.Admin });
 	});
 
 	test('a user in no mapped group fails the lookup step: they could not sign in', async () => {

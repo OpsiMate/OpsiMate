@@ -19,7 +19,11 @@ import { DEFAULT_LDAP_MAX_FAILURES, UserBL } from '../users/user.bl';
 
 const logger = new Logger('bl/ldap/ldapSettings.bl');
 
-const DEFAULT_SEARCH_FILTER = '(mail={{email}})';
+const DEFAULT_USERNAME_ATTRIBUTE = 'uid';
+const DEFAULT_EMAIL_ATTRIBUTE = 'mail';
+// Matches the typed login against the username attribute or the email attribute.
+const defaultSearchFilter = (config: LdapConfig): string =>
+	`(|(${config.username_attribute ?? DEFAULT_USERNAME_ATTRIBUTE}={{login}})(${config.email_attribute ?? DEFAULT_EMAIL_ATTRIBUTE}={{login}}))`;
 const DEFAULT_GROUP_SEARCH_FILTER = '(member={{dn}})';
 
 // config.yml / LDAP_* env configure LDAP: the page can only show it.
@@ -137,14 +141,14 @@ export class LdapSettingsBL {
 
 	// Test the settings as saved (enabled or not), or — with a draft from the page — the
 	// unsaved edits laid over them, so a wrong value shows up before anything is stored.
-	// Optionally look up one user and report the role they would get.
-	async test(email?: string, draft?: UpdateLdapSettings, user?: User): Promise<LdapTestResult> {
+	// Optionally look up one user (username or email) and report the role they would get.
+	async test(login?: string, draft?: UpdateLdapSettings, user?: User): Promise<LdapTestResult> {
 		const { config, passwordWithheld } = await this.configForTest(draft);
 		// A draft test is a probe of any host from this server that leaves no audit row
 		// (nothing changed); the log at least says who aimed it where.
 		if (draft) {
 			logger.info(
-				`LDAP test with unsaved settings by ${user?.email ?? 'unknown'} against ${config.url ?? '(no url)'}`
+				`LDAP test with unsaved settings by ${user?.username ?? 'unknown'} against ${config.url ?? '(no url)'}`
 			);
 		}
 		if (!config.url || !config.search_base) {
@@ -172,7 +176,7 @@ export class LdapSettingsBL {
 			};
 		}
 		try {
-			return await new LdapAuthenticator(config).probe(email);
+			return await new LdapAuthenticator(config).probe(login);
 		} catch (error) {
 			return {
 				ok: false,
@@ -283,6 +287,7 @@ type LdapTextKey =
 	| 'bind_dn'
 	| 'search_base'
 	| 'search_filter'
+	| 'username_attribute'
 	| 'email_attribute'
 	| 'name_attribute'
 	| 'groups_attribute'
@@ -303,6 +308,7 @@ const mergeUpdates = (base: LdapConfig, updates: UpdateLdapSettings): LdapConfig
 	setText('bind_dn', updates.bindDn);
 	setText('search_base', updates.searchBase);
 	setText('search_filter', updates.searchFilter);
+	setText('username_attribute', updates.usernameAttribute);
 	setText('email_attribute', updates.emailAttribute);
 	setText('name_attribute', updates.nameAttribute);
 	setText('groups_attribute', updates.groupsAttribute);
@@ -347,8 +353,9 @@ const toSettings = (
 	bindDn: config.bind_dn ?? '',
 	hasBindPassword,
 	searchBase: config.search_base ?? '',
-	searchFilter: config.search_filter ?? DEFAULT_SEARCH_FILTER,
-	emailAttribute: config.email_attribute ?? 'mail',
+	searchFilter: config.search_filter ?? defaultSearchFilter(config),
+	usernameAttribute: config.username_attribute ?? DEFAULT_USERNAME_ATTRIBUTE,
+	emailAttribute: config.email_attribute ?? DEFAULT_EMAIL_ATTRIBUTE,
 	nameAttribute: config.name_attribute ?? 'displayName',
 	groupsAttribute: config.groups_attribute ?? 'memberOf',
 	groupSearchBase: config.group_search_base ?? '',
