@@ -1,4 +1,4 @@
-import { ClientOptions, InvalidCredentialsError } from 'ldapts';
+import { BusyError, ClientOptions, InvalidCredentialsError } from 'ldapts';
 import { Role } from '@OpsiMate/shared';
 import { Socket } from 'node:net';
 import { afterEach, describe, expect, test, vi } from 'vitest';
@@ -35,8 +35,8 @@ interface FakeUser {
 	entryUUID?: string | null;
 	// Active Directory's id: 16 raw bytes, or (through a proxy) text.
 	objectGUID?: Buffer | string;
-	// The user bind fails with this connection error instead of a verdict.
-	bindError?: string;
+	// The user bind fails with this error (a message, or an Error) instead of a verdict.
+	bindError?: string | Error;
 }
 
 interface FakeGroup {
@@ -64,7 +64,9 @@ class FakeClient implements LdapClientLike {
 		if (this.dir.down) return Promise.reject(new Error('connect ECONNREFUSED'));
 		if (dn === this.dir.serviceDn && password === this.dir.servicePassword) return Promise.resolve();
 		const user = this.dir.users.find((u) => u.dn === dn);
-		if (user?.bindError) return Promise.reject(new Error(user.bindError));
+		if (user?.bindError) {
+			return Promise.reject(typeof user.bindError === 'string' ? new Error(user.bindError) : user.bindError);
+		}
 		if (user && user.password === password) return Promise.resolve();
 		return Promise.reject(new InvalidCredentialsError('Invalid Credentials'));
 	}
@@ -330,7 +332,7 @@ describe('LdapAuthenticator', () => {
 			abandoned: (dn) => seen.push(`abandoned ${dn}`),
 			succeeded: (dn) => seen.push(`ok ${dn}`),
 		};
-		const carl = (bindError: string): FakeDirectory => ({
+		const carl = (bindError: string | Error): FakeDirectory => ({
 			...DIR,
 			users: [{ dn: 'uid=carl,ou=people,dc=example,dc=com', password: 'carl-pw', bindError }],
 		});
@@ -338,6 +340,7 @@ describe('LdapAuthenticator', () => {
 			'Socket connection not established',
 			'Connection timeout',
 			'connect ECONNREFUSED 10.0.0.9:636',
+			'LDAP connection dropped after StartTLS; not reconnecting in clear',
 		];
 		for (const message of neverSent) {
 			await expect(make(CONFIG, carl(message)).auth.authenticate('carl', 'carl-pw', [], guard)).rejects.toThrow(
@@ -345,7 +348,9 @@ describe('LdapAuthenticator', () => {
 			);
 		}
 		// Sent, no verdict: the directory may have checked and counted it.
-		const unknown = [
+		const unknown: (string | Error)[] = [
+			// The directory's own answer, whatever diagnostic text it carries: it saw the bind.
+			new BusyError('upstream connect ECONNREFUSED; try later'),
 			'BindRequest: Operation timed out',
 			'Connection closed before message response was received. Message type: BindRequest (0x60)',
 			'socket hang up',

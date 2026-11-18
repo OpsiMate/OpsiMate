@@ -55,8 +55,23 @@ export interface LdapBindGuard {
 // send on, or the connection attempt itself failed (refused, no route, timed out
 // connecting). "Operation timed out" and "Connection closed before message response"
 // are after sending and are NOT here.
-const BIND_NEVER_SENT =
-	/Socket connection not established|^Connection timeout$|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|EAI_AGAIN/;
+const STARTTLS_RECONNECT_REFUSED = 'LDAP connection dropped after StartTLS; not reconnecting in clear';
+const BIND_NEVER_SENT = new RegExp(
+	[
+		'Socket connection not established',
+		'^Connection timeout$',
+		'ECONNREFUSED',
+		'ENOTFOUND',
+		'EHOSTUNREACH',
+		'ENETUNREACH',
+		'EAI_AGAIN',
+		STARTTLS_RECONNECT_REFUSED,
+	].join('|')
+);
+// Whether a failed bind was never written. An LDAP result (ResultCodeError) is the
+// directory's own answer — it saw the bind — whatever diagnostic text it carries.
+const bindNeverSent = (error: unknown): boolean =>
+	!(error instanceof ResultCodeError) && BIND_NEVER_SENT.test(error instanceof Error ? error.message : String(error));
 
 // The guard refused the bind: too many failures for this directory account.
 export class LdapThrottledError extends Error {
@@ -323,7 +338,7 @@ export class LdapAuthenticator {
 				// (re)connected. Anything after sending — closed before the answer, timed
 				// out — may have been checked and counted by the directory, so it stands.
 				const message = error instanceof Error ? error.message : String(error);
-				if (BIND_NEVER_SENT.test(message)) guard?.abandoned(entry.dn);
+				if (bindNeverSent(error)) guard?.abandoned(entry.dn);
 				throw new LdapUnavailableError(`LDAP user bind failed: ${message}`);
 			}
 			guard?.succeeded(entry.dn);
@@ -476,11 +491,7 @@ export class LdapAuthenticator {
 								return net.connect(target);
 							}
 							const refused = new net.Socket();
-							process.nextTick(() =>
-								refused.destroy(
-									new Error('LDAP connection dropped after StartTLS; not reconnecting in clear')
-								)
-							);
+							process.nextTick(() => refused.destroy(new Error(STARTTLS_RECONNECT_REFUSED)));
 							return refused;
 						},
 					}

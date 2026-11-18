@@ -419,6 +419,7 @@ describe('owner from the webhook (directory users)', () => {
 			expect((await resolver.resolve('dana'))?.username).toBe('dana');
 		} finally {
 			userBL.setOnUsersChanged(() => undefined);
+			userBL.setLdapAuthenticator(directory, 0);
 		}
 	});
 
