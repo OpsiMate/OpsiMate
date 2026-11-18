@@ -270,3 +270,143 @@ describe('GET /dashboards/:dashboardId', () => {
 		expect(res.body.success).toBe(false);
 	});
 });
+
+describe('CreateDashboardSchema validation', () => {
+	const validBase = {
+		name: 'Production Dashboard',
+		type: 'alerts' as const,
+		description: 'A valid description',
+		filters: {},
+		visibleColumns: ['type', 'alertName'],
+		query: 'env=prod',
+		groupBy: [],
+	};
+
+	test('rejects empty string name', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: '' });
+		expect(res.status).toBe(400);
+	});
+
+	test('rejects whitespace-only name', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: '   ' });
+		expect(res.status).toBe(400);
+	});
+
+	test('rejects name longer than 200 characters and accepts 200 characters', async () => {
+		const tooLong = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: 'a'.repeat(201) });
+		expect(tooLong.status).toBe(400);
+
+		const exact = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: 'a'.repeat(200) });
+		expect(exact.status).toBe(200);
+	});
+
+	test('rejects description longer than 1000 characters', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, description: 'a'.repeat(1001) });
+		expect(res.status).toBe(400);
+	});
+
+	test('rejects query longer than 10000 characters', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, query: 'a'.repeat(10001) });
+		expect(res.status).toBe(400);
+	});
+
+	test('rejects non-ISO datetime in timeRange.from', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: 'yesterday', to: null, preset: 'custom' },
+			});
+		expect(res.status).toBe(400);
+	});
+
+	test('rejects non-ISO datetime in timeRange.to', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: null, to: 'yesterday', preset: 'custom' },
+			});
+		expect(res.status).toBe(400);
+	});
+
+	test('rejects preset longer than 50 characters', async () => {
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: null, to: null, preset: 'p'.repeat(51) },
+			});
+		expect(res.status).toBe(400);
+	});
+
+	test('accepts valid full payload with ISO timestamps and null presets', async () => {
+		const nowIso = new Date().toISOString();
+		const res = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: nowIso, to: nowIso, preset: 'custom' },
+			});
+		expect(res.status).toBe(200);
+		const id = String(res.body.data.id);
+
+		const listRes = await app.get('/api/v1/dashboards').set('Authorization', `Bearer ${jwtToken}`);
+		expect(listRes.status).toBe(200);
+		const found = (
+			listRes.body.data as Array<{ id: string | number; timeRange?: { from: string; to: string } }>
+		).find((d) => String(d.id) === id);
+		expect(found?.timeRange?.from).toBe(nowIso);
+		expect(found?.timeRange?.to).toBe(nowIso);
+
+		const nullTimeRange = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({
+				...validBase,
+				timeRange: { from: null, to: null, preset: null },
+			});
+		expect(nullTimeRange.status).toBe(200);
+	});
+
+	test('PUT rejects empty string name and keeps stored name unchanged', async () => {
+		const created = await app
+			.post('/api/v1/dashboards')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: 'Original Name' });
+		expect(created.status).toBe(200);
+		const id = String(created.body.data.id);
+
+		const updated = await app
+			.put(`/api/v1/dashboards/${id}`)
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ ...validBase, name: '' });
+		expect(updated.status).toBe(400);
+
+		const getRes = await app.get(`/api/v1/dashboards/${id}`).set('Authorization', `Bearer ${jwtToken}`);
+		expect(getRes.status).toBe(200);
+		expect(getRes.body.data.name).toBe('Original Name');
+	});
+});
