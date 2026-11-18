@@ -51,7 +51,7 @@ export function useFormErrors(options: FormErrorOptions = {}): FormErrorState {
 				// For login, show a general error instead of field-specific ones
 				logger.debug('Field errors disabled, showing general error...');
 				setErrors({});
-				setGeneralError('Invalid email or password. Please check your credentials and try again.');
+				setGeneralError('Invalid username or password. Please check your credentials and try again.');
 			}
 		} else {
 			// Handle general errors

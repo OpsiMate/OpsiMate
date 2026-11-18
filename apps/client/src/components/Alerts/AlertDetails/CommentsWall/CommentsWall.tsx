@@ -27,9 +27,9 @@ export const CommentsWall = ({ alertId }: CommentsWallProps) => {
 	const deleteMutation = useDeleteAlertComment();
 
 	const userMap = useMemo(() => {
-		const map = new Map<string, { fullName: string; email: string }>();
+		const map = new Map<string, { fullName: string; username: string; email: string | null }>();
 		users.forEach((user) => {
-			map.set(String(user.id), { fullName: user.fullName, email: user.email });
+			map.set(String(user.id), { fullName: user.fullName, username: user.username, email: user.email });
 		});
 		return map;
 	}, [users]);

@@ -18,6 +18,9 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({ email, setEmail
 			<p className="text-sm text-muted-foreground text-center mb-4">
 				Enter your email to receive a password reset link.
 			</p>
+			<p className="text-xs text-muted-foreground text-center mb-4">
+				No email on your account? Ask an admin to set a new password for you.
+			</p>
 			<div className="mb-4">
 				<Input
 					type="email"

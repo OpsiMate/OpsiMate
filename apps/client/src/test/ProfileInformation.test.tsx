@@ -7,6 +7,7 @@ describe('ProfileInformation', () => {
 	it('shows role, formatted member date, and a fallback for a missing phone number', () => {
 		render(
 			<ProfileInformation
+				username="member"
 				email="member@example.com"
 				role="admin"
 				createdAt="2026-08-11T12:00:00.000Z"

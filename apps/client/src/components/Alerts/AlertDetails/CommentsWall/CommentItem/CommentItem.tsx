@@ -9,7 +9,7 @@ import { useState } from 'react';
 interface CommentItemProps {
 	comment: AlertComment;
 	currentUserId: string | number;
-	userMap: Map<string, { fullName: string; email: string }>;
+	userMap: Map<string, { fullName: string; username: string; email: string | null }>;
 	onEdit: (commentId: string, newText: string) => void;
 	onDelete: (commentId: string) => void;
 	isDeleting: boolean;
@@ -30,7 +30,7 @@ export const CommentItem = ({
 
 	const isOwnComment = String(currentUserId) === String(comment.userId);
 	const user = userMap.get(comment.userId);
-	const displayName = user?.fullName || user?.email || 'Unknown User';
+	const displayName = user?.fullName || user?.username || 'Unknown User';
 	const initials = displayName
 		.split(' ')
 		.map((n) => n[0])

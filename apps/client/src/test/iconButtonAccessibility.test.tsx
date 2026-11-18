@@ -124,7 +124,7 @@ describe('icon-only button accessible names', () => {
 			<CommentItem
 				comment={comment}
 				currentUserId="user-1"
-				userMap={new Map([['user-1', { fullName: 'Test User', email: 'test@example.com' }]])}
+				userMap={new Map([['user-1', { fullName: 'Test User', username: 'test', email: 'test@example.com' }]])}
 				onEdit={vi.fn()}
 				onDelete={vi.fn()}
 				isDeleting={false}

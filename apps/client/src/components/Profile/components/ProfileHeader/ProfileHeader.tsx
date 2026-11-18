@@ -3,10 +3,11 @@ import { getInitials } from '../../utils/profile.utils';
 
 interface ProfileHeaderProps {
 	fullName: string;
-	email: string;
+	username: string;
+	email: string | null;
 }
 
-export const ProfileHeader = ({ fullName, email }: ProfileHeaderProps) => {
+export const ProfileHeader = ({ fullName, username, email }: ProfileHeaderProps) => {
 	return (
 		<CardHeader>
 			<div className="flex items-center gap-4">
@@ -15,7 +16,7 @@ export const ProfileHeader = ({ fullName, email }: ProfileHeaderProps) => {
 				</div>
 				<div>
 					<CardTitle className="text-xl">{fullName}</CardTitle>
-					<CardDescription>{email}</CardDescription>
+					<CardDescription>{email ? `${username} · ${email}` : username}</CardDescription>
 				</div>
 			</div>
 		</CardHeader>

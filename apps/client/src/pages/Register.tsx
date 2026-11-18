@@ -1,5 +1,5 @@
 import { AUTH_TOKEN_STORAGE_KEY } from '../lib/auth';
-import { Logger } from '@OpsiMate/shared';
+import { Logger, USERNAME_RULES } from '@OpsiMate/shared';
 import React, { useState } from 'react';
 import { ErrorAlert } from '../components/ErrorAlert';
 import { Button } from '../components/ui/button';
@@ -11,6 +11,7 @@ import { ROUTES } from '@/lib/routes';
 const logger = new Logger('Register');
 
 const Register: React.FC = () => {
+	const [username, setUsername] = useState('');
 	const [email, setEmail] = useState('');
 	const [fullName, setFullName] = useState('');
 	const [password, setPassword] = useState('');
@@ -36,7 +37,7 @@ const Register: React.FC = () => {
 				token: string;
 				data: { user: { id: string; email: string; name: string } };
 				error?: string;
-			}>('/users/register', 'POST', { email, fullName, password });
+			}>('/users/register', 'POST', { username, email: email.trim() || null, fullName, password });
 
 			if (res.success) {
 				const token = (res.data && res.data.token) || (typeof res.token === 'string' ? res.token : undefined);
@@ -72,11 +73,24 @@ const Register: React.FC = () => {
 				</p>
 				<div className="mb-4">
 					<Input
+						type="text"
+						placeholder="Username"
+						aria-label="Username"
+						autoComplete="username"
+						title={USERNAME_RULES}
+						value={username}
+						onChange={(e) => setUsername(e.target.value.toLowerCase())}
+						required
+					/>
+					{errors.username && <ErrorAlert message={errors.username} className="mt-6" />}
+				</div>
+				<div className="mb-4">
+					<Input
 						type="email"
-						placeholder="Email"
+						placeholder="Email (optional)"
+						aria-label="Email (optional)"
 						value={email}
 						onChange={(e) => setEmail(e.target.value)}
-						required
 					/>
 					{errors.email && <ErrorAlert message={errors.email} className="mt-6" />}
 				</div>
