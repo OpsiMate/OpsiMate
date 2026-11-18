@@ -107,16 +107,7 @@ export class UserBL {
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
 		this.onUsersChanged?.();
-
-		// Send welcome email
-		void this.mailClient
-			.sendMail({
-				to: user.email,
-				mailType: MailType.WELCOME,
-				userName: user.fullName,
-			})
-			.catch((error) => logger.error('Failed to send welcome email', error));
-
+		this.sendWelcomeEmail(user);
 		return user;
 	}
 
@@ -126,7 +117,20 @@ export class UserBL {
 		const user = await this.userRepo.getUserById(result.lastID);
 		if (!user) throw new Error('User creation failed');
 		this.onUsersChanged?.();
+		this.sendWelcomeEmail(user);
 		return user;
+	}
+
+	// Shared by self-registration and admin-created accounts. Delivery is fire-and-forget
+	// so an SMTP failure cannot roll back a user that was already saved.
+	private sendWelcomeEmail(user: User): void {
+		void this.mailClient
+			.sendMail({
+				to: user.email,
+				mailType: MailType.WELCOME,
+				userName: user.fullName,
+			})
+			.catch((error) => logger.error('Failed to send welcome email', error));
 	}
 
 	async updateUserRole(email: string, newRole: Role): Promise<boolean> {
