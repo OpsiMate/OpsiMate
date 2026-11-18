@@ -51,6 +51,13 @@ export interface LdapBindGuard {
 	succeeded(dn: string): void;
 }
 
+// ldapts's words for a request that was never written to the directory: no socket to
+// send on, or the connection attempt itself failed (refused, no route, timed out
+// connecting). "Operation timed out" and "Connection closed before message response"
+// are after sending and are NOT here.
+const BIND_NEVER_SENT =
+	/Socket connection not established|^Connection timeout$|ECONNREFUSED|ENOTFOUND|EHOSTUNREACH|ENETUNREACH|EAI_AGAIN/;
+
 // The guard refused the bind: too many failures for this directory account.
 export class LdapThrottledError extends Error {
 	constructor(dn: string) {
@@ -100,8 +107,12 @@ const isEmailLike = (identifier: string): boolean => identifier.includes('@');
 // the filter built from them. Shared with the Settings page, which shows these defaults.
 export const DEFAULT_USERNAME_ATTRIBUTE = 'uid';
 export const DEFAULT_EMAIL_ATTRIBUTE = 'mail';
+// A configured attribute name, trimmed; blank or absent means the default.
+const attributeName = (configured: string | undefined, fallback: string): string =>
+	(configured ?? fallback).trim() || fallback;
+
 export const defaultSearchFilter = (config: Pick<LdapConfig, 'username_attribute' | 'email_attribute'>): string =>
-	`(|(${config.username_attribute ?? DEFAULT_USERNAME_ATTRIBUTE}={{login}})(${config.email_attribute ?? DEFAULT_EMAIL_ATTRIBUTE}={{login}}))`;
+	`(|(${attributeName(config.username_attribute, DEFAULT_USERNAME_ATTRIBUTE)}={{login}})(${attributeName(config.email_attribute, DEFAULT_EMAIL_ATTRIBUTE)}={{login}}))`;
 
 // RFC 4515 escaping for a value placed inside a search filter: without it a login
 // like "*)(uid=*" would rewrite the filter (LDAP injection).
@@ -152,22 +163,33 @@ const asText = (value: unknown): string => (Buffer.isBuffer(value) ? value.toStr
 // FreeIPA expose entryUUID, Active Directory objectGUID (16 bytes, read as hex). Both
 // are asked for; whichever the server returns becomes the identity's objectId.
 const OBJECT_ID_ATTRIBUTES = ['entryUUID', 'objectGUID'] as const;
-// The GUID is asked for as bytes (see findEntries); a textual GUID is accepted in its
-// standard form only. Anything else — the 16 bytes decoded as UTF-8, which is lossy, so
-// two objects could read the same — is no id at all, and the account is linked by DN.
-const GUID_TEXT = /^\{?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\}?$/i;
+// Active Directory's objectGUID, in one form whatever the directory hands over: the 16
+// raw bytes (asked for as such, see findEntries; the first three fields little-endian, as
+// Windows writes them), or the standard text — braces or not, as text or as the bytes of
+// that text. Anything else — the 16 bytes decoded as UTF-8, which is lossy, so two
+// objects could read the same — is no id at all, and the account is linked by DN.
+const GUID_TEXT = /^\{?([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}?$/i;
+const guidTextOf = (value: unknown): string | null => {
+	if (Buffer.isBuffer(value) && value.length === 16) {
+		const hex = (from: number, to: number, littleEndian: boolean) => {
+			const bytes = Buffer.from(value.subarray(from, to));
+			return (littleEndian ? bytes.reverse() : bytes).toString('hex');
+		};
+		return `${hex(0, 4, true)}-${hex(4, 6, true)}-${hex(6, 8, true)}-${hex(8, 10, false)}-${hex(10, 16, false)}`;
+	}
+	const text = Buffer.isBuffer(value) ? value.toString('latin1') : typeof value === 'string' ? value : '';
+	const match = GUID_TEXT.exec(text.trim());
+	return match ? match[1].toLowerCase() : null;
+};
+export const OBJECT_GUID_SPELLINGS = ['objectGUID', 'objectguid', 'OBJECTGUID', 'ObjectGUID', 'ObjectGuid'];
 const objectIdOf = (entry: Entry): string | null => {
 	const uuid = rawAttribute(entry, 'entryUUID');
 	const first = (value: unknown): unknown => (Array.isArray(value) ? (value as unknown[])[0] : value);
 	const uuidValue = first(uuid);
 	if (uuidValue !== undefined && uuidValue !== null && uuidValue !== '')
 		return asText(uuidValue).trim().toLowerCase();
-	const guid = first(rawAttribute(entry, 'objectGUID'));
-	if (Buffer.isBuffer(guid)) return guid.length === 16 ? `guid:${guid.toString('hex')}` : null;
-	if (typeof guid === 'string' && GUID_TEXT.test(guid.trim())) {
-		return `guid:${guid.trim().replace(/[{}]/g, '').toLowerCase()}`;
-	}
-	return null;
+	const guid = guidTextOf(first(rawAttribute(entry, 'objectGUID')));
+	return guid ? `guid:${guid}` : null;
 };
 
 const firstValue = (entry: Entry, attribute: string): string | undefined => {
@@ -211,8 +233,11 @@ export class LdapAuthenticator {
 	// are further spellings tried, one search each, when the first finds no entry. null =
 	// not a directory user.
 	async lookup(identifier: string, alternatives: string[] = []): Promise<LdapIdentity | null> {
-		const client = this.createClient();
+		// The client is made inside the try: a URL the validator let through but the
+		// client refuses is "the directory could not be asked", not a verdict.
+		let client: LdapClientLike | undefined;
 		try {
+			client = this.createClient();
 			await this.startTlsIfConfigured(client);
 			await this.bindServiceAccount(client);
 			for (const candidate of [identifier, ...alternatives]) {
@@ -226,7 +251,7 @@ export class LdapAuthenticator {
 			if (error instanceof LdapUnavailableError) throw error;
 			throw new LdapUnavailableError(`LDAP error: ${(error as Error).message}`);
 		} finally {
-			await client.unbind().catch(() => undefined);
+			await client?.unbind().catch(() => undefined);
 		}
 	}
 
@@ -265,8 +290,9 @@ export class LdapAuthenticator {
 		// servers accept as success. Never let one through as a login.
 		if (!password) return null;
 
-		const client = this.createClient();
+		let client: LdapClientLike | undefined;
 		try {
+			client = this.createClient();
 			await this.startTlsIfConfigured(client);
 			await this.bindServiceAccount(client);
 			// Not found, ambiguous, or not listing the typed identity: refuse rather than
@@ -292,11 +318,12 @@ export class LdapAuthenticator {
 					guard?.failed(entry.dn);
 					return null;
 				}
-				// No verdict. The connection broke: the password was not checked, the
-				// reservation goes back. A timeout is the one case where it may have been —
-				// the directory may be counting it — so that reservation stands.
+				// No verdict. The reservation goes back only when the bind never left:
+				// ldapts says so when the socket was not there to send on, or could not be
+				// (re)connected. Anything after sending — closed before the answer, timed
+				// out — may have been checked and counted by the directory, so it stands.
 				const message = error instanceof Error ? error.message : String(error);
-				if (!/time(d )?out/i.test(message)) guard?.abandoned(entry.dn);
+				if (BIND_NEVER_SENT.test(message)) guard?.abandoned(entry.dn);
 				throw new LdapUnavailableError(`LDAP user bind failed: ${message}`);
 			}
 			guard?.succeeded(entry.dn);
@@ -310,7 +337,7 @@ export class LdapAuthenticator {
 			if (error instanceof LdapUnavailableError || error instanceof LdapThrottledError) throw error;
 			throw new LdapUnavailableError(`LDAP error: ${(error as Error).message}`);
 		} finally {
-			await client.unbind().catch(() => undefined);
+			await client?.unbind().catch(() => undefined);
 		}
 	}
 
@@ -473,12 +500,13 @@ export class LdapAuthenticator {
 		});
 	}
 
+	// Configured names are trimmed: " uid " is the attribute uid (the validator checks it so).
 	private usernameAttribute(): string {
-		return this.config.username_attribute ?? DEFAULT_USERNAME_ATTRIBUTE;
+		return attributeName(this.config.username_attribute, DEFAULT_USERNAME_ATTRIBUTE);
 	}
 
 	private emailAttribute(): string {
-		return this.config.email_attribute ?? DEFAULT_EMAIL_ATTRIBUTE;
+		return attributeName(this.config.email_attribute, DEFAULT_EMAIL_ATTRIBUTE);
 	}
 
 	// Without a configured filter: the typed value is matched against the username
@@ -507,7 +535,8 @@ export class LdapAuthenticator {
 				...OBJECT_ID_ATTRIBUTES,
 			],
 			// Active Directory's objectGUID is 16 raw bytes: decoded as text it is not unique.
-			explicitBufferAttributes: ['objectGUID'],
+			// ldapts matches these to the response's spelling exactly, hence the variants.
+			explicitBufferAttributes: OBJECT_GUID_SPELLINGS,
 			sizeLimit: 2,
 		});
 		return searchEntries;

@@ -245,22 +245,46 @@ describe('LdapAuthenticator', () => {
 		expect((await auth.authenticate('alice', 'alice-pw'))?.objectId).toBe('uuid-alice');
 	});
 
-	test("Active Directory's objectGUID is asked for as bytes and read as hex; text is taken in GUID form only", async () => {
+	test("Active Directory's objectGUID is asked for as bytes; bytes and text, however delivered, give one id", async () => {
 		const guid = Buffer.from('0123456789abcdef0123456789abcdef', 'hex');
+		// The first three fields are little-endian in the bytes: 01 23 45 67 reads 67452301.
+		const key = 'guid:67452301-ab89-efcd-0123-456789abcdef';
 		const ad = (objectGUID: Buffer | string): FakeDirectory => ({
 			...DIR,
 			users: [{ dn: 'cn=ann,ou=people,dc=example,dc=com', password: 'ann-pw', entryUUID: null, objectGUID }],
 		});
-		const asBytes = make(CONFIG, ad(guid));
-		expect((await asBytes.auth.authenticate('ann', 'ann-pw'))?.objectId).toBe(`guid:${guid.toString('hex')}`);
-		expect(asBytes.clients[0].searches[0].explicitBufferAttributes).toContain('objectGUID');
-		const asGuidText = make(CONFIG, ad('{01234567-89AB-CDEF-0123-456789ABCDEF}'));
-		expect((await asGuidText.auth.authenticate('ann', 'ann-pw'))?.objectId).toBe(
-			'guid:01234567-89ab-cdef-0123-456789abcdef'
-		);
+		const idFor = async (objectGUID: Buffer | string) => {
+			const { auth, clients } = make(CONFIG, ad(objectGUID));
+			const id = (await auth.authenticate('ann', 'ann-pw'))?.objectId;
+			return { id, searched: clients[0].searches[0].explicitBufferAttributes ?? [] };
+		};
+		const asBytes = await idFor(guid);
+		expect(asBytes.id).toBe(key);
+		// Whatever spelling the directory answers with, the bytes stay bytes.
+		expect(asBytes.searched).toEqual(expect.arrayContaining(['objectGUID', 'objectguid', 'OBJECTGUID']));
+		expect((await idFor('{67452301-AB89-EFCD-0123-456789ABCDEF}')).id).toBe(key);
+		expect((await idFor('67452301-ab89-efcd-0123-456789abcdef')).id).toBe(key);
+		// A proxy's textual GUID, delivered as the bytes of that text.
+		expect((await idFor(Buffer.from('{67452301-ab89-efcd-0123-456789abcdef}'))).id).toBe(key);
 		// The bytes decoded as UTF-8 (lossy: different GUIDs can read alike) are no id.
-		const lossy = make(CONFIG, ad(guid.toString('utf8')));
-		expect((await lossy.auth.authenticate('ann', 'ann-pw'))?.objectId).toBeNull();
+		expect((await idFor(guid.toString('utf8'))).id).toBeNull();
+		expect((await idFor(Buffer.from('not a guid'))).id).toBeNull();
+	});
+
+	test('a client that cannot be made (a URL the validator let through) is "the directory could not be asked"', async () => {
+		const auth = new LdapAuthenticator(CONFIG, () => {
+			throw new Error('Invalid URL');
+		});
+		await expect(auth.lookup('alice')).rejects.toThrow(LdapUnavailableError);
+		await expect(auth.authenticate('alice', 'alice-pw')).rejects.toThrow(LdapUnavailableError);
+	});
+
+	test('attribute names are trimmed: " uid " is uid', async () => {
+		const { auth } = make({ ...CONFIG, username_attribute: ' uid ', email_attribute: ' mail ' });
+		expect(await auth.authenticate('alice', 'alice-pw')).toMatchObject({
+			username: 'alice',
+			email: 'alice@example.com',
+		});
 	});
 
 	test('attribute names are read ignoring case, as LDAP defines them', async () => {
@@ -298,7 +322,7 @@ describe('LdapAuthenticator', () => {
 		]);
 	});
 
-	test('the bind guard: a bind the connection broke off gives its reservation back; a timed-out one does not', async () => {
+	test('the bind guard: a bind that never left gives its reservation back; one sent without an answer does not', async () => {
 		const seen: string[] = [];
 		const guard: LdapBindGuard = {
 			allow: () => true,
@@ -310,11 +334,28 @@ describe('LdapAuthenticator', () => {
 			...DIR,
 			users: [{ dn: 'uid=carl,ou=people,dc=example,dc=com', password: 'carl-pw', bindError }],
 		});
-		const broken = make(CONFIG, carl('socket hang up'));
-		await expect(broken.auth.authenticate('carl', 'carl-pw', [], guard)).rejects.toThrow(LdapUnavailableError);
-		const timedOut = make(CONFIG, carl('Connection timeout'));
-		await expect(timedOut.auth.authenticate('carl', 'carl-pw', [], guard)).rejects.toThrow(LdapUnavailableError);
-		expect(seen).toEqual(['abandoned uid=carl,ou=people,dc=example,dc=com']);
+		const neverSent = [
+			'Socket connection not established',
+			'Connection timeout',
+			'connect ECONNREFUSED 10.0.0.9:636',
+		];
+		for (const message of neverSent) {
+			await expect(make(CONFIG, carl(message)).auth.authenticate('carl', 'carl-pw', [], guard)).rejects.toThrow(
+				LdapUnavailableError
+			);
+		}
+		// Sent, no verdict: the directory may have checked and counted it.
+		const unknown = [
+			'BindRequest: Operation timed out',
+			'Connection closed before message response was received. Message type: BindRequest (0x60)',
+			'socket hang up',
+		];
+		for (const message of unknown) {
+			await expect(make(CONFIG, carl(message)).auth.authenticate('carl', 'carl-pw', [], guard)).rejects.toThrow(
+				LdapUnavailableError
+			);
+		}
+		expect(seen).toEqual(neverSent.map(() => 'abandoned uid=carl,ou=people,dc=example,dc=com'));
 	});
 
 	test('an entry with no mail attribute yields an identity without an email', async () => {
@@ -550,6 +591,7 @@ describe('resolveLdapConfig', () => {
 				username_attribute: username_attribute as string,
 			});
 		expect(withAttribute('uid').enabled).toBe(true);
+		expect(withAttribute(' uid ')).toMatchObject({ enabled: true, username_attribute: 'uid' });
 		expect(withAttribute('sAMAccountName').enabled).toBe(true);
 		expect(withAttribute('0.9.2342.19200300.100.1.1').enabled).toBe(true);
 		expect(withAttribute('cn;lang-en').enabled).toBe(true);

@@ -45,7 +45,7 @@ class StubDirectory {
 			return Promise.reject(new LdapThrottledError(answer.identity.dn));
 		if (this.bindBroken) {
 			guard?.abandoned(answer.identity.dn);
-			return Promise.reject(new LdapUnavailableError('LDAP user bind failed: socket hang up'));
+			return Promise.reject(new LdapUnavailableError('LDAP user bind failed: Socket connection not established'));
 		}
 		this.binds++;
 		// The bind crosses the network: let the other attempts queue up behind it.

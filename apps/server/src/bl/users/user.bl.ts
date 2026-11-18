@@ -120,6 +120,8 @@ export class UserBL {
 
 	setLdapAuthenticator(ldap: LdapAuthenticator | null, maxFailures = DEFAULT_LDAP_MAX_FAILURES): void {
 		this.ldap = ldap;
+		// Who can be found changed with the directory: cached misses (webhook owners) are stale.
+		this.onUsersChanged?.();
 		if (maxFailures <= 0) {
 			this.ldapFailures = null;
 		} else if (!this.ldapFailures || maxFailures !== this.ldapMaxFailures) {

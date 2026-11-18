@@ -408,6 +408,20 @@ describe('owner from the webhook (directory users)', () => {
 		expect(asked.failure).toMatch(/directory could not be asked/);
 	});
 
+	test('a cached miss is forgotten when the LDAP settings change', async () => {
+		const resolver = new WebhookOwnerResolver(userBL, () => null);
+		userBL.setOnUsersChanged(() => resolver.clear());
+		try {
+			userBL.setLdapAuthenticator(null);
+			expect(await resolver.resolve('dana')).toBeNull();
+			// LDAP switched on: the same webhook minutes later finds her in the directory.
+			userBL.setLdapAuthenticator(directory, 0);
+			expect((await resolver.resolve('dana'))?.username).toBe('dana');
+		} finally {
+			userBL.setOnUsersChanged(() => undefined);
+		}
+	});
+
 	test('a provisioning failure on the way (the database) is not remembered either', async () => {
 		const resolver = new WebhookOwnerResolver(userBL, () => null);
 		const original = userRepo.createUser.bind(userRepo);

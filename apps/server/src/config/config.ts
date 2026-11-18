@@ -267,9 +267,13 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	}
 	ldap.role_mapping = mapping;
 	if (env.LDAP_DEFAULT_ROLE) ldap.default_role = env.LDAP_DEFAULT_ROLE as LdapRole;
-	// A blank attribute name means "the default", not an attribute called "".
+	// A blank attribute name means "the default", not an attribute called ""; stray
+	// spaces around a name are not part of it.
 	for (const key of ['username_attribute', 'email_attribute', 'name_attribute', 'groups_attribute'] as const) {
-		if (typeof ldap[key] === 'string' && ldap[key].trim() === '') delete ldap[key];
+		if (typeof ldap[key] !== 'string') continue;
+		const trimmed = ldap[key].trim();
+		if (trimmed === '') delete ldap[key];
+		else ldap[key] = trimmed;
 	}
 
 	if (!ldap.enabled) return ldap;
