@@ -80,8 +80,8 @@ describe('UserBL login with a default domain', () => {
 		await expect(userBL.login('idan', 'wrong')).rejects.toThrow('Invalid');
 	});
 
-	test('a directory user types the bare name; the directory is asked for the completed email', async () => {
-		const user = await userBL.login('dana', 'dir-pw');
+	test('a directory user types the bare name (legacy email field); the directory is asked for the completed email', async () => {
+		const user = await userBL.login('dana', 'dir-pw', { legacyEmailField: true });
 		expect(user.email).toBe('dana@acme.test');
 		expect(ldapSeen).toEqual(['dana@acme.test']);
 	});
@@ -116,6 +116,25 @@ describe('UserBL login with a default domain', () => {
 		expect((await userBL.login('dana2', 'same-pw')).email).toBe('dana@acme.test');
 		// Both are local: the directory was never asked.
 		expect(ldapSeen).toEqual([]);
+	});
+
+	test("through the login field a bare name is one account: a local holder's wrong password never reaches the directory", async () => {
+		db.exec('DELETE FROM users');
+		await userRepo.createUser({
+			username: 'dana',
+			email: 'dana@contractor.test',
+			passwordHash: await bcrypt.hash('contractor-pw', 4),
+			fullName: 'Dana Contractor',
+			role: Role.Viewer,
+		});
+		// dana@acme.test is a directory user with password dir-pw; typing "dana" + dir-pw in
+		// the login field must not sign in as her — "dana" is the contractor's username.
+		await expect(userBL.login('dana', 'dir-pw')).rejects.toThrow('Invalid');
+		// An unknown bare name is not a login either, without completing it to an address.
+		await expect(userBL.login('nobody', 'dir-pw')).rejects.toThrow('Invalid');
+		expect(ldapSeen).toEqual([]);
+		// The legacy field still completes it, as it always did.
+		expect((await userBL.login('dana', 'dir-pw', { legacyEmailField: true })).email).toBe('dana@acme.test');
 	});
 
 	test('a name with its own domain is not rewritten', async () => {

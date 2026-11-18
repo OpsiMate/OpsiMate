@@ -259,17 +259,22 @@ export class UserBL {
 			if (await bcrypt.compare(password, local.passwordHash)) return local.user;
 		}
 		const directoryAccount = candidates.find((candidate) => candidate.user.authSource === 'ldap');
-		// The directory is asked by email: a known directory account's own address, else
-		// what was typed, completed with the default login domain. A bare name that is
-		// neither is not a directory login.
 		const typed = identifier.trim().toLowerCase();
+		// An explicit username (the login field, no "@") names exactly one account: a local
+		// one has just failed its password check, an unknown one is not a login — only a
+		// directory account's own address goes on to the directory. Through the legacy
+		// email field a bare name still completes with the default login domain.
+		const explicitUsername = !legacyEmailField && !typed.includes('@');
+		if (explicitUsername && !directoryAccount) throw new Error(INVALID_LOGIN);
 		const completed = completeLoginIdentifier(typed, this.loginDefaultEmailDomain).toLowerCase();
-		const email = directoryAccount?.user.email?.toLowerCase() ?? (completed.includes('@') ? completed : null);
-		// A local account owns the address itself: no directory entry may stand in for it.
-		// (A local account that merely has the typed name as its username is unrelated to
-		// the address and blocks nothing.)
-		const addressOwner = email ? await this.userRepo.findLoginByEmail(email) : undefined;
-		const addressIsLocal = addressOwner !== undefined && addressOwner.user.authSource !== 'ldap';
+		const email =
+			directoryAccount?.user.email?.toLowerCase() ??
+			(!explicitUsername && completed.includes('@') ? completed : null);
+		// A local account owns the address itself, in any spelling: no directory entry may
+		// stand in for it. (A local account that merely has the typed name as its username
+		// is unrelated to the address and blocks nothing.)
+		const owners = email ? await this.userRepo.findUsersByEmail(email) : [];
+		const addressIsLocal = owners.some((owner) => owner.authSource !== 'ldap');
 		if (!email || addressIsLocal || !this.ldap) {
 			// Nothing to ask the directory for, or (LDAP switched off) nothing that can vouch
 			// for a directory account.

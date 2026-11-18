@@ -137,17 +137,27 @@ describe('UserBL login with LDAP', () => {
 
 	test('a first login whose derived username was taken in between allocates again instead of failing', async () => {
 		const original = userRepo.createUser.bind(userRepo);
-		let failedOnce = false;
+		let interceptedOnce = false;
 		vi.spyOn(userRepo, 'createUser').mockImplementation(async (row) => {
-			if (!failedOnce) {
-				failedOnce = true;
-				throw new Error("UNIQUE constraint failed: index 'users_username_unique'");
+			if (!interceptedOnce) {
+				interceptedOnce = true;
+				// Another first login takes "dana" right before ours; ours then hits the real
+				// UNIQUE error and must come back with the next free name.
+				await original({
+					username: row.username,
+					email: 'dana@other.example',
+					passwordHash: '!ldap',
+					fullName: 'Other Dana',
+					role: Role.Viewer,
+					authSource: 'ldap',
+					ldapDn: 'uid=dana,dc=other,dc=example',
+				});
 			}
 			return original(row);
 		});
 		const user = await userBL.login('dana@example.com', 'dir-pw');
-		expect(user).toMatchObject({ email: 'dana@example.com', authSource: 'ldap' });
-		expect(failedOnce).toBe(true);
+		expect(user).toMatchObject({ email: 'dana@example.com', authSource: 'ldap', username: 'dana2' });
+		expect(interceptedOnce).toBe(true);
 	});
 
 	test('first directory login creates the account with the mapped role, marked ldap', async () => {
