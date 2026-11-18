@@ -86,26 +86,34 @@ describe('UserBL login with a default domain', () => {
 		expect(ldapSeen).toEqual(['dana@acme.test']);
 	});
 
-	test("a bare name that is an older account's migrated username still reaches <name>@<domain> with that account's password", async () => {
-		// Two Danas: the contractor's email got "dana" at migration; company Dana is dana@acme.test.
+	test('two Danas: the legacy email field keeps meaning <name>@<domain>; the login field means the username', async () => {
+		// The contractor's email got "dana" at migration; company Dana is dana@acme.test.
 		db.exec('DELETE FROM users');
-		await userRepo.createUser({
+		const sharedPassword = await bcrypt.hash('same-pw', 4);
+		const contractor = await userRepo.createUser({
 			username: 'dana',
 			email: 'dana@contractor.test',
-			passwordHash: await bcrypt.hash('contractor-pw', 4),
+			passwordHash: sharedPassword,
 			fullName: 'Dana Contractor',
 			role: Role.Viewer,
 		});
 		await userRepo.createUser({
 			username: 'dana2',
 			email: 'dana@acme.test',
-			passwordHash: await bcrypt.hash('company-pw', 4),
+			passwordHash: sharedPassword,
 			fullName: 'Dana Company',
 			role: Role.Editor,
 		});
-		expect((await userBL.login('dana', 'contractor-pw')).email).toBe('dana@contractor.test');
-		expect((await userBL.login('dana', 'company-pw')).email).toBe('dana@acme.test');
-		await expect(userBL.login('dana', 'neither')).rejects.toThrow('Invalid');
+		const legacy = { legacyEmailField: true };
+		// Same password on both: the field decides who signs in.
+		expect((await userBL.login('dana', 'same-pw', legacy)).email).toBe('dana@acme.test');
+		expect((await userBL.login('dana', 'same-pw')).email).toBe('dana@contractor.test');
+		// Through the legacy field the contractor is still reachable by password; through
+		// the login field "dana" is only ever the contractor's username.
+		await userRepo.updateUserPassword(contractor.lastID, await bcrypt.hash('contractor-pw', 4));
+		expect((await userBL.login('dana', 'contractor-pw', legacy)).email).toBe('dana@contractor.test');
+		await expect(userBL.login('dana', 'same-pw', { legacyEmailField: false })).rejects.toThrow('Invalid');
+		expect((await userBL.login('dana2', 'same-pw')).email).toBe('dana@acme.test');
 		// Both are local: the directory was never asked.
 		expect(ldapSeen).toEqual([]);
 	});

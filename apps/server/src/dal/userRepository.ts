@@ -1,7 +1,19 @@
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 import { InsertResult, TableInfoRow, UserRow } from './models';
-import { Logger, Role, User, UserAuthSource, usernameFromEmail, usernameVariant } from '@OpsiMate/shared';
+import {
+	Logger,
+	Role,
+	User,
+	UserAuthSource,
+	USERNAME_MAX_LENGTH,
+	usernameFromEmail,
+	usernameVariant,
+} from '@OpsiMate/shared';
+
+// Numbered variants go up to four digits (9999): long enough for any real collision set,
+// short enough that the LIKE stem below still identifies them.
+const USERNAME_VARIANT_SUFFIX_DIGITS = 4;
 
 const logger = new Logger('dal/userRepository');
 
@@ -166,10 +178,10 @@ export class UserRepository {
 	// refuse; only NEW violations roll it back.
 	private rebuildWithOptionalEmail(): void {
 		const foreignKeysWereOn = (this.db.pragma('foreign_keys', { simple: true }) as number) === 1;
-		if (foreignKeysWereOn) this.db.pragma('foreign_keys = OFF');
-		const violationsBefore = (this.db.pragma('foreign_key_check') as unknown[]).length;
 		try {
+			if (foreignKeysWereOn) this.db.pragma('foreign_keys = OFF');
 			this.db.transaction(() => {
+				const violationsBefore = (this.db.pragma('foreign_key_check') as unknown[]).length;
 				// The AUTOINCREMENT watermark: dropping the table forgets it, and a rebuilt
 				// table could then hand a deleted account's id to a new one — which an
 				// unexpired token of the old account would resolve to.
@@ -240,15 +252,20 @@ export class UserRepository {
 		});
 	}
 
-	// The account behind an email, with its password hash, for a login. Ignoring case:
-	// addresses are case-insensitive in practice. Should an old database hold two
-	// spellings, the one typed exactly wins, then the oldest.
+	// Among the accounts an address matches ignoring case — several only in an old database
+	// that let spellings coexist — the one spelled exactly as typed comes first, then the one
+	// spelled in lowercase (what a login used to fall back to), then the oldest.
+	private static readonly EMAIL_SPELLING_ORDER = 'ORDER BY (email = ?) DESC, (email = lower(?)) DESC, id';
+
+	// The account behind an email, with its password hash, for a login.
 	async findLoginByEmail(email: string): Promise<LoginRecord | undefined> {
 		return runAsync(() => {
 			const address = email.trim();
 			const row = this.db
-				.prepare('SELECT * FROM users WHERE email = ? COLLATE NOCASE ORDER BY (email = ?) DESC, id LIMIT 1')
-				.get(address, address) as UserRow | undefined;
+				.prepare(
+					`SELECT * FROM users WHERE email = ? COLLATE NOCASE ${UserRepository.EMAIL_SPELLING_ORDER} LIMIT 1`
+				)
+				.get(address, address, address) as UserRow | undefined;
 			return row ? { user: this.toSharedUser(row), passwordHash: row.password_hash } : undefined;
 		});
 	}
@@ -402,47 +419,50 @@ export class UserRepository {
 		});
 	}
 
-	// The account behind an address, ignoring case; the exact spelling first, then the oldest.
+	// The account behind an address, ignoring case (see EMAIL_SPELLING_ORDER).
 	async getUserByEmail(email: string): Promise<User | null> {
 		return runAsync(() => {
 			const address = email.trim();
 			const row = this.db
 				.prepare(
-					`SELECT ${USER_COLUMNS} FROM users WHERE email = ? COLLATE NOCASE ORDER BY (email = ?) DESC, id LIMIT 1`
+					`SELECT ${USER_COLUMNS} FROM users WHERE email = ? COLLATE NOCASE ${UserRepository.EMAIL_SPELLING_ORDER} LIMIT 1`
 				)
-				.get(address, address) as UserRow | undefined;
+				.get(address, address, address) as UserRow | undefined;
 			return row ? this.toSharedUser(row) : null;
 		});
 	}
 
-	// Every account whose address matches ignoring case — more than one only in an old
-	// database that let spellings coexist. Exact spelling first.
+	// Every account whose address matches ignoring case (see EMAIL_SPELLING_ORDER).
 	async findUsersByEmail(email: string): Promise<User[]> {
 		return runAsync(() => {
 			const address = email.trim();
 			const rows = this.db
 				.prepare(
-					`SELECT ${USER_COLUMNS} FROM users WHERE email = ? COLLATE NOCASE ORDER BY (email = ?) DESC, id`
+					`SELECT ${USER_COLUMNS} FROM users WHERE email = ? COLLATE NOCASE ${UserRepository.EMAIL_SPELLING_ORDER}`
 				)
-				.all(address, address) as UserRow[];
+				.all(address, address, address) as UserRow[];
 			return rows.map(this.toSharedUser);
 		});
 	}
 
 	// A username nobody holds: `base` itself, else the first free numbered variant (see
-	// usernameVariant). One query: every name that starts with the base, compared ignoring
-	// case, since that is how the unique index compares them.
+	// usernameVariant). One query: every name that starts with the stem all variants
+	// share — the base shortened by the longest suffix considered, since a variant of a
+	// long name is truncated before its number — compared ignoring case, as the unique
+	// index does.
 	async nextFreeUsername(base: string): Promise<string> {
 		return runAsync(() => {
-			const escaped = base.replace(/[\\%_]/g, (ch) => `\\${ch}`);
+			const stem = base.slice(0, USERNAME_MAX_LENGTH - USERNAME_VARIANT_SUFFIX_DIGITS);
+			const escaped = stem.replace(/[\\%_]/g, (ch) => `\\${ch}`);
 			const rows = this.db
 				.prepare(`SELECT username FROM users WHERE username LIKE ? ESCAPE '\\' COLLATE NOCASE`)
 				.all(`${escaped}%`) as Pick<UserRow, 'username'>[];
 			const taken = new Set(rows.map((row) => row.username.toLowerCase()));
-			for (let n = 1; ; n++) {
+			for (let n = 1; n < 10 ** USERNAME_VARIANT_SUFFIX_DIGITS; n++) {
 				const candidate = usernameVariant(base, n);
 				if (!taken.has(candidate.toLowerCase())) return candidate;
 			}
+			throw new Error(`No free username variant of ${base}`);
 		});
 	}
 

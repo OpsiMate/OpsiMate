@@ -96,6 +96,60 @@ describe('UserBL login with LDAP', () => {
 		await expect(userBL.login('DANA@example.com', 'dir-pw')).rejects.toThrow(TooManyLoginAttemptsError);
 	});
 
+	test('a local account that merely has the typed name as its username does not block the directory login for <name>@<domain>', async () => {
+		const passwordResetsRepo = new PasswordResetsRepository(db);
+		const auditLogRepo = new AuditLogRepository(db);
+		const withDomain = new UserBL(
+			userRepo,
+			{ sendMail } as unknown as MailClient,
+			passwordResetsRepo,
+			new AuditBL(auditLogRepo),
+			'example.com'
+		);
+		withDomain.setLdapAuthenticator(directory as unknown as LdapAuthenticator);
+		await userRepo.createUser({
+			username: 'dana',
+			email: 'dana@contractor.example',
+			passwordHash: await bcrypt.hash('contractor-pw', 4),
+			fullName: 'Dana Contractor',
+			role: Role.Viewer,
+		});
+		// Legacy field, bare name: the contractor's password does not match, so the
+		// directory is asked for dana@example.com and provisions company Dana.
+		const user = await withDomain.login('dana', 'dir-pw', { legacyEmailField: true });
+		expect(user).toMatchObject({ email: 'dana@example.com', authSource: 'ldap', username: 'dana2' });
+		// A local account that owns the completed ADDRESS does block it.
+		await userRepo.createUser({
+			username: 'noa',
+			email: 'noa@example.com',
+			passwordHash: await bcrypt.hash('local-pw', 4),
+			fullName: 'Noa Local',
+			role: Role.Viewer,
+		});
+		directory.answers.set('noa@example.com', {
+			password: 'dir-pw',
+			identity: identity('noa@example.com', 'Noa Directory', Role.Editor),
+		});
+		const before = directory.calls;
+		await expect(withDomain.login('noa', 'dir-pw', { legacyEmailField: true })).rejects.toThrow('Invalid');
+		expect(directory.calls).toBe(before);
+	});
+
+	test('a first login whose derived username was taken in between allocates again instead of failing', async () => {
+		const original = userRepo.createUser.bind(userRepo);
+		let failedOnce = false;
+		vi.spyOn(userRepo, 'createUser').mockImplementation(async (row) => {
+			if (!failedOnce) {
+				failedOnce = true;
+				throw new Error("UNIQUE constraint failed: index 'users_username_unique'");
+			}
+			return original(row);
+		});
+		const user = await userBL.login('dana@example.com', 'dir-pw');
+		expect(user).toMatchObject({ email: 'dana@example.com', authSource: 'ldap' });
+		expect(failedOnce).toBe(true);
+	});
+
 	test('first directory login creates the account with the mapped role, marked ldap', async () => {
 		const user = await userBL.login('Dana@Example.com', 'dir-pw');
 		expect(user).toMatchObject({ email: 'dana@example.com', fullName: 'Dana Directory', role: Role.Editor });

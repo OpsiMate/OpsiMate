@@ -18,6 +18,15 @@ export const EMAIL_TAKEN = 'Email already registered';
 // An old database can hold Dana@x and dana@x as two accounts; a request naming the
 // address in a third spelling cannot tell which it means.
 export const AMBIGUOUS_EMAIL = 'That email belongs to more than one account; use the username';
+// How many times a first directory login re-allocates its derived username when another
+// first login took the same number in between.
+const PROVISION_USERNAME_ATTEMPTS = 3;
+
+// How a login request named the account (see UserBL.login).
+export interface LoginOptions {
+	// The request used the old `email` field rather than `identifier`.
+	legacyEmailField?: boolean;
+}
 
 // A new local account as the API describes it: a username, or only an email (older
 // clients, scripts) from which the username is taken.
@@ -214,68 +223,70 @@ export class UserBL {
 		return this.userRepo.updateUserRoleById(Number(user.id), newRole);
 	}
 
-	// The local accounts a login may name, most specific first: the account whose username
-	// was typed, then the one whose address the (deprecated) default login domain
-	// completes a bare name to — an older account whose migrated username happens to be
-	// that name must not capture a login that always meant <name>@<domain>. Anything
-	// with "@" is an email only. Lookups ignore letter case.
-	private async localLoginCandidates(identifier: string): Promise<LoginRecord[]> {
+	// The local accounts a login may name. Through the login field (`identifier`) a bare
+	// name is a username, and only that; through the legacy `email` field a bare name has
+	// always meant <name>@<default domain>, so that account comes first and the account
+	// whose username it is second — an older account whose migrated username happens to
+	// be that name must not capture a login that always meant the address. Anything with
+	// "@" is an email only. Lookups ignore letter case.
+	private async localLoginCandidates(identifier: string, legacyEmailField: boolean): Promise<LoginRecord[]> {
 		const typed = identifier.trim();
 		if (typed === '') return [];
 		if (typed.includes('@')) {
 			const byEmail = await this.userRepo.findLoginByEmail(typed);
 			return byEmail ? [byEmail] : [];
 		}
-		const candidates: LoginRecord[] = [];
 		const byUsername = await this.userRepo.findLoginByUsername(typed);
-		if (byUsername) candidates.push(byUsername);
+		if (!legacyEmailField) return byUsername ? [byUsername] : [];
 		const completed = completeLoginIdentifier(typed, this.loginDefaultEmailDomain);
-		if (completed.includes('@')) {
-			const byEmail = await this.userRepo.findLoginByEmail(completed);
-			if (byEmail && byEmail.user.id !== byUsername?.user.id) candidates.push(byEmail);
-		}
+		const byEmail = completed.includes('@') ? await this.userRepo.findLoginByEmail(completed) : undefined;
+		const candidates: LoginRecord[] = [];
+		if (byEmail) candidates.push(byEmail);
+		if (byUsername && byUsername.user.id !== byEmail?.user.id) candidates.push(byUsername);
 		return candidates;
 	}
 
 	// A local account always signs in locally — including the first admin, which is the
 	// way in when the directory is down or misconfigured. Anyone else is checked against
 	// LDAP when it is enabled; on success their OpsiMate account is created, or brought
-	// in step with the directory (name, role), and they are signed in.
-	async login(identifier: string, password: string): Promise<User> {
-		const candidates = await this.localLoginCandidates(identifier);
+	// in step with the directory (name, role), and they are signed in. `options.legacyEmailField`
+	// says the request used the old `email` field (see localLoginCandidates).
+	async login(identifier: string, password: string, options: LoginOptions = {}): Promise<User> {
+		const legacyEmailField = options.legacyEmailField === true;
+		const candidates = await this.localLoginCandidates(identifier, legacyEmailField);
 		for (const local of candidates) {
 			if (local.user.authSource === 'ldap') continue;
 			if (await bcrypt.compare(password, local.passwordHash)) return local.user;
 		}
 		const directoryAccount = candidates.find((candidate) => candidate.user.authSource === 'ldap');
-		// Only local accounts answered, and none to this password.
-		if (candidates.length > 0 && !directoryAccount) throw new Error(INVALID_LOGIN);
-		if (!this.ldap) {
-			// A directory account while LDAP is switched off: nothing can vouch for it.
-			throw new Error(INVALID_LOGIN);
-		}
 		// The directory is asked by email: a known directory account's own address, else
 		// what was typed, completed with the default login domain. A bare name that is
 		// neither is not a directory login.
 		const typed = identifier.trim().toLowerCase();
 		const completed = completeLoginIdentifier(typed, this.loginDefaultEmailDomain).toLowerCase();
 		const email = directoryAccount?.user.email?.toLowerCase() ?? (completed.includes('@') ? completed : null);
-		if (!email) throw new Error(INVALID_LOGIN);
+		// A local account owns the address itself: no directory entry may stand in for it.
+		// (A local account that merely has the typed name as its username is unrelated to
+		// the address and blocks nothing.)
+		const addressOwner = email ? await this.userRepo.findLoginByEmail(email) : undefined;
+		const addressIsLocal = addressOwner !== undefined && addressOwner.user.authSource !== 'ldap';
+		if (!email || addressIsLocal || !this.ldap) {
+			// Nothing to ask the directory for, or (LDAP switched off) nothing that can vouch
+			// for a directory account.
+			throw new Error(INVALID_LOGIN);
+		}
 
-		// One throttle for every spelling of this login — the name typed and the address it
-		// stands for — so the directory's lockout counter is protected whichever is used.
-		const throttleKeys = [...new Set([typed, email])];
-		if (throttleKeys.some((key) => this.ldapFailures?.isThrottled(key))) throw new TooManyLoginAttemptsError();
+		// The resolved address is the throttle key: every spelling of the login resolves to
+		// it, so failures accumulate across them and any successful spelling clears them.
+		if (this.ldapFailures?.isThrottled(email)) throw new TooManyLoginAttemptsError();
 		const identity = await this.ldap.authenticate(email, password);
 		if (!identity) {
-			for (const key of throttleKeys) {
-				if (this.ldapFailures?.recordFailure(key) === this.ldapMaxFailures) {
-					logger.warn(`LDAP login for ${key} throttled after ${this.ldapMaxFailures} failures`);
-				}
+			if (this.ldapFailures?.recordFailure(email) === this.ldapMaxFailures) {
+				logger.warn(`LDAP login for ${email} throttled after ${this.ldapMaxFailures} failures`);
 			}
 			throw new Error(INVALID_LOGIN);
 		}
-		for (const key of throttleKeys) this.ldapFailures?.reset(key);
+		this.ldapFailures?.reset(email);
 		if (!identity.role) {
 			logger.warn(`LDAP login refused for ${identity.email}: in none of the mapped groups`);
 			throw new Error(NOT_ALLOWED_LOGIN);
@@ -328,30 +339,34 @@ export class UserBL {
 			if (!link.ldapDn) await this.userRepo.setLdapDn(link.id, dn);
 			return this.syncDirectoryAccount(link.id, fullName, role);
 		}
-		try {
-			// No usable password hash: this account can only ever sign in through LDAP. The
-			// username is the address's local part, numbered when a local account has it.
-			const result = await this.userRepo.createUser({
-				username: await this.allocateUsername(usernameFromEmail(email)),
-				email,
-				passwordHash: DIRECTORY_PASSWORD_HASH,
-				fullName,
-				role,
-				authSource: 'ldap',
-				ldapDn: dn,
-			});
-			const created = await this.userRepo.getUserById(result.lastID);
-			if (!created) throw new Error('User creation failed');
-			logger.info(`Provisioned ${email} from LDAP as ${role}`);
-			this.onUsersChanged?.();
-			return created;
-		} catch (error) {
-			// Two first logins at once: the other one created it; use that account.
-			const raced = await this.userRepo.findDirectoryLink(email);
-			if (raced?.authSource === 'ldap' && raced.ldapDn?.toLowerCase() === dn.toLowerCase()) {
-				return this.syncDirectoryAccount(raced.id, fullName, role);
+		// No usable password hash: this account can only ever sign in through LDAP. The
+		// username is the address's local part, numbered when it is taken. Two first logins
+		// at once can pick the same free number; the loser allocates again. (The same
+		// account twice over — same address and entry — is the other race, below.)
+		for (let attempt = 1; ; attempt++) {
+			try {
+				const result = await this.userRepo.createUser({
+					username: await this.allocateUsername(usernameFromEmail(email)),
+					email,
+					passwordHash: DIRECTORY_PASSWORD_HASH,
+					fullName,
+					role,
+					authSource: 'ldap',
+					ldapDn: dn,
+				});
+				const created = await this.userRepo.getUserById(result.lastID);
+				if (!created) throw new Error('User creation failed');
+				logger.info(`Provisioned ${email} from LDAP as ${role}`);
+				this.onUsersChanged?.();
+				return created;
+			} catch (error) {
+				const raced = await this.userRepo.findDirectoryLink(email);
+				if (raced?.authSource === 'ldap' && raced.ldapDn?.toLowerCase() === dn.toLowerCase()) {
+					return this.syncDirectoryAccount(raced.id, fullName, role);
+				}
+				if (uniqueViolationMessage(error) === USERNAME_TAKEN && attempt < PROVISION_USERNAME_ATTEMPTS) continue;
+				throw error;
 			}
-			throw error;
 		}
 	}
 

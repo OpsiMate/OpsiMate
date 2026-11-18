@@ -98,7 +98,9 @@ export class UsersController {
 	loginHandler = async (req: Request, res: Response) => {
 		try {
 			const login = LoginSchema.parse(req.body);
-			const user = await this.userBL.login(loginIdentifierOf(login), login.password);
+			const user = await this.userBL.login(loginIdentifierOf(login), login.password, {
+				legacyEmailField: login.identifier === undefined,
+			});
 			const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
 			return res.status(200).json({ success: true, data: user, token });
 		} catch (error) {

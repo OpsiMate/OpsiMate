@@ -308,6 +308,23 @@ describe('username identity (API)', () => {
 		expect(explicit.body.error).toBe('Username already taken');
 	});
 
+	test('a third variant of a 64-character name is found although its variants no longer start with the full name', async () => {
+		const long = 'z'.repeat(64);
+		for (const username of [long, `${'z'.repeat(63)}2`]) {
+			const res = await app
+				.post('/api/v1/users')
+				.set(auth())
+				.send({ username, fullName: 'Z', password: 'securepassword', role: 'viewer' });
+			expect(res.status).toBe(201);
+		}
+		const third = await app
+			.post('/api/v1/users')
+			.set(auth())
+			.send({ email: `${long}@z.example`, fullName: 'Z3', password: 'securepassword', role: 'viewer' });
+		expect(third.status).toBe(201);
+		expect(third.body.data.username).toBe(`${'z'.repeat(63)}3`);
+	});
+
 	test('taken or invalid identities are refused with a reason', async () => {
 		const takenUsername = await app
 			.post('/api/v1/users')

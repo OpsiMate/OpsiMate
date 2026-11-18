@@ -100,11 +100,19 @@ A source can say who owns an alert: the generic webhook (`POST /api/v1/alerts/cu
 
 ## Usernames, and Accounts without an Email
 
-Every account has a **username**: 2-64 characters, lowercase letters, digits, dot, underscore or hyphen (`idanl`, `j.smith`, `svc-deploy`), unique ignoring case. The email is optional. A user signs in with either one in the login field; anything with an `@` is taken as an email.
+Every account has a **username**: 2-64 characters, lowercase letters, digits, dot, underscore or hyphen (`idanl`, `j.smith`, `svc-deploy`), unique ignoring case. The email is optional. A user signs in with either one in the login field; anything with an `@` is taken as an email. (Until the login form update ships, the browser form accepts a bare username only when `login.default_email_domain` is set; the API's `identifier` field takes one regardless.)
 
-- Creating a user (`POST /api/v1/users`, or the Settings page) takes `username` and an optional `email`. A caller that sends only an `email` gets the address's local part as the username (`dana@company.com` → `dana`); when that name is taken the next free numbered variant (`dana2`) is used, and the response carries the username that was assigned. A `username` asked for explicitly is never changed: it is refused when taken.
-- Existing installations are migrated on startup: every account gets the local part of its email as its username (oldest account first; a name already taken gets a numeric suffix, which the server log reports), and the email column stops being required. Everyone keeps signing in with their email as before.
+- Creating a user (`POST /api/v1/users`, or the Settings page) takes `username` and an optional `email`. A caller that sends only an `email` gets the address's local part as the username, normalized: lowercased, any character outside the allowed set folded to `-`, and a `user-` prefix when fewer than 2 characters remain (`dana@company.com` → `dana`, `Dana+ops@company.com` → `dana-ops`, `a@company.com` → `user-a`); when that name is taken the next free numbered variant (`dana2`) is used, and the response carries the username that was assigned. A `username` asked for explicitly is never changed: it is refused when taken.
+- Existing installations are migrated on startup: every account gets the local part of its email as its username, normalized the same way (oldest account first; a name already taken gets a numeric suffix, which the server log reports), and the email column stops being required. Everyone keeps signing in with their email as before.
 - A user **without** an email cannot receive a password-reset link or the welcome mail; an admin sets their password from the Users page instead. Directory (LDAP) accounts never needed either.
+- **A sole admin without an email who forgets the password** has no in-app path (the admin reset refuses the caller's own account). Keep two admins, or give admins an address. Failing both, set a new hash directly in the database — on the server, with the service stopped:
+
+  ```bash
+  HASH=$(node -e "require('bcrypt').hash(process.argv[1], 10).then(console.log)" 'new-password')
+  sqlite3 /path/to/opsimate.db "UPDATE users SET password_hash = '$HASH' WHERE username = 'idanl';"
+  ```
+
+  Run the `node` line from the server's directory (it needs the server's `bcrypt` dependency); the next login with the new password works at once. Nothing else about the account changes.
 - `PATCH /api/v1/users/role` takes `username` (or `email`); `PATCH /api/v1/users/:id` can rename the username and set or clear (`null`) the email. Directory accounts keep the identity the directory gave them.
 
 ### Login with a Short Name (deprecated)

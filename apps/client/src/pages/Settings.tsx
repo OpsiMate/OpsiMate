@@ -582,8 +582,10 @@ const Settings: React.FC = () => {
 																									{
 																										userToDelete?.fullName
 																									}
-																								</b>
-																								? This action cannot be
+																								</b>{' '}
+																								(
+																								{userToDelete?.username}
+																								)? This action cannot be
 																								undone.
 																							</AlertDialogDescription>
 																						</AlertDialogHeader>
