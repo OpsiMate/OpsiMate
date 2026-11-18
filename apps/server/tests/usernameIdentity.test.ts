@@ -248,16 +248,13 @@ describe('username identity (API)', () => {
 			.set(auth())
 			.send({ email: 'noa@third.example', fullName: 'Noa Three', password: 'securepassword', role: 'viewer' });
 		expect(third.body.data.username).toBe('noa3');
-		const explicit = await app
-			.post('/api/v1/users')
-			.set(auth())
-			.send({
-				username: 'noa',
-				email: 'noa@fourth.example',
-				fullName: 'X',
-				password: 'securepassword',
-				role: 'viewer',
-			});
+		const explicit = await app.post('/api/v1/users').set(auth()).send({
+			username: 'noa',
+			email: 'noa@fourth.example',
+			fullName: 'X',
+			password: 'securepassword',
+			role: 'viewer',
+		});
 		expect(explicit.status).toBe(400);
 		expect(explicit.body.error).toBe('Username already taken');
 	});
