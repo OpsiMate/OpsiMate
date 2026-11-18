@@ -292,7 +292,9 @@ export class UserBL {
 		// known account's, else the completed one — so failures accumulate across spellings
 		// and any successful one clears them; a bare name with no address is its own key.
 		const throttleKey =
-			directoryAccount?.user.email?.toLowerCase() ?? spellings.find((spelling) => spelling.includes('@')) ?? typed;
+			directoryAccount?.user.email?.toLowerCase() ??
+			spellings.find((spelling) => spelling.includes('@')) ??
+			typed;
 		if (this.ldapFailures?.isThrottled(throttleKey)) throw new TooManyLoginAttemptsError();
 		const identity = await this.ldap.authenticate(typed, password, spellings.slice(1));
 		if (!identity) {
