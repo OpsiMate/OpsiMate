@@ -71,6 +71,8 @@ describe('RowActions on an auto-fixed alert', () => {
 			'This alert is fixed automatically; only its source can resolve it'
 		);
 		expect(resolve).toHaveTextContent('auto fix');
+		// The reason is visible in the menu itself, not only on hover.
+		expect(screen.getByText('This alert is fixed automatically; only its source can resolve it')).toBeVisible();
 		await user.click(resolve);
 		expect(onDeleteAlert).not.toHaveBeenCalled();
 		// Silence is still offered.

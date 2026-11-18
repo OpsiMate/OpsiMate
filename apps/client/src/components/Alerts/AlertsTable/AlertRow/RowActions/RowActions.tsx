@@ -140,6 +140,11 @@ export const RowActions = ({
 									</>
 								)}
 							</DropdownMenuItem>
+							{autoFixed && (
+								// Visible, not only on hover: a disabled item is skipped by arrow keys,
+								// so keyboard users would otherwise never meet the reason.
+								<p className="px-2 pb-1.5 text-xs text-muted-foreground">{AUTO_FIX_RESOLVE_REFUSED}</p>
+							)}
 						</div>
 					)}
 					{onRemoveFromIncident && (
