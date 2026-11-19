@@ -158,9 +158,9 @@ export class IncidentBL {
 	//
 	// Order matters: removal events for re-homed alerts are written BEFORE the emptied
 	// source incidents dissolve, while their names are still readable. Then the ownership
-	// rule — grouping is taking charge: `owner` gets every member nobody owned yet, and
-	// members that already have an owner keep them. This is what keeps an incident whole
-	// in the split-by-owner view; see handleAlertUnassigned for the other half.
+	// rule — grouping is taking charge: `owner` (the creator, or whoever adds later) gets
+	// every member nobody owned yet, and members that already have an owner keep them;
+	// see handleAlertUnassigned for the other half.
 	private async afterMembersAdded(
 		incident: { id: number; name: string },
 		transitions: MembershipTransition[],
@@ -224,17 +224,15 @@ export class IncidentBL {
 	}
 
 	// Add alerts to an existing incident. Same ownership rule as create, anchored on the
-	// incident's owner rather than whoever adds: unowned newcomers go to the incident's
-	// owner (the actor when the incident has none), so the folder stays whole in the
-	// split-by-owner view. Alerts already in another incident move over.
+	// person doing it: unowned newcomers go to whoever adds them, not to the incident's
+	// creator — the one who dragged the alert in is the one who took it on. Members that
+	// already have an owner keep them. Alerts already in another incident move over.
 	async addAlerts(id: number, alertIds: string[], actor: IncidentActor): Promise<IncidentSummary | undefined> {
 		const incident = await this.incidentRepo.getIncidentSummaryById(id);
 		if (!incident) return undefined;
 		await this.assertAlertsExist(alertIds);
 		const { transitions } = await this.incidentRepo.addAlerts(id, alertIds);
-		const owner: IncidentActor =
-			incident.createdBy !== null ? { id: incident.createdBy, name: incident.ownerName } : actor;
-		await this.afterMembersAdded(incident, transitions, actor, owner, `Alerts were added to incident ${id}`);
+		await this.afterMembersAdded(incident, transitions, actor, actor, `Alerts were added to incident ${id}`);
 		return this.incidentRepo.getIncidentSummaryById(id);
 	}
 

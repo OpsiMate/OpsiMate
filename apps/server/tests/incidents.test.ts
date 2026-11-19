@@ -289,22 +289,51 @@ describe('incident ownership', () => {
 		expect((await alertsById()).get('own-b')?.incidentId ?? null).toBeNull();
 	});
 
-	test('adding alerts to an existing incident gives unowned ones the incident owner', async () => {
+	test('adding alerts to an existing incident gives unowned ones to whoever adds them, not to the creator', async () => {
 		insertAlert('add-a', 'Add A', 'warning', '2026-08-13T10:00:00.000Z');
 		insertAlert('add-b', 'Add B', 'warning', '2026-08-13T10:00:00.000Z');
 		insertAlert('add-c', 'Add C', 'warning', '2026-08-13T10:00:00.000Z');
+		insertAlert('add-d', 'Add D', 'warning', '2026-08-13T10:00:00.000Z');
 		db.prepare(`UPDATE alerts SET owner_id = ? WHERE id = 'add-c'`).run(otherUserId);
 		const created = await post('/api/v1/incidents', { name: 'Growing', alertIds: ['add-a', 'add-b'] });
 		const id = created.body.data.id as number;
 
+		// Someone else adds: they, not the incident's creator, take on the unowned newcomers.
+		const made = await post('/api/v1/users', {
+			username: 'adder',
+			fullName: 'Adder',
+			password: 'adder-pass-123',
+			role: 'editor',
+		});
+		expect(made.status).toBe(201);
+		const adderId = made.body.data.id as string;
+		const login = await app.post('/api/v1/users/login').send({ identifier: 'adder', password: 'adder-pass-123' });
+		expect(login.status).toBe(200);
+		const adderToken = login.body.token as string;
+		const addedByAdder = await app
+			.post(`/api/v1/incidents/${id}/alerts`)
+			.set('Authorization', `Bearer ${adderToken}`)
+			.send({ alertIds: ['add-d'] });
+		expect(addedByAdder.status).toBe(200);
+		const afterAdder = await alertsById();
+		expect(afterAdder.get('add-d')?.incidentId).toBe(id);
+		expect(afterAdder.get('add-d')?.ownerId).toBe(adderId);
+		// The incident itself keeps its creator; the history names the adder.
+		expect((await get(`/api/v1/incidents/${id}`)).body.data.createdBy).toBe(creatorId);
+		const addHistory = await get('/api/v1/alerts/add-d/history');
+		const grouped = (addHistory.body.data.data as { eventType?: string; actorName?: string }[]).find(
+			(e) => e.eventType === 'incident_added'
+		);
+		expect(grouped?.actorName).toBe('Adder');
+
 		// A resolved alert can join too; the roll-up spans both tables.
 		const res = await post(`/api/v1/incidents/${id}/alerts`, { alertIds: ['add-c', 'inc-r'] });
 		expect(res.status).toBe(200);
-		expect(res.body.data.alertCount).toBe(4);
+		expect(res.body.data.alertCount).toBe(5);
 		expect(res.body.data.resolvedCount).toBe(1);
 		const alerts = await alertsById();
 		expect(alerts.get('add-c')?.incidentId).toBe(id);
-		// Already owned: kept. inc-r was unowned (and resolved): it gets the incident owner.
+		// Already owned: kept. inc-r was unowned (and resolved): it goes to the adder — here the creator.
 		expect(alerts.get('add-c')?.ownerId).toBe(String(otherUserId));
 		const resolved = await get('/api/v1/alerts/resolved');
 		const r = (resolved.body.data.alerts as { id: string; ownerId?: string | null }[]).find(
