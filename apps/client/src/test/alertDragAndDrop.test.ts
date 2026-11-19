@@ -1,5 +1,5 @@
 import { Alert, IncidentSummary } from '@OpsiMate/shared';
-import { describe, expect, test } from 'vitest';
+import { describe, expect, test, vi } from 'vitest';
 import {
 	canStartAlertDrag,
 	dropId,
@@ -8,6 +8,7 @@ import {
 	preferSpecificTargets,
 	followPointer,
 } from '@/components/Alerts/AlertDragAndDrop';
+import { performDrop } from '@/components/Alerts/hooks/useAlertDragAndDrop';
 
 const alert = (id: string, incidentId: number | null = null): Alert => ({ id, incidentId }) as Alert;
 const incident = (id: number, alertIds: string[]): IncidentSummary =>
@@ -94,6 +95,17 @@ describe('resolveDrop', () => {
 		});
 		// A member row in the pane still means its incident.
 		expect(resolveDrop(inPane(m1), [owned], alerts)).toEqual({ kind: 'add', incidentId: 7 });
+		// The pane's own empty table space: an owned member is unassigned (which also takes it
+		// out of its incident), not merely removed with its owner kept.
+		expect(resolveDrop([dropId.ungroupedArea(), dropId.unassignedPane], [ownedMember], alerts)).toEqual({
+			kind: 'unassign',
+			alerts: [ownedMember],
+		});
+		// Nothing owned on that background: members are removed as anywhere else.
+		expect(resolveDrop([dropId.ungroupedArea(), dropId.unassignedPane], [m1], alerts)).toEqual({
+			kind: 'remove',
+			alerts: [m1],
+		});
 	});
 
 	test('with several targets under the pointer, the first that applies wins', () => {
@@ -114,6 +126,34 @@ describe('resolveDrop', () => {
 		expect(resolveDrop(null, [a], alerts)).toBeNull();
 		expect(resolveDrop(dropId.trayNew, [], alerts)).toBeNull();
 		expect(resolveDrop('something-else', [a], alerts)).toBeNull();
+	});
+});
+
+describe('performDrop', () => {
+	const actions = () => ({
+		addAlertsToIncident: vi.fn(async () => {}),
+		removeAlertsFromIncidents: vi.fn(async () => {}),
+		openCreateDialogFor: vi.fn(),
+		assignAlertsToMe: vi.fn(async () => {}),
+		unassignAlerts: vi.fn(async () => {}),
+		confirmUnassign: vi.fn(),
+	});
+	const owned = { ...alert('o'), ownerId: '2' } as Alert;
+	const member = { ...alert('om', 7), ownerId: '2' } as Alert;
+	const incidents = [incident(7, ['om']), incident(8, ['x', 'y'])];
+
+	test('unassigning plain owned alerts just runs', async () => {
+		const a = actions();
+		await performDrop({ kind: 'unassign', alerts: [owned] }, [owned], incidents, a);
+		expect(a.unassignAlerts).toHaveBeenCalledWith([owned]);
+		expect(a.confirmUnassign).not.toHaveBeenCalled();
+	});
+
+	test('unassigning every member of an incident asks first — it would dissolve the incident', async () => {
+		const a = actions();
+		await performDrop({ kind: 'unassign', alerts: [owned, member] }, [owned, member], incidents, a);
+		expect(a.unassignAlerts).not.toHaveBeenCalled();
+		expect(a.confirmUnassign).toHaveBeenCalledWith([owned, member], [incidents[0]]);
 	});
 });
 

@@ -17,6 +17,9 @@ interface UseAlertDragAndDropProps {
 	assignAlertsToMe: (alerts: Alert[]) => Promise<void>;
 	// Owned alerts dropped on the Unassigned pane lose their owner.
 	unassignAlerts: (alerts: Alert[]) => Promise<void>;
+	// The same, asked first: unassigning every member of an incident dissolves it
+	// (an alert that leaves its owner leaves its incident), so the user confirms.
+	confirmUnassign: (alerts: Alert[], dissolving: IncidentSummary[]) => void;
 }
 
 // Pointer must travel this far before a press becomes a drag; a shorter move is a click.
@@ -78,15 +81,20 @@ export const useAlertDragAndDrop = ({
 	return { sensors, dragging, onDragStart, onDragEnd, onDragCancel };
 };
 
-type DropActions = Pick<
+export type DropActions = Pick<
 	UseAlertDragAndDropProps,
-	'addAlertsToIncident' | 'removeAlertsFromIncidents' | 'openCreateDialogFor' | 'assignAlertsToMe' | 'unassignAlerts'
+	| 'addAlertsToIncident'
+	| 'removeAlertsFromIncidents'
+	| 'openCreateDialogFor'
+	| 'assignAlertsToMe'
+	| 'unassignAlerts'
+	| 'confirmUnassign'
 >;
 
 // Carries a resolved drop out. Moving the last members out of an incident dissolves it,
 // so such drops go through the dialog, opened on the drop's own destination: it warns,
-// and confirming does what the drop meant.
-const performDrop = async (
+// and confirming does what the drop meant. Exported for its tests.
+export const performDrop = async (
 	action: DropAction,
 	dragged: Alert[],
 	incidents: IncidentSummary[],
@@ -107,7 +115,10 @@ const performDrop = async (
 			return actions.removeAlertsFromIncidents(action.alerts);
 		case 'assign':
 			return actions.assignAlertsToMe(action.alerts);
-		case 'unassign':
+		case 'unassign': {
+			const dissolving = incidentsDissolvedBy(action.alerts, incidents);
+			if (dissolving.length > 0) return actions.confirmUnassign(action.alerts, dissolving);
 			return actions.unassignAlerts(action.alerts);
+		}
 	}
 };

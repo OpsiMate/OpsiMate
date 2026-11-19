@@ -134,6 +134,13 @@ const resolveDropOn = (
 	if (overId === dropId.trayNew) return { kind: 'create', alerts: dragged };
 	if (overId === dropId.assignedPane) return assignUnowned(dragged);
 	if (overId === dropId.unassignedPane) return unassignOwned(dragged);
+	// The Unassigned pane's own table background: a drop there means the pane, so an
+	// owned member is unassigned (which also takes it out of its incident, server-side),
+	// not merely removed from the incident with its owner kept.
+	if (isUngroupedArea(overId) && panes.inUnassignedPane) {
+		const unassign = unassignOwned(dragged);
+		if (unassign) return unassign;
+	}
 	if (isRemoveTarget(overId)) {
 		const members = dragged.filter((alert) => alert.incidentId != null);
 		return members.length > 0 ? { kind: 'remove', alerts: members } : null;

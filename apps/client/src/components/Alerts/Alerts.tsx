@@ -38,7 +38,7 @@ import { pluralize } from '@/lib/text';
 import { getCurrentUser } from '@/lib/auth';
 import { isPlaygroundMode } from '@/lib/playground';
 import { cn } from '@/lib/utils';
-import { AiFilterResult, Alert, AUTO_FIX_RESOLVE_REFUSED, isAutoFixed } from '@OpsiMate/shared';
+import { AiFilterResult, Alert, AUTO_FIX_RESOLVE_REFUSED, isAutoFixed, IncidentSummary } from '@OpsiMate/shared';
 import {
 	Bell,
 	BellOff,
@@ -827,6 +827,7 @@ const Alerts = () => {
 		// Defined further down (they need runBulkAction); only called when a drop lands.
 		assignAlertsToMe: (alerts) => assignAlertsToMe(alerts),
 		unassignAlerts: (alerts) => unassignAlerts(alerts),
+		confirmUnassign: (alerts, dissolving) => confirmUnassign(alerts, dissolving),
 	});
 	const bulkAction = useBulkAlertAction();
 
@@ -904,6 +905,18 @@ const Alerts = () => {
 	// alert that leaves its owner also leaves its incident; see the server's incident rule).
 	const unassignAlerts = async (alerts: Alert[]) =>
 		runBulkAction({ action: 'assignOwner', ownerId: null }, { title: 'Unassigned', verb: 'Unassigned' }, alerts);
+
+	// Unassigning the last owned members of an incident dissolves it: say so before doing it.
+	const confirmUnassign = (alerts: Alert[], dissolving: IncidentSummary[]) =>
+		setPendingAction({
+			title: `Unassign ${alerts.length} ${pluralize(alerts.length, 'alert')}?`,
+			description: `An alert that loses its owner also leaves its incident. This dissolves ${pluralize(dissolving.length, 'incident')} ${dissolving
+				.map((incident) => `"${incident.name}"`)
+				.join(', ')} — every member is being unassigned.`,
+			confirmLabel: 'Unassign',
+			destructive: true,
+			run: () => void unassignAlerts(alerts),
+		});
 
 	const assignAlertsToMe = async (alerts: Alert[]) => {
 		const me = getCurrentUser();
