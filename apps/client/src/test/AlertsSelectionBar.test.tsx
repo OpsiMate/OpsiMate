@@ -177,3 +177,38 @@ describe('AlertsSelectionBar with auto-fixed alerts in the selection', () => {
 		expect(onResolveAll).toHaveBeenCalledTimes(1);
 	});
 });
+
+describe('AlertsSelectionBar export action', () => {
+	test('shows Export only when the parent offers it and calls it on click', async () => {
+		const user = userEvent.setup();
+		const onExportAll = vi.fn();
+		const { rerender } = render(
+			<AlertsSelectionBar selectedAlerts={[alert('a1')]} onClearSelection={noop} onSilenceAll={noop} />
+		);
+		expect(screen.queryByRole('button', { name: /^Export$/ })).toBeNull();
+		rerender(
+			<AlertsSelectionBar
+				selectedAlerts={[alert('a1')]}
+				onClearSelection={noop}
+				onSilenceAll={noop}
+				onExportAll={onExportAll}
+			/>
+		);
+		await user.click(screen.getByRole('button', { name: /^Export$/ }));
+		expect(onExportAll).toHaveBeenCalledTimes(1);
+	});
+
+	// Exporting only reads the selection, so a bulk action still settling does not block it.
+	test('stays enabled while a previous bulk action is finishing', () => {
+		render(
+			<AlertsSelectionBar
+				selectedAlerts={[alert('a1')]}
+				onClearSelection={noop}
+				onSilenceAll={noop}
+				onExportAll={noop}
+				actionsDisabled
+			/>
+		);
+		expect(screen.getByRole('button', { name: /^Export$/ })).toBeEnabled();
+	});
+});

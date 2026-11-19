@@ -5,6 +5,7 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { downloadFile, fileTimestamp } from '@/lib/csv';
 import { cn } from '@/lib/utils';
 import { AlertHistoryData } from '@OpsiMate/shared';
 import { Download, History } from 'lucide-react';
@@ -41,15 +42,6 @@ const LANE_OPTIONS: LaneOption[] = [
 
 // Stable empty list so the memos below don't recompute on every render while loading.
 const NO_ENTRIES: AlertHistoryData[] = [];
-
-const triggerDownload = (filename: string, mimeType: string, content: string) => {
-	const url = URL.createObjectURL(new Blob([content], { type: mimeType }));
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = filename;
-	a.click();
-	URL.revokeObjectURL(url);
-};
 
 interface HistoryContentProps {
 	history: AlertHistoryQueryState;
@@ -107,19 +99,15 @@ export const AlertHistoryWall = ({ history, timeRange }: AlertHistoryWallProps) 
 	// enough to tell exports apart without opening them.
 	const handleExport = (format: 'csv' | 'json') => {
 		if (!historyData) return;
-		const stamp = new Date().toISOString().slice(0, 19).replace(/[T:]/g, '-');
+		const stamp = fileTimestamp();
 		// Alert ids come from external sources and can contain characters that are
 		// path separators or otherwise illegal in filenames.
 		const safeId = historyData.alertId.replace(/[^\w.-]+/g, '_');
 		const suffix = lane === 'all' ? '' : `-${lane}`;
 		if (format === 'csv') {
-			triggerDownload(`alert-history-${safeId}${suffix}-${stamp}.csv`, 'text/csv', historyToCsv(visible));
+			downloadFile(`alert-history-${safeId}${suffix}-${stamp}.csv`, 'text/csv', historyToCsv(visible));
 		} else {
-			triggerDownload(
-				`alert-history-${safeId}${suffix}-${stamp}.json`,
-				'application/json',
-				historyToJson(visible)
-			);
+			downloadFile(`alert-history-${safeId}${suffix}-${stamp}.json`, 'application/json', historyToJson(visible));
 		}
 	};
 
