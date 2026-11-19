@@ -104,23 +104,6 @@ export const AlertsSelectionBar = ({
 						className="h-8 px-3 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md"
 					/>
 				)}
-				{allNotSilenced && (
-					<Button variant="outline" size="sm" onClick={onSilenceAll} disabled={actionsDisabled}>
-						Silence
-					</Button>
-				)}
-				{onUnsilenceAll && allSilenced && (
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={onUnsilenceAll}
-						disabled={actionsDisabled}
-						className="gap-1.5"
-					>
-						<BellRing className="h-3.5 w-3.5" />
-						Unsilence
-					</Button>
-				)}
 				{onResolveAll && autoFixedCount > 0 && (
 					<Tooltip>
 						<TooltipTrigger asChild>
@@ -148,6 +131,23 @@ export const AlertsSelectionBar = ({
 					>
 						<CheckCircle2 className="h-3.5 w-3.5" />
 						Resolve
+					</Button>
+				)}
+				{allNotSilenced && (
+					<Button variant="outline" size="sm" onClick={onSilenceAll} disabled={actionsDisabled}>
+						Silence
+					</Button>
+				)}
+				{onUnsilenceAll && allSilenced && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onUnsilenceAll}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
+						<BellRing className="h-3.5 w-3.5" />
+						Unsilence
 					</Button>
 				)}
 				{onCommentAll && (

@@ -42,17 +42,6 @@ export const AlertFooterActions = ({
 
 	return (
 		<div className="grid grid-cols-2 gap-2">
-			{alert.isSilenced ? (
-				<Button variant="outline" size="sm" className="gap-2" onClick={() => onUnsilence?.(alert.id)}>
-					<RotateCcw className="h-3 w-3" />
-					Unsilence
-				</Button>
-			) : (
-				<Button variant="outline" size="sm" className="gap-2" onClick={() => onSilence?.(alert.id)}>
-					<BellOff className="h-3 w-3" />
-					Silence
-				</Button>
-			)}
 			{isAutoFixed(alert) ? (
 				// Disabled, with the reason on hover: a disabled button gets no pointer events,
 				// so the span carries the tooltip.
@@ -71,6 +60,17 @@ export const AlertFooterActions = ({
 				<Button variant="outline" size="sm" className="gap-2" onClick={() => onDelete?.(alert.id)}>
 					<CheckCircle2 className="h-3 w-3" />
 					Resolve
+				</Button>
+			)}
+			{alert.isSilenced ? (
+				<Button variant="outline" size="sm" className="gap-2" onClick={() => onUnsilence?.(alert.id)}>
+					<RotateCcw className="h-3 w-3" />
+					Unsilence
+				</Button>
+			) : (
+				<Button variant="outline" size="sm" className="gap-2" onClick={() => onSilence?.(alert.id)}>
+					<BellOff className="h-3 w-3" />
+					Silence
 				</Button>
 			)}
 		</div>
