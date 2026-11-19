@@ -24,6 +24,8 @@ import {
 	computeAlertGroupSummaries,
 	EpisodeRow,
 	UserEventRow,
+	AUTO_FIX_RESOLVE_REFUSED,
+	isAutoFixed,
 } from '@OpsiMate/shared';
 import { http, HttpResponse } from 'msw';
 import { getPlaygroundUser, OncallTeamState, playgroundState, randomId } from './state';
@@ -337,6 +339,18 @@ const assignPlaygroundAlertOwner = (alertId: string, ownerId: string | null) => 
 	alert.updatedAt = nowIso();
 	pushAlertEvent(alertId, recordOwnerEvent(ownerId));
 	return alert;
+};
+
+// The playground's user is a person: like the server, it refuses to resolve an alert its
+// source fixes on its own — the whole request, 409, naming the alerts.
+const autoFixRefusal = (alertIds: string[]) => {
+	const ids = new Set(alertIds);
+	const autoFixed = playgroundState.alerts.filter((a) => ids.has(a.id) && isAutoFixed(a)).map((a) => a.id);
+	if (autoFixed.length === 0) return null;
+	return HttpResponse.json(
+		{ success: false, error: AUTO_FIX_RESOLVE_REFUSED, autoFixedAlertIds: autoFixed },
+		{ status: 409 }
+	);
 };
 
 const resolvePlaygroundAlert = (alertId: string, comment?: string): boolean => {
@@ -740,6 +754,8 @@ export const handlers = [
 	http.delete(`${API_BASE}/alerts/:alertId`, async ({ params, request }) => {
 		// Optional resolve note in the body (mirrors the server: stored as a comment).
 		const body = (await request.json().catch(() => null)) as { comment?: string } | null;
+		const refused = autoFixRefusal([params.alertId as string]);
+		if (refused) return refused;
 		if (!resolvePlaygroundAlert(params.alertId as string, body?.comment)) {
 			return HttpResponse.json({ success: true, message: 'Alert not found, nothing to resolve' });
 		}
@@ -774,6 +790,10 @@ export const handlers = [
 				search: body.query?.search,
 			});
 			targetIds = items.map((a) => a.id);
+		}
+		if (body.action === 'resolve') {
+			const refused = autoFixRefusal(targetIds);
+			if (refused) return refused;
 		}
 		let succeeded = 0;
 		for (const id of targetIds) {

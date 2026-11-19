@@ -53,10 +53,11 @@ export const useAlertActions = () => {
 				title: 'Alert resolved',
 				description: 'The alert was moved to Resolved.',
 			});
-		} catch {
+		} catch (error) {
 			toast({
 				title: 'Error resolving alert',
-				description: 'Failed to resolve alert',
+				// The server's reason when it gave one (an auto-fixed alert, for instance).
+				description: error instanceof Error && error.message ? error.message : 'Failed to resolve alert',
 				variant: 'destructive',
 			});
 		}

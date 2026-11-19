@@ -11,7 +11,7 @@ import {
 	UpsertRootCauseSchema,
 	RateRootCauseSchema,
 } from '@OpsiMate/shared';
-import { AlertBL, IncomingAlert, WebhookOwnerOutcome } from '../../../bl/alerts/alert.bl';
+import { AlertBL, AutoFixResolveError, IncomingAlert, WebhookOwnerOutcome } from '../../../bl/alerts/alert.bl';
 import {
 	ALERT_QUERY_PARAM_KEYS,
 	AlertAnalyticsParamsSchema,
@@ -191,6 +191,12 @@ export class AlertController {
 
 	// One request acts on many alerts — by explicit ids (the loaded selection) or by a
 	// list query the BL resolves against the full dataset ("apply to all N matching").
+	// 409: the request was understood, the alert's state forbids it — a person cannot
+	// resolve what its source fixes on its own. Which alerts, so a bulk caller can unselect them.
+	private static refuseAutoFixResolve(res: Response, error: AutoFixResolveError) {
+		return res.status(409).json({ success: false, error: error.message, autoFixedAlertIds: error.alertIds });
+	}
+
 	async bulkAlertAction(req: AuthenticatedRequest, res: Response) {
 		try {
 			const body = AlertBulkActionSchema.parse(req.body ?? {});
@@ -211,6 +217,7 @@ export class AlertController {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
+			if (error instanceof AutoFixResolveError) return AlertController.refuseAutoFixResolve(res, error);
 			logger.error('Error running bulk alert action:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -1018,6 +1025,7 @@ export class AlertController {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
+			if (error instanceof AutoFixResolveError) return AlertController.refuseAutoFixResolve(res, error);
 			logger.error('Error resolving alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
