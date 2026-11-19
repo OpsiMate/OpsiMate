@@ -32,8 +32,11 @@ describe('resolveDrop', () => {
 		expect(resolveDrop(dropId.incident(7), [m1, a], alerts)).toEqual({ kind: 'add', incidentId: 7 });
 	});
 
-	test('dropping on a plain alert starts a new incident with both', () => {
-		expect(resolveDrop(dropId.alert('b'), [a], alerts)).toEqual({ kind: 'create', alerts: [a, b] });
+	test('dropping on a plain alert does nothing — one alert or several, incidents are not made that way', () => {
+		expect(resolveDrop(dropId.alert('b'), [a], alerts)).toBeNull();
+		expect(resolveDrop(dropId.alert('b'), [a, m1], alerts)).toBeNull();
+		// Not even over the table background behind the row.
+		expect(resolveDrop([dropId.alert('b'), dropId.ungroupedArea()], [a], alerts)).toBeNull();
 	});
 
 	test('dropping on a member joins its incident; on itself does nothing', () => {
@@ -41,7 +44,7 @@ describe('resolveDrop', () => {
 		expect(resolveDrop(dropId.alert('a'), [a], alerts)).toBeNull();
 	});
 
-	test('tray: new incident, and remove only for members', () => {
+	test('tray: the explicit "New incident" chip is the one drop that creates; remove only for members', () => {
 		expect(resolveDrop(dropId.trayNew, [a, b], alerts)).toEqual({ kind: 'create', alerts: [a, b] });
 		expect(resolveDrop(dropId.trayRemove, [a, m1], alerts)).toEqual({ kind: 'remove', alerts: [m1] });
 		expect(resolveDrop(dropId.trayRemove, [a], alerts)).toBeNull();
@@ -71,10 +74,26 @@ describe('resolveDrop', () => {
 		const owned = { ...alert('o'), ownerId: '2' } as Alert;
 		const inPane = (target: Alert) => [dropId.alert(target.id), dropId.ungroupedArea(), dropId.assignedPane];
 		expect(resolveDrop(inPane(b), [a], alerts)).toEqual({ kind: 'assign', alerts: [a] });
-		// Nothing unowned in the set: the row keeps its usual meaning.
-		expect(resolveDrop(inPane(b), [owned], alerts)).toEqual({ kind: 'create', alerts: [owned, b] });
+		// Nothing unowned in the set: nothing to do (already assigned, and rows never group).
+		expect(resolveDrop(inPane(b), [owned], alerts)).toBeNull();
 		// A member row still means its incident (which takes ownership of the alert anyway).
 		expect(resolveDrop(inPane(m1), [a], alerts)).toEqual({ kind: 'add', incidentId: m1.incidentId });
+	});
+
+	test('the Unassigned pane takes the owner off owned alerts — dropped on the pane or on a row in it', () => {
+		const owned = { ...alert('o'), ownerId: '2' } as Alert;
+		const ownedMember = { ...alert('om', 7), ownerId: '2' } as Alert;
+		expect(resolveDrop(dropId.unassignedPane, [owned, a], alerts)).toEqual({ kind: 'unassign', alerts: [owned] });
+		expect(resolveDrop(dropId.unassignedPane, [a], alerts)).toBeNull();
+		const inPane = (target: Alert) => [dropId.alert(target.id), dropId.ungroupedArea(), dropId.unassignedPane];
+		// A pulled alert dragged back and dropped on another alert: unassigned, no incident.
+		expect(resolveDrop(inPane(b), [owned], alerts)).toEqual({ kind: 'unassign', alerts: [owned] });
+		expect(resolveDrop(inPane(b), [owned, ownedMember], alerts)).toEqual({
+			kind: 'unassign',
+			alerts: [owned, ownedMember],
+		});
+		// A member row in the pane still means its incident.
+		expect(resolveDrop(inPane(m1), [owned], alerts)).toEqual({ kind: 'add', incidentId: 7 });
 	});
 
 	test('with several targets under the pointer, the first that applies wins', () => {
@@ -149,12 +168,13 @@ describe('preferSpecificTargets', () => {
 		expect(preferSpecificTargets([])).toEqual([]);
 	});
 
-	test('the Assigned pane stays in the list after the row under the pointer', () => {
+	test('the panes stay in the list after the row under the pointer', () => {
 		const area = { id: dropId.ungroupedArea() };
 		const row = { id: dropId.alert('a') };
-		const pane = { id: dropId.assignedPane };
-		expect(preferSpecificTargets([row, area, pane])).toEqual([row, pane]);
-		expect(preferSpecificTargets([area, pane])).toEqual([area, pane]);
+		for (const pane of [{ id: dropId.assignedPane }, { id: dropId.unassignedPane }]) {
+			expect(preferSpecificTargets([row, area, pane])).toEqual([row, pane]);
+			expect(preferSpecificTargets([area, pane])).toEqual([area, pane]);
+		}
 	});
 });
 

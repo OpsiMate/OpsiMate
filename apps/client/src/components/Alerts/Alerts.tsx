@@ -824,8 +824,9 @@ const Alerts = () => {
 		addAlertsToIncident,
 		removeAlertsFromIncidents,
 		openCreateDialogFor,
-		// Defined further down (it needs runBulkAction); only called when a drop lands.
+		// Defined further down (they need runBulkAction); only called when a drop lands.
 		assignAlertsToMe: (alerts) => assignAlertsToMe(alerts),
+		unassignAlerts: (alerts) => unassignAlerts(alerts),
 	});
 	const bulkAction = useBulkAlertAction();
 
@@ -898,6 +899,12 @@ const Alerts = () => {
 	// Drop on the Assigned pane: the dragged unowned alerts become the dragger's. The same
 	// bulk assign-owner path as the selection bar, so the server fires its usual
 	// owner-assigned history entries and callbacks.
+	// Drop on the Unassigned pane: the dragged owned alerts lose their owner — the same
+	// bulk path as the selection bar's "unassign", so the server records it as usual (an
+	// alert that leaves its owner also leaves its incident; see the server's incident rule).
+	const unassignAlerts = async (alerts: Alert[]) =>
+		runBulkAction({ action: 'assignOwner', ownerId: null }, { title: 'Unassigned', verb: 'Unassigned' }, alerts);
+
 	const assignAlertsToMe = async (alerts: Alert[]) => {
 		const me = getCurrentUser();
 		if (!me) {
@@ -1230,8 +1237,10 @@ const Alerts = () => {
 		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
 	// Members are being dragged: the tables show the "out of the incident" drop zone.
 	const draggingMembers = alertDrag.dragging?.some((alert) => alert.incidentId != null) ?? false;
-	// Unowned alerts are being dragged: the Assigned pane can take them.
+	// Unowned alerts are being dragged: the Assigned pane can take them; owned ones: the
+	// Unassigned pane can.
 	const draggingUnowned = alertDrag.dragging?.some((alert) => alert.ownerId == null) ?? false;
+	const draggingOwned = alertDrag.dragging?.some((alert) => alert.ownerId != null) ?? false;
 	// Dragging rows into incidents: same guards, minus "something is selected" (a drag
 	// selects as it starts), plus a loaded incidents list for the drop targets.
 	const canDragIntoIncidents =
@@ -1533,6 +1542,10 @@ const Alerts = () => {
 											top={
 												<AssignmentPane
 													title="Unassigned"
+													dropTargetId={
+														canDragIntoIncidents ? dropId.unassignedPane : undefined
+													}
+													dropActive={draggingOwned}
 													// Server-counted total over the full matching set — the
 													// loaded page's split is a lie past 500 rows. Falls back
 													// to the loaded count until the first response.

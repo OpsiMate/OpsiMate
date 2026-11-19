@@ -15,16 +15,20 @@ interface UseAlertDragAndDropProps {
 	openCreateDialogFor: (alerts: Alert[], preset?: IncidentDialogPreset) => void;
 	// Unowned alerts dropped on the Assigned pane become the current user's.
 	assignAlertsToMe: (alerts: Alert[]) => Promise<void>;
+	// Owned alerts dropped on the Unassigned pane lose their owner.
+	unassignAlerts: (alerts: Alert[]) => Promise<void>;
 }
 
 // Pointer must travel this far before a press becomes a drag; a shorter move is a click.
 const DRAG_DISTANCE_PX = 8;
 
-// Dragging alert rows onto incident folders, other rows, or the drop tray. The set
-// being dragged is the selection when the pressed row is part of it, else just that row
-// (which then becomes the selection, like a click). What a drop means is decided by
-// resolveDrop; anything that would dissolve an incident, and every "new incident" drop,
-// goes through the dialog so the user sees the warning / can name it.
+// Dragging alert rows onto incident folders (or their member rows), the drop tray, or
+// the split view's panes. Dropping on a plain alert does nothing: incidents are made
+// from the selection bar or the tray's "New incident" chip, never by landing on a row.
+// The set being dragged is the selection when the pressed row is part of it, else just
+// that row (which then becomes the selection, like a click). What a drop means is
+// decided by resolveDrop; anything that would dissolve an incident, and the "new
+// incident" chip, go through the dialog so the user sees the warning / can name it.
 export const useAlertDragAndDrop = ({
 	selectedAlerts,
 	onSelectAlerts,
@@ -76,7 +80,7 @@ export const useAlertDragAndDrop = ({
 
 type DropActions = Pick<
 	UseAlertDragAndDropProps,
-	'addAlertsToIncident' | 'removeAlertsFromIncidents' | 'openCreateDialogFor' | 'assignAlertsToMe'
+	'addAlertsToIncident' | 'removeAlertsFromIncidents' | 'openCreateDialogFor' | 'assignAlertsToMe' | 'unassignAlerts'
 >;
 
 // Carries a resolved drop out. Moving the last members out of an incident dissolves it,
@@ -103,5 +107,7 @@ const performDrop = async (
 			return actions.removeAlertsFromIncidents(action.alerts);
 		case 'assign':
 			return actions.assignAlertsToMe(action.alerts);
+		case 'unassign':
+			return actions.unassignAlerts(action.alerts);
 	}
 };
