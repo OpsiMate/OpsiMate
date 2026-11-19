@@ -1,6 +1,6 @@
 import { FormattedText } from '@/components/shared';
 import { ScrollHintBox } from '../ScrollHintBox';
-import { SUMMARY_MIN_HEIGHT_CLASS } from './AlertSummarySection.constants';
+import { SUMMARY_MIN_HEIGHT_CLASS, SUMMARY_TEXT_CLASS } from './AlertSummarySection.constants';
 
 interface AlertSummarySectionProps {
 	summary: string;
@@ -11,6 +11,6 @@ interface AlertSummarySectionProps {
 // with a "scroll for more" hint (ScrollHintBox).
 export const AlertSummarySection = ({ summary }: AlertSummarySectionProps) => (
 	<ScrollHintBox contentKey={summary} floorClassName={SUMMARY_MIN_HEIGHT_CLASS}>
-		<FormattedText text={summary} className="text-sm text-foreground leading-relaxed" />
+		<FormattedText text={summary} className={SUMMARY_TEXT_CLASS} />
 	</ScrollHintBox>
 );
