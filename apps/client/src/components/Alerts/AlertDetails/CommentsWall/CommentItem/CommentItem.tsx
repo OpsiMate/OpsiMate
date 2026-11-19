@@ -69,7 +69,7 @@ export const CommentItem = ({
 						{comment.updatedAt !== comment.createdAt && (
 							<span
 								className="text-xs text-muted-foreground italic shrink-0"
-								title={`Edited ${formatTimestamp(comment.updatedAt)}`}
+								title={`Edited ${formatDateTime(comment.updatedAt)}`}
 							>
 								(edited)
 							</span>
