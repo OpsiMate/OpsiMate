@@ -149,7 +149,8 @@ describe('formatTimestamp', () => {
 	test('this year: the time of day and the date, no year — even for a comment made minutes or weeks ago', () => {
 		const minutesAgo = new Date(2026, 7, 11, 11, 53, 7);
 		expect(formatTimestamp(minutesAgo)).toBe(formatShortDateTime(minutesAgo));
-		expect(formatTimestamp(minutesAgo)).not.toMatch(/ago|just now/);
+		// A whole relative label, not the substring "ago": in Spanish, August abbreviates to "ago".
+		expect(formatTimestamp(minutesAgo)).not.toMatch(/\b\d+[mhd] ago\b|just now/);
 		expect(formatTimestamp(minutesAgo)).toMatch(/11:53/);
 		expect(formatTimestamp(minutesAgo)).not.toMatch(/2026/);
 		const weeksAgo = new Date(2026, 5, 2, 9, 0, 0);

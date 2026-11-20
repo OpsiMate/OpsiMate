@@ -109,11 +109,14 @@ export const AlertRootCauseSection = ({ alertId }: AlertRootCauseSectionProps) =
 					</span>
 					<div className="flex items-center gap-1">
 						{rootCause.rating && rootCause.ratedBy && (
-							<span
-								className="text-xs text-muted-foreground mr-1"
-								title={formatDateTime(rootCause.ratedAt)}
-							>
-								rated by {rootCause.ratedBy} · {formatTimestamp(rootCause.ratedAt)}
+							<span className="text-xs text-muted-foreground mr-1">
+								rated by {rootCause.ratedBy} ·{' '}
+								<time
+									dateTime={rootCause.ratedAt ?? undefined}
+									title={formatDateTime(rootCause.ratedAt)}
+								>
+									{formatTimestamp(rootCause.ratedAt)}
+								</time>
 							</span>
 						)}
 						<RatingButton
