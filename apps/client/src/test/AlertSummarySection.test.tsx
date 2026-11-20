@@ -39,7 +39,7 @@ describe('AlertSummarySection text size', () => {
 	test('plain summary text is one step up from the rest of the panel', () => {
 		render(<AlertSummarySection summary="disk full on db-1" />);
 		const text = screen.getByText('disk full on db-1');
-		expect(text).toHaveClass('text-base');
+		expect(text).toHaveClass('text-[15px]');
 		expect(text).not.toHaveClass('text-sm');
 	});
 
@@ -47,7 +47,7 @@ describe('AlertSummarySection text size', () => {
 		render(<AlertSummarySection summary="<h3>Cause</h3><p>disk full</p>" />);
 		const box = screen.getByText('Cause').parentElement as HTMLElement;
 		expect(box).toHaveClass(
-			'text-base',
+			'text-[15px]',
 			'[&_h1]:text-lg',
 			'[&_h2]:text-lg',
 			'[&_h3]:text-base',
