@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Alert, AUTO_FIX_RESOLVE_REFUSED, isAutoFixed } from '@OpsiMate/shared';
-import { BellOff, CheckCircle2, Flame, RotateCcw, Trash2 } from 'lucide-react';
+import { BellOff, CheckCircle2, Flame, RotateCcw } from 'lucide-react';
 
 interface AlertFooterActionsProps {
 	alert: Alert;
@@ -29,13 +29,6 @@ export const AlertFooterActions = ({
 					<Flame className="h-3 w-3" />
 					Unresolve
 				</Button>
-
-				{onDelete && (
-					<Button variant="destructive" size="sm" className="gap-2" onClick={() => onDelete(alert.id)}>
-						<Trash2 className="h-3 w-3" />
-						Delete Alert
-					</Button>
-				)}
 			</div>
 		);
 	}

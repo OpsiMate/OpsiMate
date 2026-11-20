@@ -22,24 +22,37 @@ const alert: Alert = {
 	isResolved: true,
 };
 
-describe('RowActions permissions', () => {
+describe('RowActions on a resolved alert', () => {
 	beforeEach(() => {
 		vi.mocked(getUserRole).mockReset();
 	});
-	it('shows Delete for admins on resolved alerts', async () => {
+	it('offers only Unresolve, never Delete, even to an admin with every handler passed', async () => {
+		// The All view passes every handler to resolved and active rows alike.
 		const user = userEvent.setup();
 		vi.mocked(getUserRole).mockReturnValue(Role.Admin);
-		render(<RowActions alert={alert} onDeleteAlert={vi.fn()} />);
+		render(
+			<RowActions
+				alert={alert}
+				onDeleteAlert={vi.fn()}
+				onUnresolveAlert={vi.fn()}
+				onSilenceAlert={vi.fn()}
+				onUnsilenceAlert={vi.fn()}
+			/>
+		);
 		await user.click(screen.getByRole('button', { name: 'More actions' }));
-		expect(await screen.findByText('Delete')).toBeInTheDocument();
+		const items = await screen.findAllByRole('menuitem');
+		expect(items.map((item) => item.textContent)).toEqual(['Unresolve']);
 	});
-	it('hides Delete for editors on resolved alerts', async () => {
-		const user = userEvent.setup();
-		vi.mocked(getUserRole).mockReturnValue(Role.Editor);
-		render(<RowActions alert={alert} onDeleteAlert={vi.fn()} onUnresolveAlert={vi.fn()} />);
-		await user.click(screen.getByRole('button', { name: 'More actions' }));
-		expect(await screen.findByText('Unresolve')).toBeInTheDocument();
-		expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+	it('shows no three-dots menu when Delete was the only action left', () => {
+		vi.mocked(getUserRole).mockReturnValue(Role.Admin);
+		render(<RowActions alert={alert} onDeleteAlert={vi.fn()} />);
+		expect(screen.queryByRole('button', { name: 'More actions' })).not.toBeInTheDocument();
+	});
+});
+
+describe('RowActions permissions', () => {
+	beforeEach(() => {
+		vi.mocked(getUserRole).mockReset();
 	});
 	it('keeps Resolve visible for editors on active alerts', async () => {
 		const user = userEvent.setup();
