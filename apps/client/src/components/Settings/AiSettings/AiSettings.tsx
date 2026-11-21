@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { SettingsSectionHeader } from '@/components/Settings/SettingsSectionHeader';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -116,14 +117,10 @@ export const AiSettings = () => {
 
 	return (
 		<div className="space-y-4">
-			<div>
-				<h2 className="text-lg font-semibold text-foreground">AI (beta)</h2>
-				<p className="text-sm text-muted-foreground">
-					Your Amazon Bedrock API key for AI features. Stored encrypted on the server, never sent to the
-					browser, used only against the endpoint below; no alert data leaves your server until an AI feature
-					is used. Remove it any time.
-				</p>
-			</div>
+			<SettingsSectionHeader
+				title="AI (beta)"
+				description="Your Amazon Bedrock API key for AI features. Stored encrypted on the server, never sent to the browser, used only against the endpoint below; no alert data leaves your server until an AI feature is used. Remove it any time."
+			/>
 
 			<Card className="p-4 space-y-4">
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
