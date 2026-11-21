@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useUsers } from '@/hooks/queries/users';
 import { pluralize } from '@/lib/text';
 import { Alert, isAutoFixed } from '@OpsiMate/shared';
-import { BellRing, CheckCircle2, Folder, MessageSquarePlus, Trash2 } from 'lucide-react';
+import { BellRing, CheckCircle2, Download, Folder, MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 export interface AlertsSelectionBarProps {
@@ -27,6 +27,8 @@ export interface AlertsSelectionBarProps {
 	onResolveAll?: () => void;
 	// Adds the same comment to every selected alert (opens the comment dialog).
 	onCommentAll?: () => void;
+	// Downloads the selected alerts as a CSV file.
+	onExportAll?: () => void;
 	onDeleteAll?: () => void;
 	// True when the current view has matching alerts that are NOT loaded (the "N of M"
 	// banner is showing). Bulk actions apply only to the loaded selection, so the scope
@@ -56,6 +58,7 @@ export const AlertsSelectionBar = ({
 	onAssignOwnerAll,
 	onResolveAll,
 	onCommentAll,
+	onExportAll,
 	onDeleteAll,
 	hasUnloadedMatches,
 	matchingTotal,
@@ -160,6 +163,12 @@ export const AlertsSelectionBar = ({
 					>
 						<MessageSquarePlus className="h-3.5 w-3.5" />
 						Comment
+					</Button>
+				)}
+				{onExportAll && (
+					<Button variant="outline" size="sm" onClick={onExportAll} className="gap-1.5">
+						<Download className="h-3.5 w-3.5" />
+						Export
 					</Button>
 				)}
 				{onGroupIntoIncident && (
