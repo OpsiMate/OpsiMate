@@ -136,6 +136,11 @@ describe('input handling', () => {
 
 describe('formatTimestamp', () => {
 	const now = new Date(2026, 7, 11, 12, 0, 0); // Aug 11 2026, 12:00:00
+	// The formatters use the host's default locale and numbering system, so the expected
+	// digits are produced the same way rather than written as ASCII.
+	const localeClock = (date: Date) =>
+		new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+	const localeYear = (date: Date) => new Intl.DateTimeFormat(undefined, { year: 'numeric' }).format(date);
 
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -151,8 +156,8 @@ describe('formatTimestamp', () => {
 		expect(formatTimestamp(minutesAgo)).toBe(formatShortDateTime(minutesAgo));
 		// A whole relative label, not the substring "ago": in Spanish, August abbreviates to "ago".
 		expect(formatTimestamp(minutesAgo)).not.toMatch(/\b\d+[mhd] ago\b|just now/);
-		expect(formatTimestamp(minutesAgo)).toMatch(/11:53/);
-		expect(formatTimestamp(minutesAgo)).not.toMatch(/2026/);
+		expect(formatTimestamp(minutesAgo)).toContain(localeClock(minutesAgo));
+		expect(formatTimestamp(minutesAgo)).not.toContain(localeYear(minutesAgo));
 		const weeksAgo = new Date(2026, 5, 2, 9, 0, 0);
 		expect(formatTimestamp(weeksAgo)).toBe(formatShortDateTime(weeksAgo));
 	});
@@ -160,7 +165,7 @@ describe('formatTimestamp', () => {
 	test('another year: the year is shown too', () => {
 		const lastYear = new Date(2025, 11, 31, 23, 59, 0);
 		expect(formatTimestamp(lastYear)).toBe(formatLongDateTime(lastYear));
-		expect(formatTimestamp(lastYear)).toMatch(/2025/);
+		expect(formatTimestamp(lastYear)).toContain(localeYear(lastYear));
 	});
 
 	test('absent or unparseable values fall back', () => {
