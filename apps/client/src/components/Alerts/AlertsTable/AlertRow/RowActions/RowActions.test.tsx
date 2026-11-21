@@ -26,20 +26,20 @@ describe('RowActions permissions', () => {
 	beforeEach(() => {
 		vi.mocked(getUserRole).mockReset();
 	});
-	it('shows Delete for admins on resolved alerts', async () => {
+	it.each([Role.Admin, Role.Editor])('offers Unresolve without Delete for %s on resolved alerts', async (role) => {
 		const user = userEvent.setup();
+		vi.mocked(getUserRole).mockReturnValue(role);
+		const onUnresolveAlert = vi.fn();
+		render(<RowActions alert={alert} onDeleteAlert={vi.fn()} onUnresolveAlert={onUnresolveAlert} />);
+		await user.click(screen.getByRole('button', { name: 'More actions' }));
+		expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument();
+		await user.click(await screen.findByRole('menuitem', { name: 'Unresolve' }));
+		expect(onUnresolveAlert).toHaveBeenCalledWith('alert-1');
+	});
+	it('hides the menu when Delete would have been its only item', () => {
 		vi.mocked(getUserRole).mockReturnValue(Role.Admin);
 		render(<RowActions alert={alert} onDeleteAlert={vi.fn()} />);
-		await user.click(screen.getByRole('button', { name: 'More actions' }));
-		expect(await screen.findByText('Delete')).toBeInTheDocument();
-	});
-	it('hides Delete for editors on resolved alerts', async () => {
-		const user = userEvent.setup();
-		vi.mocked(getUserRole).mockReturnValue(Role.Editor);
-		render(<RowActions alert={alert} onDeleteAlert={vi.fn()} onUnresolveAlert={vi.fn()} />);
-		await user.click(screen.getByRole('button', { name: 'More actions' }));
-		expect(await screen.findByText('Unresolve')).toBeInTheDocument();
-		expect(screen.queryByText('Delete')).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'More actions' })).not.toBeInTheDocument();
 	});
 	it('keeps Resolve visible for editors on active alerts', async () => {
 		const user = userEvent.setup();
