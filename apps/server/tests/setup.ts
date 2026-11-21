@@ -25,6 +25,11 @@ vi.setConfig({ testTimeout: 30000 });
 // for module-eval order — so keep this line ahead of any setup*() call.
 process.env.ALERTS_SNAPSHOT_TTL_MS = '0';
 
+// The server will not sign or verify a login token without a private JWT_SECRET of at
+// least 32 bytes (there is no fallback any more). A fixed, test-only value keeps every
+// test that logs in working; it is read per call, so setting it here is early enough.
+process.env.JWT_SECRET = 'test-only-jwt-secret-never-use-in-production';
+
 export async function setupDB(): Promise<Database.Database> {
 	const db = new Database(':memory:');
 	const dashboardRepo = new DashboardRepository(db);

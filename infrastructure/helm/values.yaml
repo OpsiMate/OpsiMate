@@ -196,7 +196,13 @@ persistence:
 secrets:
   # -- API token for backend authentication
   apiToken: ""
-  # -- Set to true to use existing secret instead of creating one
+  # -- Private secret that signs login sessions (JWT_SECRET), at least 32 bytes. Required
+  # unless existingSecret is set. Generate it with `openssl rand -hex 32`, pass it at install
+  # time (--set secrets.jwtSecret=...), never commit it, and keep it across upgrades:
+  # changing it signs everyone out.
+  jwtSecret: ""
+  # -- Name of an existing Secret to use instead of creating one. It must hold the keys
+  # API_TOKEN and JWT_SECRET.
   existingSecret: ""
 
 # -- ConfigMap configuration

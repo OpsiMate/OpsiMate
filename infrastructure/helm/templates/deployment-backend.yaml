@@ -45,6 +45,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "opsimate.secretName" . }}
                   key: API_TOKEN
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsimate.secretName" . }}
+                  key: JWT_SECRET
           {{- if .Values.backend.livenessProbe.enabled }}
           livenessProbe:
             httpGet:
