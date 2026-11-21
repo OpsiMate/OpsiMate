@@ -72,7 +72,10 @@ export class OncallController {
 		const teamId = this.parseTeamId(req, res);
 		if (teamId === null) return;
 		try {
-			await this.oncallBL.deleteTeam(teamId);
+			const deleted = await this.oncallBL.deleteTeam(teamId);
+			if (!deleted) {
+				return res.status(404).json({ success: false, error: 'Team not found' });
+			}
 			return res.json({ success: true, message: 'Team deleted' });
 		} catch (error) {
 			logger.error('Error deleting on-call team', error);
