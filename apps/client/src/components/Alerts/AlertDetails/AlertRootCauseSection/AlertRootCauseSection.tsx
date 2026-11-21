@@ -1,7 +1,7 @@
 import { useAlertRootCause, useRateRootCause } from '@/hooks/queries/rootCause';
 import { ScrollHintBox } from '../ScrollHintBox';
 import { ROOT_CAUSE_MIN_HEIGHT_CLASS } from './AlertRootCauseSection.constants';
-import { formatRelativeTime } from '@/lib/datetime';
+import { formatDateTime, formatTimestamp } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
 import { RootCauseRating } from '@OpsiMate/shared';
 import { MessageSquareQuote, SearchCheck, ThumbsDown, ThumbsUp } from 'lucide-react';
@@ -103,12 +103,20 @@ export const AlertRootCauseSection = ({ alertId }: AlertRootCauseSectionProps) =
 				<div className="flex shrink-0 items-center justify-between gap-2 border-t border-violet-400/30 pt-2">
 					<span className="text-xs text-violet-600/80 dark:text-violet-400/80">
 						{rootCause.source === 'ai' ? 'AI analysis' : 'via API'} ·{' '}
-						{formatRelativeTime(rootCause.updatedAt)}
+						<time dateTime={rootCause.updatedAt} title={formatDateTime(rootCause.updatedAt)}>
+							{formatTimestamp(rootCause.updatedAt)}
+						</time>
 					</span>
 					<div className="flex items-center gap-1">
 						{rootCause.rating && rootCause.ratedBy && (
 							<span className="text-xs text-muted-foreground mr-1">
-								rated by {rootCause.ratedBy} {formatRelativeTime(rootCause.ratedAt)}
+								rated by {rootCause.ratedBy} ·{' '}
+								<time
+									dateTime={rootCause.ratedAt ?? undefined}
+									title={formatDateTime(rootCause.ratedAt)}
+								>
+									{formatTimestamp(rootCause.ratedAt)}
+								</time>
 							</span>
 						)}
 						<RatingButton

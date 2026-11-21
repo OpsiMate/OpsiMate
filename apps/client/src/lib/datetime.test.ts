@@ -6,6 +6,7 @@ import {
 	formatRelativeTime,
 	formatShortDateTime,
 	formatTime,
+	formatTimestamp,
 	isSameLocalDay,
 	parseUTCDate,
 } from './datetime';
@@ -130,6 +131,41 @@ describe('input handling', () => {
 	test('callers can supply their own fallback', () => {
 		expect(formatDateTime(null, 'never')).toBe('never');
 		expect(formatShortDateTime('not-a-date', 'not-a-date')).toBe('not-a-date');
+	});
+});
+
+describe('formatTimestamp', () => {
+	const now = new Date(2026, 7, 11, 12, 0, 0); // Aug 11 2026, 12:00:00
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	test('this year: the time of day and the date, no year — even for a comment made minutes or weeks ago', () => {
+		const minutesAgo = new Date(2026, 7, 11, 11, 53, 7);
+		expect(formatTimestamp(minutesAgo)).toBe(formatShortDateTime(minutesAgo));
+		// A whole relative label, not the substring "ago": in Spanish, August abbreviates to "ago".
+		expect(formatTimestamp(minutesAgo)).not.toMatch(/\b\d+[mhd] ago\b|just now/);
+		expect(formatTimestamp(minutesAgo)).toMatch(/11:53/);
+		expect(formatTimestamp(minutesAgo)).not.toMatch(/2026/);
+		const weeksAgo = new Date(2026, 5, 2, 9, 0, 0);
+		expect(formatTimestamp(weeksAgo)).toBe(formatShortDateTime(weeksAgo));
+	});
+
+	test('another year: the year is shown too', () => {
+		const lastYear = new Date(2025, 11, 31, 23, 59, 0);
+		expect(formatTimestamp(lastYear)).toBe(formatLongDateTime(lastYear));
+		expect(formatTimestamp(lastYear)).toMatch(/2025/);
+	});
+
+	test('absent or unparseable values fall back', () => {
+		expect(formatTimestamp(null)).toBe('—');
+		expect(formatTimestamp('not-a-date', 'unknown')).toBe('unknown');
 	});
 });
 
