@@ -82,8 +82,9 @@ export OPSIMATE_JWT_SECRET=$(openssl rand -hex 32)
 # 3. Lint the chart
 helm lint . --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
 
-# 4. Dry-run to see generated manifests
-helm template opsimate . --debug --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
+# 4. Dry-run to see generated manifests. The output prints the Secret, so use a throwaway
+#    value here, never the real one
+helm template opsimate . --debug --set secrets.jwtSecret=dry-run-placeholder-not-a-real-secret
 
 # 5. Install with local values (both services public)
 helm install opsimate . -n opsimate --create-namespace \
@@ -333,10 +334,16 @@ kubectl logs -l app.kubernetes.io/component=frontend -n opsimate
 # Follow logs in real-time
 kubectl logs -f -l app.kubernetes.io/component=backend -n opsimate
 
-# Upgrade release (pass the same JWT secret as at install, or everyone is signed out)
-helm upgrade opsimate . -n opsimate --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
+# Upgrade release, keeping every value it was installed with: secrets.jwtSecret, or
+# secrets.existingSecret, included
+helm upgrade opsimate . -n opsimate --reuse-values
 
-# Upgrade with new values
+# First upgrade from a chart version without the JWT secret: add it once (not needed with
+# secrets.existingSecret, as long as that Secret has a JWT_SECRET key)
+helm upgrade opsimate . -n opsimate --reuse-values --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
+
+# Upgrade with new values: the file must hold the full configuration, so pass the same JWT
+# secret again (or keep secrets.existingSecret in the file), or everyone is signed out
 helm upgrade opsimate . -f values-prod.yaml -n opsimate --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
 
 # Rollback to previous version

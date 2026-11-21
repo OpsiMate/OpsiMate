@@ -111,7 +111,8 @@ Each source has a setup guide in the app (Integrations → Add) with the exact w
 ### Docker — nothing to clone
 
 ```bash
-# Once: the private secret that signs login sessions. Keep this .env file, and keep it private.
+# Once: the private secret that signs login sessions, in a .env only you can read. Keep it.
+touch .env && chmod 600 .env
 echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
