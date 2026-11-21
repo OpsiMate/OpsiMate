@@ -34,3 +34,30 @@ describe('AlertSummarySection scroll hint', () => {
 		expect(screen.getByTestId('scroll-hint')).toBeInTheDocument();
 	});
 });
+
+describe('AlertSummarySection text size', () => {
+	test('plain summary text is one step up from the rest of the panel', () => {
+		render(<AlertSummarySection summary="disk full on db-1" />);
+		const text = screen.getByText('disk full on db-1');
+		expect(text).toHaveClass('text-[15px]');
+		expect(text).not.toHaveClass('text-sm');
+	});
+
+	test('headings, code and tables in a rich summary move up with the body text', () => {
+		render(<AlertSummarySection summary="<h3>Cause</h3><p>disk full</p>" />);
+		const box = screen.getByText('Cause').parentElement as HTMLElement;
+		expect(box).toHaveClass(
+			'text-[15px]',
+			'[&_h1]:text-lg',
+			'[&_h2]:text-lg',
+			'[&_h3]:text-base',
+			'[&_h4]:text-base',
+			'[&_code]:text-sm',
+			'[&_table]:text-sm',
+			'[&_caption]:text-sm'
+		);
+		expect(box).not.toHaveClass('[&_h3]:text-sm');
+		expect(box).not.toHaveClass('[&_code]:text-xs');
+		expect(box).not.toHaveClass('[&_table]:text-xs');
+	});
+});
