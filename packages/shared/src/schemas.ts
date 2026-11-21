@@ -747,6 +747,8 @@ export const UpdateRetentionConfigSchema = z
 	.refine((v) => v.cleanupIntervalHours !== undefined || v.vacuumAfterCleanup !== undefined, {
 		message: 'Provide cleanupIntervalHours and/or vacuumAfterCleanup',
 	});
+export type RetentionPolicyUpdate = z.infer<typeof UpdateRetentionPolicySchema>;
+export type RetentionConfigUpdate = z.infer<typeof UpdateRetentionConfigSchema>;
 
 export const UpdateSilenceResetSettingsSchema = z
 	.object({

@@ -1,4 +1,10 @@
-import { RetentionConfig, RetentionPolicy, RetentionResource } from '@OpsiMate/shared';
+import {
+	RetentionConfig,
+	RetentionConfigUpdate,
+	RetentionPolicy,
+	RetentionPolicyUpdate,
+	RetentionResource,
+} from '@OpsiMate/shared';
 import Database from 'better-sqlite3';
 import { runAsync } from './db';
 
@@ -131,10 +137,7 @@ export class RetentionRepository {
 		});
 	}
 
-	async updatePolicy(
-		resourceType: RetentionResource,
-		updates: { enabled?: boolean; retentionDays?: number }
-	): Promise<void> {
+	async updatePolicy(resourceType: RetentionResource, updates: RetentionPolicyUpdate): Promise<void> {
 		return runAsync(() => {
 			const sets: string[] = [];
 			const params: (number | string)[] = [];
@@ -153,7 +156,7 @@ export class RetentionRepository {
 		});
 	}
 
-	async updateConfig(updates: { cleanupIntervalHours?: number; vacuumAfterCleanup?: boolean }): Promise<void> {
+	async updateConfig(updates: RetentionConfigUpdate): Promise<void> {
 		return runAsync(() => {
 			const sets: string[] = [];
 			const params: number[] = [];
