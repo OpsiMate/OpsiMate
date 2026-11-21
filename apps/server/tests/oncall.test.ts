@@ -247,6 +247,36 @@ describe('on-call team ids and missing teams', () => {
 		expect(members.body.error).toBe('Team not found');
 	});
 
+	test('deleting a team that does not exist is a 404', async () => {
+		const res = await sendWrite('delete', '/api/v1/oncall/teams/999999').set(
+			'Authorization',
+			`Bearer ${adminToken}`
+		);
+
+		expect(res.status).toBe(404);
+		expect(res.body.success).toBe(false);
+		expect(res.body.error).toBe('Team not found');
+	});
+
+	test('deleting a team that exists answers 200, and deleting the same id again is a 404', async () => {
+		const teamId = await createTeam('Disposable', null, [annId]);
+
+		const first = await sendWrite('delete', `/api/v1/oncall/teams/${teamId}`).set(
+			'Authorization',
+			`Bearer ${adminToken}`
+		);
+		expect(first.status).toBe(200);
+		expect(first.body.success).toBe(true);
+		expect(await bl.getTeam(teamId)).toBeNull();
+
+		const second = await sendWrite('delete', `/api/v1/oncall/teams/${teamId}`).set(
+			'Authorization',
+			`Bearer ${adminToken}`
+		);
+		expect(second.status).toBe(404);
+		expect(second.body.error).toBe('Team not found');
+	});
+
 	test('a non-numeric or non-positive team id is a 400 on every write', async () => {
 		for (const teamId of ['abc', '0']) {
 			const requests: [Verb, string][] = [
