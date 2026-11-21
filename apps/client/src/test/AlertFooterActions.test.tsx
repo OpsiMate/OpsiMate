@@ -5,7 +5,8 @@ import { AlertFooterActions } from '@/components/Alerts/AlertDetails/AlertFooter
 import { render, screen } from './test-utils';
 
 // The details panel's Resolve button: disabled, with the reason on hover, for an alert
-// its source fixes on its own; a plain button otherwise.
+// its source fixes on its own; a plain button otherwise. A resolved alert gets Unresolve
+// and no permanent delete.
 
 const alert = (fix?: string): Alert => ({
 	id: 'alert-1',
@@ -43,5 +44,16 @@ describe('AlertFooterActions', () => {
 		render(<AlertFooterActions alert={alert('manual')} isActive onDelete={onDelete} onSilence={vi.fn()} />);
 		await user.click(screen.getByRole('button', { name: 'Resolve' }));
 		expect(onDelete).toHaveBeenCalledWith('alert-1');
+	});
+
+	test('a resolved alert offers Unresolve and never a permanent delete', async () => {
+		const user = userEvent.setup();
+		const onDelete = vi.fn();
+		const onUnresolve = vi.fn();
+		render(<AlertFooterActions alert={alert()} isActive={false} onDelete={onDelete} onUnresolve={onUnresolve} />);
+		expect(screen.queryByRole('button', { name: /Delete/ })).not.toBeInTheDocument();
+		await user.click(screen.getByRole('button', { name: 'Unresolve' }));
+		expect(onUnresolve).toHaveBeenCalledWith('alert-1');
+		expect(onDelete).not.toHaveBeenCalled();
 	});
 });
