@@ -38,6 +38,7 @@ import { CallbackSettings } from '../components/Settings/CallbackSettings';
 import { LdapSettings } from '../components/Settings/LdapSettings';
 import { RootCauseGuide } from '../components/Settings/AiSettings/RootCauseGuide';
 import { McpGuide } from '../components/Settings/AiSettings/McpGuide';
+import { SettingsSectionHeader } from '../components/Settings/SettingsSectionHeader';
 import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import { AddUserModal } from '../components/AddUserModal';
 import { CustomFieldsTable } from '../components/CustomFieldsTable';
@@ -326,12 +327,10 @@ const Settings: React.FC = () => {
 									<TabsContent value="users" className="space-y-6">
 										<div className="flex justify-between items-center gap-4">
 											<div className="flex-1">
-												<h2 className="text-2xl font-semibold text-foreground">
-													User Management
-												</h2>
-												<p className="text-muted-foreground">
-													Manage user access and permissions for your Service instance.
-												</p>
+												<SettingsSectionHeader
+													title="User Management"
+													description="Manage user access and permissions for your Service instance."
+												/>
 											</div>
 											<div className="flex gap-2">
 												{selectedUsers.length > 0 && (
@@ -634,12 +633,10 @@ const Settings: React.FC = () => {
 									</TabsContent>
 
 									<TabsContent value="audit" className="space-y-6">
-										<div>
-											<h2 className="text-2xl font-semibold text-foreground">Audit Log</h2>
-											<p className="text-muted-foreground">
-												View activity logs for all dashboard operations and user actions.
-											</p>
-										</div>
+										<SettingsSectionHeader
+											title="Audit Log"
+											description="View activity logs for all dashboard operations and user actions."
+										/>
 										<Card>
 											<CardHeader>
 												<CardTitle>Activity Logs</CardTitle>
