@@ -18,6 +18,10 @@ services:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - CONFIG_FILE=/app/config/config.yml
+      # Signs login sessions; the backend refuses to start without it. Put it in a .env
+      # file next to this one (JWT_SECRET=<output of openssl rand -hex 32>), keep that file
+      # private, and keep the same value across restarts and upgrades.
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set in .env next to docker-compose.yml (generate one with openssl rand -hex 32)}
     restart: unless-stopped
 
   worker:

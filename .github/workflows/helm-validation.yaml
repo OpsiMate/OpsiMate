@@ -20,7 +20,21 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v5
 
+      # The chart needs a JWT secret, so lint both ways an operator can supply one. The
+      # values here are placeholders for rendering only, never real secrets.
       - name: Helm Lint
         run: |
           cd infrastructure/helm/
-          helm lint .
+          helm lint . --set secrets.jwtSecret=ci-placeholder-not-a-real-secret-0123456789
+          helm lint . --set secrets.existingSecret=opsimate-auth
+
+      # With neither, the chart must refuse to render rather than ship a backend that
+      # cannot start.
+      - name: Helm requires a JWT secret
+        run: |
+          cd infrastructure/helm/
+          if out=$(helm template opsimate . 2>&1); then
+            echo "helm template rendered without a JWT secret; it must fail"
+            exit 1
+          fi
+          echo "$out" | grep -q "secrets.jwtSecret is required"

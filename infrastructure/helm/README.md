@@ -75,24 +75,30 @@ Internet
 # 1. Navigate to helm chart
 cd infrastructure/helm
 
-# 2. Lint the chart
-helm lint .
+# 2. Create the secret that signs login sessions, once, and save it somewhere private:
+#    every upgrade needs the same value, and changing it signs everyone out
+export OPSIMATE_JWT_SECRET=$(openssl rand -hex 32)
 
-# 3. Dry-run to see generated manifests
-helm template opsimate . --debug
+# 3. Lint the chart
+helm lint . --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
 
-# 4. Install with local values (both services public)
+# 4. Dry-run to see generated manifests. The output prints the Secret, so use a throwaway
+#    value here, never the real one
+helm template opsimate . --debug --set secrets.jwtSecret=dry-run-placeholder-not-a-real-secret
+
+# 5. Install with local values (both services public)
 helm install opsimate . -n opsimate --create-namespace \
+  --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET" \
   --set service.frontend.type=LoadBalancer \
   --set service.backend.type=LoadBalancer
 
-# 5. Check pods are running
+# 6. Check pods are running
 kubectl get pods -n opsimate
 
-# 6. Check services
+# 7. Check services
 kubectl get svc -n opsimate
 
-# 7. Access application
+# 8. Access application
 #    Frontend: http://localhost:8080
 #    Backend:  http://localhost:3001 (API)
 ```
@@ -175,10 +181,21 @@ To reach the MCP server through the Ingress, add a path for it next to the backe
 
 ### Secrets
 
-| Parameter                | Description              | Default    |
-| ------------------------ | ------------------------ | ---------- |
-| `secrets.apiToken`       | API authentication token | `opsimate` |
-| `secrets.existingSecret` | Use existing secret      | `""`       |
+| Parameter                | Description                                                                                 | Default    |
+| ------------------------ | ------------------------------------------------------------------------------------------- | ---------- |
+| `secrets.apiToken`       | API authentication token                                                                    | `opsimate` |
+| `secrets.jwtSecret`      | **Required** unless `existingSecret` is set. Signs login sessions (`JWT_SECRET`), 32+ bytes | `""`       |
+| `secrets.existingSecret` | Name of an existing Secret to use; it must hold `API_TOKEN` and `JWT_SECRET`                | `""`       |
+
+The backend refuses to start without `JWT_SECRET`, and the chart refuses to render without one. Generate it with `openssl rand -hex 32`, pass it with `--set` rather than a committed values file, and keep the same value across upgrades: changing it signs everyone out. For production, prefer a Secret you manage yourself:
+
+```bash
+kubectl create namespace opsimate
+kubectl create secret generic opsimate-auth -n opsimate \
+  --from-literal=API_TOKEN="<your API token>" \
+  --from-literal=JWT_SECRET="$(openssl rand -hex 32)"
+helm install opsimate . -n opsimate --set secrets.existingSecret=opsimate-auth
+```
 
 ### Ingress
 
@@ -207,7 +224,8 @@ persistence:
 ```
 
 ```bash
-helm install opsimate . -f values-local.yaml -n opsimate --create-namespace
+helm install opsimate . -f values-local.yaml -n opsimate --create-namespace \
+  --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
 ```
 
 Access:
@@ -258,10 +276,12 @@ persistence:
 
 secrets:
   apiToken: "your-secure-test-token"
+  # jwtSecret: not in a values file. Pass it with --set (below) or use existingSecret.
 ```
 
 ```bash
-helm install opsimate . -f values-prod-ingress.yaml -n opsimate --create-namespace
+helm install opsimate . -f values-prod-ingress.yaml -n opsimate --create-namespace \
+  --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
 ```
 
 ### 3. AWS EKS with ALB Ingress
@@ -293,7 +313,8 @@ ingress:
 ```
 
 ```bash
-helm install opsimate . -f values-eks.yaml -n opsimate --create-namespace
+helm install opsimate . -f values-eks.yaml -n opsimate --create-namespace \
+  --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
 ```
 
 ## Useful Commands
@@ -313,11 +334,17 @@ kubectl logs -l app.kubernetes.io/component=frontend -n opsimate
 # Follow logs in real-time
 kubectl logs -f -l app.kubernetes.io/component=backend -n opsimate
 
-# Upgrade release
-helm upgrade opsimate . -n opsimate
+# Upgrade release, keeping every value it was installed with: secrets.jwtSecret, or
+# secrets.existingSecret, included
+helm upgrade opsimate . -n opsimate --reuse-values
 
-# Upgrade with new values
-helm upgrade opsimate . -f values-prod.yaml -n opsimate
+# First upgrade from a chart version without the JWT secret: add it once (not needed with
+# secrets.existingSecret, as long as that Secret has a JWT_SECRET key)
+helm upgrade opsimate . -n opsimate --reuse-values --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
+
+# Upgrade with new values: the file must hold the full configuration, so pass the same JWT
+# secret again (or keep secrets.existingSecret in the file), or everyone is signed out
+helm upgrade opsimate . -f values-prod.yaml -n opsimate --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
 
 # Rollback to previous version
 helm rollback opsimate -n opsimate

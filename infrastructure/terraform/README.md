@@ -132,7 +132,10 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main
 
 # 3. Deploy OpsiMate with Helm
 cd ../helm
+# The secret that signs login sessions: required. Save it privately; upgrades need the same value.
+export OPSIMATE_JWT_SECRET=$(openssl rand -hex 32)
 helm install opsimate . -n opsimate --create-namespace \
+  --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET" \
   --set service.frontend.type=ClusterIP \
   --set service.backend.type=ClusterIP \
   --set ingress.enabled=true \
