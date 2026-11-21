@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { COPIED_RESET_MS, useCopyToClipboard } from '@/hooks/useCopyToClipboard';
 
 const { toast } = vi.hoisted(() => ({ toast: vi.fn() }));
-vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast }) }));
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast }) }));
 const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
 const writeText = vi.fn();
 beforeEach(() => {

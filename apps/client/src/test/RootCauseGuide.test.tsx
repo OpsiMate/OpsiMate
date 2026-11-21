@@ -3,7 +3,7 @@ import { API_HOST } from '@/lib/api';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
 
-vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
+vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
 
 // The guide is documentation rendered as UI: what matters is that the endpoint it
 // prints is THIS deployment's, and that the contract it describes matches the server.

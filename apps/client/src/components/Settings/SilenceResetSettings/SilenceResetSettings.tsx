@@ -1,7 +1,7 @@
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { useSilenceResetSettings, useUpdateSilenceResetSettings } from '@/hooks/queries/alerts/useSilenceReset';
 import { UpdateSilenceResetSettings } from '@OpsiMate/shared';
 import { Loader2 } from 'lucide-react';
