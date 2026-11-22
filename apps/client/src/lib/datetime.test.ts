@@ -138,9 +138,14 @@ describe('formatTimestamp', () => {
 	const now = new Date(2026, 7, 11, 12, 0, 0); // Aug 11 2026, 12:00:00
 	// The formatters use the host's default locale and numbering system, so the expected
 	// digits are produced the same way rather than written as ASCII.
+	// The clock is pinned the way the formatters pin it (h23, see datetime.ts). The year is
+	// taken as a part: formatted on its own some locales add an era ("พ.ศ. 2568") that the
+	// combined date-time form leaves out.
 	const localeClock = (date: Date) =>
-		new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
-	const localeYear = (date: Date) => new Intl.DateTimeFormat(undefined, { year: 'numeric' }).format(date);
+		new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date);
+	const localeYear = (date: Date) =>
+		new Intl.DateTimeFormat(undefined, { year: 'numeric' }).formatToParts(date).find((p) => p.type === 'year')
+			?.value ?? '';
 
 	beforeEach(() => {
 		vi.useFakeTimers();
