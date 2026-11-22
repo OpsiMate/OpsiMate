@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest';
 import { AlertComment } from '@OpsiMate/shared';
 import { AlertLastCommentSection } from '@/components/Alerts/AlertDetails/AlertLastCommentSection';
 import { render, screen } from './test-utils';
+import { formatDateTime, formatTimestamp } from '@/lib/datetime';
 
 const comments = vi.hoisted(() => ({ data: [] as AlertComment[] }));
 const comment = (id: string, text: string, at: string): AlertComment => ({
@@ -26,6 +27,11 @@ describe('AlertLastCommentSection', () => {
 		expect(screen.getByText('Rolled back to 11.08-1, p99 recovering')).toBeInTheDocument();
 		expect(screen.getByText('Idan QA')).toBeInTheDocument();
 		expect(screen.queryByText('older note')).toBeNull();
+		// The moment it was written, not "1d ago": comments carry over between occurrences.
+		const when = screen.getByText((_, el) => el?.tagName === 'TIME');
+		expect(when).toHaveTextContent(formatTimestamp('2026-11-02T10:00:00Z'));
+		expect(when).not.toHaveTextContent(/ago/);
+		expect(when).toHaveAttribute('title', formatDateTime('2026-11-02T10:00:00Z'));
 	});
 
 	test('renders nothing when the alert has no comments', () => {

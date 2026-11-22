@@ -1,6 +1,6 @@
 import { useAlertComments } from '@/hooks/queries/alertComments';
 import { useUsers } from '@/hooks/queries/users';
-import { formatRelativeTime } from '@/lib/datetime';
+import { formatDateTime, formatTimestamp } from '@/lib/datetime';
 import { MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';
 import { CollapsibleSection } from '../CollapsibleSection';
@@ -67,9 +67,13 @@ export const AlertLastCommentSection = ({ alertId, onViewAll }: AlertLastComment
 							{initials(authorName)}
 						</span>
 						<span className="text-xs font-medium truncate">{authorName}</span>
-						<span className="text-xs text-muted-foreground shrink-0">
-							{formatRelativeTime(latest.createdAt)}
-						</span>
+						<time
+							className="text-xs text-muted-foreground shrink-0"
+							dateTime={latest.createdAt}
+							title={formatDateTime(latest.createdAt)}
+						>
+							{formatTimestamp(latest.createdAt)}
+						</time>
 					</div>
 					<p className="text-sm text-foreground whitespace-pre-wrap wrap-break-word line-clamp-4">
 						{latest.comment}

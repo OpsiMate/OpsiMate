@@ -6,6 +6,7 @@ import {
 	formatRelativeTime,
 	formatShortDateTime,
 	formatTime,
+	formatTimestamp,
 	isSameLocalDay,
 	parseUTCDate,
 } from './datetime';
@@ -130,6 +131,51 @@ describe('input handling', () => {
 	test('callers can supply their own fallback', () => {
 		expect(formatDateTime(null, 'never')).toBe('never');
 		expect(formatShortDateTime('not-a-date', 'not-a-date')).toBe('not-a-date');
+	});
+});
+
+describe('formatTimestamp', () => {
+	const now = new Date(2026, 7, 11, 12, 0, 0); // Aug 11 2026, 12:00:00
+	// The formatters use the host's default locale and numbering system, so the expected
+	// digits are produced the same way rather than written as ASCII.
+	// The clock is pinned the way the formatters pin it (h23, see datetime.ts). The year is
+	// taken as a part: formatted on its own some locales add an era ("พ.ศ. 2568") that the
+	// combined date-time form leaves out.
+	const localeClock = (date: Date) =>
+		new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(date);
+	const localeYear = (date: Date) =>
+		new Intl.DateTimeFormat(undefined, { year: 'numeric' }).formatToParts(date).find((p) => p.type === 'year')
+			?.value ?? '';
+
+	beforeEach(() => {
+		vi.useFakeTimers();
+		vi.setSystemTime(now);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	test('this year: the time of day and the date, no year — even for a comment made minutes or weeks ago', () => {
+		const minutesAgo = new Date(2026, 7, 11, 11, 53, 7);
+		expect(formatTimestamp(minutesAgo)).toBe(formatShortDateTime(minutesAgo));
+		// A whole relative label, not the substring "ago": in Spanish, August abbreviates to "ago".
+		expect(formatTimestamp(minutesAgo)).not.toMatch(/\b\d+[mhd] ago\b|just now/);
+		expect(formatTimestamp(minutesAgo)).toContain(localeClock(minutesAgo));
+		expect(formatTimestamp(minutesAgo)).not.toContain(localeYear(minutesAgo));
+		const weeksAgo = new Date(2026, 5, 2, 9, 0, 0);
+		expect(formatTimestamp(weeksAgo)).toBe(formatShortDateTime(weeksAgo));
+	});
+
+	test('another year: the year is shown too', () => {
+		const lastYear = new Date(2025, 11, 31, 23, 59, 0);
+		expect(formatTimestamp(lastYear)).toBe(formatLongDateTime(lastYear));
+		expect(formatTimestamp(lastYear)).toContain(localeYear(lastYear));
+	});
+
+	test('absent or unparseable values fall back', () => {
+		expect(formatTimestamp(null)).toBe('—');
+		expect(formatTimestamp('not-a-date', 'unknown')).toBe('unknown');
 	});
 });
 
