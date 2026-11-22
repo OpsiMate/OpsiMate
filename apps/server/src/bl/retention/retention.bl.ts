@@ -1,7 +1,9 @@
 import {
 	Logger,
 	RetentionConfig,
+	RetentionConfigUpdate,
 	RetentionPolicy,
+	RetentionPolicyUpdate,
 	RetentionResource,
 	RetentionRunResult,
 	RetentionSettings,
@@ -22,10 +24,7 @@ export class RetentionBL {
 		return { config, policies };
 	}
 
-	async updatePolicy(
-		resourceType: RetentionResource,
-		updates: { enabled?: boolean; retentionDays?: number }
-	): Promise<RetentionPolicy> {
+	async updatePolicy(resourceType: RetentionResource, updates: RetentionPolicyUpdate): Promise<RetentionPolicy> {
 		await this.retentionRepo.updatePolicy(resourceType, updates);
 		const policies = await this.retentionRepo.getPolicies();
 		const updated = policies.find((p) => p.resourceType === resourceType);
@@ -35,10 +34,7 @@ export class RetentionBL {
 		return updated;
 	}
 
-	async updateConfig(updates: {
-		cleanupIntervalHours?: number;
-		vacuumAfterCleanup?: boolean;
-	}): Promise<RetentionConfig> {
+	async updateConfig(updates: RetentionConfigUpdate): Promise<RetentionConfig> {
 		await this.retentionRepo.updateConfig(updates);
 		return this.retentionRepo.getConfig();
 	}
