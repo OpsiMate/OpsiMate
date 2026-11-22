@@ -30,9 +30,9 @@
 	},
 	"devDependencies": {
 		"@types/node": "^26.6.6",
-		"eslint": "^10.14.0",
+		"eslint": "^10.15.0",
 		"typescript": "^5.9.3",
-		"vite": "^8.3.5",
+		"vite": "^8.3.8",
 		"vite-plugin-dts": "^5.1.2"
 	}
 }
