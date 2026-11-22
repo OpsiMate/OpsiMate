@@ -108,16 +108,22 @@ Each source has a setup guide in the app (Integrations → Add) with the exact w
 
 ## Run it
 
-### Docker — nothing to clone
+### Docker — one command, nothing to clone
 
 ```bash
-# Once: the private secret that signs login sessions, in a .env only you can read. Keep it.
-touch .env && chmod 600 .env
-echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
 
-Upgrading an install from before `JWT_SECRET` was required: create the `.env` above, and fetch the latest `docker-compose.yml` (or add `- JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}` under the backend's `environment`). Everyone signs in again once, since sessions signed with the old public key no longer work.
+The installer creates `.env` with a private `JWT_SECRET`, the secret that signs login sessions, readable only by you. Back it up, and keep it across restarts and upgrades: changing it signs everyone out.
+
+Running `docker-compose.yml` yourself, without the installer? Create the `.env` first; the backend refuses to start without it:
+
+```bash
+touch .env && chmod 600 .env
+echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+```
+
+Upgrading an install from before `JWT_SECRET` was required: fetch the latest `docker-compose.yml` (or add `- JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}` under the backend's `environment`), then run the installer again, which creates the `.env`. Everyone signs in again once, since sessions signed with the old public key no longer work.
 
 **Access the application:**
 

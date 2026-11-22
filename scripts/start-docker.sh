@@ -44,24 +44,82 @@ if ! grep -q 'JWT_SECRET' docker-compose.yml; then
   exit 1
 fi
 
+print_jwt_secret_instructions() {
+  echo ""
+  echo "OpsiMate needs a private secret to sign login sessions."
+  echo "Create one in a .env next to docker-compose.yml, then run this script again:"
+  echo ""
+  echo '  touch .env && chmod 600 .env'
+  echo '  echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env'
+  echo ""
+  echo "Keep .env private, and keep the same value across restarts and upgrades:"
+  echo "changing it signs everyone out."
+}
+
+# Prints 32 random bytes as 64 hex characters, or nothing when this host has no way to make
+# them: openssl first, then /dev/urandom for minimal hosts without it.
+generate_jwt_secret() {
+  secret=""
+  if command -v openssl >/dev/null 2>&1; then
+    secret=$(openssl rand -hex 32 2>/dev/null) || secret=""
+  fi
+  if [ "${#secret}" -ne 64 ] && [ -r /dev/urandom ]; then
+    secret=$(head -c 32 /dev/urandom 2>/dev/null | od -An -tx1 | tr -d ' \n') || secret=""
+  fi
+  case "$secret" in
+    *[!0-9a-f]*) secret="" ;;
+  esac
+  if [ "${#secret}" -eq 64 ]; then
+    printf '%s' "$secret"
+  fi
+}
+
 # The backend signs login sessions with JWT_SECRET and refuses to start without it. Ask
 # Compose itself whether it can resolve the file: it reads the shell and .env exactly as
 # `up` will (spaces around =, export, quotes), and the file's ${JWT_SECRET:?...} fails
-# when the secret is missing or empty. It is not generated here on purpose: the secret is
-# yours to create and keep.
+# when the secret is missing or empty.
+#
+# Missing or empty, and not set in the shell: this is a first run, or an install from before
+# the secret was required. Generate it into .env, so the one-line install just works. A value
+# set in the shell, even an empty one, wins over .env in Compose, so then .env is left alone
+# and the check below explains. The server and docker-compose.yml still refuse to run without
+# the secret: only this script creates one.
+if ! compose_error=$(docker compose config --quiet 2>&1) &&
+  echo "$compose_error" | grep -q 'JWT_SECRET' &&
+  [ -z "${JWT_SECRET+set}" ]; then
+  jwt_secret=$(generate_jwt_secret)
+  if [ -z "$jwt_secret" ]; then
+    echo ""
+    echo "Could not generate JWT_SECRET: neither openssl nor /dev/urandom is usable here."
+    print_jwt_secret_instructions
+    exit 1
+  fi
+  # Private before the secret goes in: a new .env is created 600, and an existing one is
+  # made 600 first.
+  touch .env
+  chmod 600 .env
+  # Compose reads the last JWT_SECRET line, so an empty one already in .env is overridden.
+  # Start on a new line if the file does not end with one, or the secret would join the
+  # last line.
+  if [ -s .env ] && [ -n "$(tail -c 1 .env)" ]; then
+    echo "" >> .env
+  fi
+  echo "JWT_SECRET=$jwt_secret" >> .env
+  jwt_secret=""
+  echo "Generated a private JWT_SECRET in .env: keep that file and back it up, since losing or changing it signs everyone out."
+fi
+
 if ! compose_error=$(docker compose config --quiet 2>&1); then
   echo ""
   echo "$compose_error"
   if echo "$compose_error" | grep -q 'JWT_SECRET'; then
-    echo ""
-    echo "OpsiMate needs a private secret to sign login sessions."
-    echo "Create one in a .env next to docker-compose.yml, then run this script again:"
-    echo ""
-    echo '  touch .env && chmod 600 .env'
-    echo '  echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env'
-    echo ""
-    echo "Keep .env private, and keep the same value across restarts and upgrades:"
-    echo "changing it signs everyone out."
+    if [ -n "${JWT_SECRET+set}" ]; then
+      echo ""
+      echo "JWT_SECRET is set but empty in your shell, and a shell value wins over .env."
+      echo "Run 'unset JWT_SECRET' and run this script again, or export a private value."
+    else
+      print_jwt_secret_instructions
+    fi
   fi
   exit 1
 fi
