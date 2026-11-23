@@ -138,8 +138,6 @@ describe('GET /metrics', () => {
 });
 
 describe('Prometheus metrics tests', () => {
-	// add the test Prometheus #1316
-
 	async function match_counter(alertName: string): Promise<number> {
 		const metrics = await app.get('/metrics');
 		const match = metrics.text.match(new RegExp(`^${alertName} (\\S+)$`, 'm'));
@@ -267,14 +265,14 @@ describe('Prometheus metrics tests', () => {
 
 	test('event loop utilization : mesure event loop value with opsimate_event_loop_utilization', async () => {
 		const metricsOne = await app.get('/metrics');
-		const matchOne = metricsOne.text.match(/^opsimate_event_loop_utilization\s+([\d.]+)/m);
+		const matchOne = metricsOne.text.match(/^opsimate_event_loop_utilization (\S+)$/m);
 		const valueOne = Number(matchOne?.[1]);
 
 		expect(Number.isFinite(valueOne)).toBe(true);
 		expect(0 <= valueOne && 1 >= valueOne).toBe(true);
 
 		const metricsTwo = await app.get('/metrics');
-		const matchTwo = metricsTwo.text.match(/^opsimate_event_loop_utilization\s+([\d.]+)/m);
+		const matchTwo = metricsTwo.text.match(/^opsimate_event_loop_utilization (\S+)$/m);
 		const valueTwo = Number(matchTwo?.[1]);
 
 		expect(Number.isFinite(valueTwo)).toBe(true);
