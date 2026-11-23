@@ -135,174 +135,174 @@ describe('GET /metrics', () => {
 		const allowed = await app.get('/metrics').set('Authorization', 'Bearer scrape-secret');
 		expect(allowed.status).toBe(200);
 	});
+});
 
+describe('Prometheus metrics tests', () => {
 	// add the test Prometheus #1316
 
-	// manual unsilence : opsimate_alerts_unsilenced_total goes up by exactly 1
-	test('manual unsilence increments the opsimate_alerts_unsilences_total by 1', async () => {
+	async function match_counter(alertName: string): Promise<number> {
+		const metrics = await app.get('/metrics');
+		const match = metrics.text.match(new RegExp(`^${alertName} (\\S+)$`, 'm'));
+
+		if (!match) {
+			throw new Error('metric not found : ' + alertName);
+		}
+		const count_before = Number(match[1]);
+		return count_before;
+	}
+
+	test('manual unsilence increments the opsimate_alerts_unsilenced_total by 1', async () => {
 		// silenced alert
 		insertSilencedAlert('indefinite', null);
 
-		const metricsBefore = await app.get('/metrics');
-		const matchBefore = metricsBefore.text.match(/^opsimate_alerts_unsilenced_total (\S+)$/m);
-		const count_before = Number(matchBefore?.[1]);
+		// before counter
+		const count_before = await match_counter('opsimate_alerts_unsilenced_total');
 
-		const res = await app
-			.patch('/api/v1/alerts/indefinite/unsilence')
-			.set('Authorization', `Bearer ${jwtToken}`)
-			.send({ id: 'indefinite' });
+		const res = await app.patch('/api/v1/alerts/indefinite/unsilence').set('Authorization', `Bearer ${jwtToken}`);
 
 		expect(res.status).toBe(200);
 
-		const metricsAfter = await app.get('/metrics');
-		const matchAfter = metricsAfter.text.match(/^opsimate_alerts_unsilenced_total (\S+)$/m);
-		const count_after = Number(matchAfter?.[1]);
+		// after counter
+		const count_after = await match_counter('opsimate_alerts_unsilenced_total');
 
 		expect(count_after - count_before).toBe(1);
-
-		const res_two = await app
-			.patch('/api/v1/alerts/nonexistent/unsilence')
-			.set('Authorization', `Bearer ${jwtToken}`);
-
-		expect(res_two.status).toBe(404);
-
-		const metricsAfterTwo = await app.get('/metrics');
-		const matchAfterTwo = metricsAfterTwo.text.match(/^opsimate_alerts_unsilenced_total (\S+)$/m);
-		const count_after_two = Number(matchAfterTwo?.[1]);
-
-		expect(count_after_two - count_after).toBe(0);
 	});
 
-	// time expiry
-	test('timer expiry increment the counter by two', async () => {
-		//Timer expiry: two silenced alerts whose silencedUntil is an hour in the past,
-		// then GET /api/v1/alerts (the listing runs the sweep)
-		// → the counter goes up by exactly 2.
-		// A silence whose silencedUntil is in the future does not count.
+	test('manual unsilence : call to a nonnexistant id does not move the counter', async () => {
+		// before counter
+		const count_before = await match_counter('opsimate_alerts_unsilenced_total');
 
-		const metricsBefore = await app.get('/metrics');
-		const matchBefore = metricsBefore.text.match(/^opsimate_alerts_unsilenced_total (\S+)$/m);
-		const count_before = Number(matchBefore?.[1]);
+		// call with nonexistent id
+		const res = await app.patch('/api/v1/alerts/nonexistent/unsilence').set('Authorization', `Bearer ${jwtToken}`);
 
+		expect(res.status).toBe(404);
+
+		// after counter
+		const count_after = await match_counter('opsimate_alerts_unsilenced_total');
+
+		expect(count_after - count_before).toBe(0);
+	});
+
+	test('timer expiry increment the counter by two for alerts in the past but not for future', async () => {
+		// before counter
+		const count_before = await match_counter('opsimate_alerts_unsilenced_total');
+
+		// silenced alerts : silencedUntil an hour in the past
 		insertSilencedAlert('expiredOne', new Date(Date.now() - HOUR_MS).toISOString());
 		insertSilencedAlert('expiredTwo', new Date(Date.now() - HOUR_MS).toISOString());
+
+		// silenced alerts : silencedUntil an hour in the future
+		insertSilencedAlert('futureOne', new Date(Date.now() + HOUR_MS).toISOString());
 
 		const res = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
 
 		expect(res.status).toBe(200);
 
-		const metricsAfter = await app.get('/metrics');
-		const matchAfter = metricsAfter.text.match(/^opsimate_alerts_unsilenced_total (\S+)$/m);
-		const count_after = Number(matchAfter?.[1]);
+		// after counter
+		const count_after = await match_counter('opsimate_alerts_unsilenced_total');
 
 		expect(count_after - count_before).toBe(2);
-
-		insertSilencedAlert('futureOne', new Date(Date.now() + HOUR_MS).toISOString());
-
-		const res2 = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
-
-		expect(res2.status).toBe(200);
-
-		const metricsAfterTwo = await app.get('/metrics');
-		const matchAfterTwo = metricsAfterTwo.text.match(/^opsimate_alerts_unsilenced_total (\S+)$/m);
-		const count_after_two = Number(matchAfterTwo?.[1]);
-
-		expect(count_after_two - count_after).toBe(0);
 	});
 
-	// Daily reset
 	test('Daily reset : the counter goes up by the number of silence cleared', async () => {
-		//Daily reset: P
-		// UT /api/v1/alerts/silence-reset with
-		// { enabled: true, hour: new Date().getHours() },
-		// a silenced alert whose silenced_at is
-		// backdated by a day (as the daily-reset test
-		// in apps/server/tests/alerts.test.ts does),
-		// then GET /api/v1/alerts →
-		// the counter goes up by the number of silences cleared.
-		// Turn the reset off again afterwards
-		// (db.exec('DELETE FROM silence_reset_config'), a
-		// s alerts.test.ts does in beforeEach)
-		// so it can't leak into other tests.
-
 		try {
 			const res = await app
-				.get('/api/v1/alerts/silence-reset')
+				.put('/api/v1/alerts/silence-reset')
 				.set('Authorization', `Bearer ${jwtToken}`)
 				.send({ enabled: true, hour: new Date().getHours() });
 
 			expect(res.status).toBe(200);
 
-			insertSilencedAlert('dailyResetOne', new Date(Date.now() - HOUR_MS).toISOString());
+			insertSilencedAlert('dailyResetOne', null);
+
+			// backdate silenced_at by a day
+			const backdated = await app
+				.patch(`/api/v1/alerts/dailyResetOne/silence`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ silencedUntil: new Date(Date.now() + HOUR_MS).toISOString() });
+
+			expect(backdated.status).toBe(200);
 
 			db.prepare(`UPDATE alerts SET silenced_at = ? WHERE id = ?`).run(
 				new Date(Date.now() - 24 * HOUR_MS).toISOString(),
-				'expiredOne'
+				'dailyResetOne'
 			);
 
-			const metricsBefore = await app.get('/metrics');
-			const matchBefore = metricsBefore.text.match(/^opsimate_alerts_unsilenced_total (\S+)$/m);
-			const count_before = Number(matchBefore?.[1]);
+			// before counter
+			const count_before = await match_counter('opsimate_alerts_unsilenced_total');
 
-			const res_two = await app
-				.get('/api/v1/alerts')
-				.set('Authorization', `Bearer ${jwtToken}`)
-				.send({ enabled: true, hour: new Date().getHours() });
+			const res_two = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
 
 			expect(res_two.status).toBe(200);
 
-			const metricsAfter = await app.get('/metrics');
-			const matchAfter = metricsAfter.text.match(/^opsimate_alerts_unsilenced_total (\S+)$/m);
-			const count_after = Number(matchAfter?.[1]);
+			// after counter
+			const count_after = await match_counter('opsimate_alerts_unsilenced_total');
 
-			expect(count_after - count_before).toBe(1);
+			// m-3 in beforeall is counted
+			expect(count_after - count_before).toBe(2);
 		} finally {
 			db.exec('DELETE FROM silence_reset_config');
 		}
 	});
 
-	// batch size
-	test('Batch size ', async () => {
-		// Batch size: one POST /api/v1/alerts/custom
-		// (body as in the existing ingestion test)
-		// → opsimate_ingest_batch_size_count and opsimate_ingest_batch_size_sum
-		// each go up by 1.
+	test('ingest batch size increments sum and count by 1', async () => {
+		// before counter
+		const count_before = await match_counter('opsimate_ingest_batch_size_count');
+		const count_before_sum = await match_counter('opsimate_ingest_batch_size_sum');
 
-		const metrics = await app.get('/metrics');
-		const matchbatch_size = metrics.text.match(/^opsimate_ingest_batch_size_count (\S+)$/m);
-		const matchbatch_size_sum = metrics.text.match(/^opsimate_ingest_batch_size_sum (\S+)$/m);
-		const count_before = Number(matchbatch_size?.[1]);
-		const count_before_sum = Number(matchbatch_size_sum?.[1]);
-
+		// Post call
 		const res = await app
 			.post('/api/v1/alerts/custom')
 			.set('Authorization', `Bearer ${jwtToken}`)
 			.send({ id: 'batch-size-1', alertName: 'batch size test', tags: { severity: 'critical' } });
 		expect(res.status).toBe(200);
 
-		const metricsAfter = await app.get('/metrics');
-		const matchbatch_size_after = metricsAfter.text.match(/^opsimate_ingest_batch_size_count (\S+)$/m);
-		const matchbatch_size_sum_after = metricsAfter.text.match(/^opsimate_ingest_batch_size_sum (\S+)$/m);
-		const count_after = Number(matchbatch_size_after?.[1]);
-		const count_after_sum = Number(matchbatch_size_sum_after?.[1]);
+		// after counter
+		const count_after = await match_counter('opsimate_ingest_batch_size_count');
+		const count_after_sum = await match_counter('opsimate_ingest_batch_size_sum');
 
 		expect(count_after - count_before).toBe(1);
 		expect(count_after_sum - count_before_sum).toBe(1);
 	});
 
-	// event loop utilization
-	test('event loop', async () => {
-		// present on two scrapes
-		// finit number between 0 and 1 Batch size:
+	test('event loop utilization : mesure event loop value with opsimate_event_loop_utilization', async () => {
+		const metricsOne = await app.get('/metrics');
+		const matchOne = metricsOne.text.match(/^opsimate_event_loop_utilization\s+([\d.]+)/m);
+		const valueOne = Number(matchOne?.[1]);
+
+		expect(Number.isFinite(valueOne)).toBe(true);
+		expect(0 <= valueOne && 1 >= valueOne).toBe(true);
+
+		const metricsTwo = await app.get('/metrics');
+		const matchTwo = metricsTwo.text.match(/^opsimate_event_loop_utilization\s+([\d.]+)/m);
+		const valueTwo = Number(matchTwo?.[1]);
+
+		expect(Number.isFinite(valueTwo)).toBe(true);
+		expect(0 <= valueTwo && 1 >= valueTwo).toBe(true);
 	});
 
-	// unmatched route
-	test('unmatchd route', async () => {
-		// Unmatched route: GET /no-such-path
-		// → 404, and the next scrape has a
-		// opsimate_http_request_duration_seconds_count
-		// sample with route="unmatched"
-		// and status_code="404".
-		// No label contains no-such-path.
+	test('unmatched route return 404 and write route="unmatched" in opsimate_http_request_duration_seconds_count', async () => {
+		// no such path call
+		const res = await app.get('/no-such-path').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(404);
+
+		// get metrics
+		const metrics = await app.get('/metrics');
+
+		// verify right metrics
+		const match_found = metrics.text
+			.split('\n')
+			.filter(
+				(str) =>
+					str.startsWith('opsimate_http_request_duration_seconds_count') &&
+					str.includes('route="unmatched"') &&
+					str.includes('status_code="404"')
+			);
+
+		// wrong metrics should not be found
+		const match_not_found = metrics.text.split('\n').filter((str) => str.includes('route="/no-such-path"'));
+
+		expect(match_found.length).toBeGreaterThan(0);
+		expect(match_not_found.length).toBe(0);
 	});
 });
