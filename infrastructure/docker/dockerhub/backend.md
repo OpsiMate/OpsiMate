@@ -25,6 +25,7 @@ Or with a compose file, Helm chart or Terraform: see the [deployment guide](http
 
 | Variable | Purpose |
 |---|---|
+| `JWT_SECRET` | **Required.** Private secret that signs login sessions, at least 32 bytes (`openssl rand -hex 32`). The server refuses to start without it; keep the same value across restarts |
 | `API_TOKEN` | Token that webhook sources must send (default `opsimate`; change it) |
 | `PORT` | API port (default `3001`) |
 | `CONFIG_FILE` | Optional YAML config path |

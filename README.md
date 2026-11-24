@@ -114,6 +114,17 @@ Each source has a setup guide in the app (Integrations → Add) with the exact w
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
 
+The installer creates `.env` with a private `JWT_SECRET`, the secret that signs login sessions, readable only by you. Back it up, and keep it across restarts and upgrades: changing it signs everyone out.
+
+Running `docker-compose.yml` yourself, without the installer? Create the `.env` first; the backend refuses to start without it:
+
+```bash
+touch .env && chmod 600 .env
+echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
+```
+
+Upgrading an install from before `JWT_SECRET` was required: fetch the latest `docker-compose.yml` (or add `- JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}` under the backend's `environment`), then run the installer again, which creates the `.env`. Everyone signs in again once, since sessions signed with the old public key no longer work.
+
 **Access the application:**
 
 - **Backend:** [http://localhost:3001](http://localhost:3001)
@@ -152,7 +163,7 @@ security:
   api_token: "change-me"
 ```
 
-Set `ENCRYPTION_KEY` (credentials at rest — the server warns at startup if it's missing) and `JWT_SECRET` (session signing) in the environment for anything beyond a laptop.
+`JWT_SECRET` (session signing) is required: the server refuses to start without a private value of at least 32 bytes (`openssl rand -hex 32`). Keep it out of source control and keep it the same across restarts, since changing it signs everyone out. Also set `ENCRYPTION_KEY` (credentials at rest — the server warns at startup if it's missing) for anything beyond a laptop.
 
 ## Contributing
 

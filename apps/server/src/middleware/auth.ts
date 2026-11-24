@@ -3,8 +3,7 @@ import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { Role, User } from '@OpsiMate/shared';
 import { getSecurityConfig } from '../config/config.ts';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
+import { getJwtSecret } from '../utils/jwtSecret.ts';
 
 export interface AuthenticatedRequest extends Request {
 	user?: User;
@@ -102,7 +101,8 @@ function authenticateUserJWT(
 	const token = bearerToken.split(' ')[1];
 
 	try {
-		const payload = jwt.verify(token, JWT_SECRET) as User;
+		// Only the algorithm the server signs with: a token naming any other is refused.
+		const payload = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] }) as User;
 		req.user = payload;
 
 		// Viewer edit restrictions
