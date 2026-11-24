@@ -206,7 +206,7 @@ describe('Prometheus metrics tests', () => {
 		try {
 			// fix the date
 			vi.useFakeTimers({ toFake: ['Date'] });
-			vi.setSystemTime(new Date('2026-11-24T21:00:00'));
+			vi.setSystemTime(new Date('2024-11-24T21:00:00'));
 
 			const res = await app
 				.put('/api/v1/alerts/silence-reset')
@@ -242,9 +242,8 @@ describe('Prometheus metrics tests', () => {
 
 			// m-3 in beforeall is counted
 			expect(count_after - count_before).toBe(2);
-
-			db.exec('DELETE FROM silence_reset_config');
 		} finally {
+			db.exec('DELETE FROM silence_reset_config');
 			vi.useRealTimers();
 		}
 	});
