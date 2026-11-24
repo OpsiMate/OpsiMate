@@ -11,8 +11,9 @@ import { ApiRouteDoc, errors } from '../registry';
 import { WebhookAcceptedSchema } from '../schemas';
 
 const TOKEN_NOTE =
-	'Authenticate with the instance API token: the `x-api-token` header, or `?api_token=` in the URL ' +
-	'for senders that can only call a plain URL.';
+	'Authenticate with the instance API token: the `x-api-token` header, `Authorization: Bearer <api token>` ' +
+	'for senders that can only keep a secret in the Authorization header (Grafana contact points), or ' +
+	'`?api_token=` in the URL for senders that can only call a plain URL.';
 
 // The runtime schema accepts any `status` on purpose (it used to be ignored, and senders
 // already put values like "active" there); the docs describe what it means.

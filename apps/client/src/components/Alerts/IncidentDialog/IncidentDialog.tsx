@@ -14,7 +14,7 @@ interface IncidentDialogProps {
 // to an EXISTING one (the form asks which), and edit an incident's name and details.
 export const IncidentDialog = ({ target, onOpenChange, onSubmit, isSubmitting }: IncidentDialogProps) => (
 	<Dialog open={target !== null} onOpenChange={onOpenChange}>
-		<DialogContent className="sm:max-w-md">
+		<DialogContent className="overflow-hidden sm:max-w-md">
 			{/* The form lives inside the content, which unmounts on close: every opening
 			    starts from the target's values, with nothing left over from the last one. */}
 			{target && (

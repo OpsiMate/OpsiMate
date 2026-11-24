@@ -14,6 +14,8 @@ import {
 	AlertHistoryEventType,
 	AlertStatus,
 	AlertType,
+	AUTO_FIX_RESOLVE_REFUSED,
+	isAutoFixed,
 	Logger,
 	normalizeAlertSeverity,
 	SilenceResetSettings,
@@ -136,12 +138,13 @@ export type IncomingAlert = Omit<Alert, 'createdAt' | 'isSilenced' | 'severity'>
 	severity?: string;
 	// Who the source says owns this alert: an email, or a bare name the default login
 	// domain completes. The generic webhook's top-level `owner`; every source also reads
-	// an `owner` tag. Applied only when the alert has no owner yet — never unassigns.
+	// an `owner` tag. A name fills an empty owner only; sent empty ("" or null) it removes
+	// the owner; absent, the owner is left alone (see applyWebhookOwner / applyWebhookUnassign).
 	owner?: string | null;
 };
 
 // What became of a webhook's `owner`, reported back to the sender.
-export type WebhookOwnerOutcome = 'assigned' | 'kept' | 'not_found';
+export type WebhookOwnerOutcome = 'assigned' | 'kept' | 'not_found' | 'unassigned';
 
 // What a webhook knows about an alert it reports as resolved (see resolveFromSource).
 export interface SourceResolvedEpisode {
@@ -171,6 +174,15 @@ export interface ManualResolveOptions {
 interface ManualResolveActor {
 	id: string | null;
 	name: string | null;
+}
+
+// A person tried to resolve an alert (or a set holding one) that its source fixes on its
+// own. Only the source's recovery resolves such an alert; the request is refused whole.
+export class AutoFixResolveError extends Error {
+	constructor(public readonly alertIds: string[]) {
+		super(AUTO_FIX_RESOLVE_REFUSED);
+		this.name = 'AutoFixResolveError';
+	}
 }
 
 export interface SourceResolveResult {
@@ -508,6 +520,14 @@ export class AlertBL {
 			});
 			targetIds = items.map((alert) => alert.id);
 		}
+		// A person resolving: an auto-fixed alert among the targets refuses the whole
+		// action — not a partial resolve that quietly skips some (see AutoFixResolveError).
+		if (input.action === 'resolve' && actor.id != null) {
+			const targets = new Set(targetIds);
+			const snapshot = await this.activeSnapshot.get();
+			const autoFixed = snapshot.value.filter((alert) => targets.has(alert.id) && isAutoFixed(alert));
+			if (autoFixed.length > 0) throw new AutoFixResolveError(autoFixed.map((alert) => alert.id));
+		}
 
 		let succeeded = 0;
 		let failed = 0;
@@ -645,28 +665,56 @@ export class AlertBL {
 			// any resolved copy of this id — a re-firing alert must never show as both
 			// firing and resolved.
 			const result = await this.ingestQueue.enqueue(this.normalizeIncoming(alert));
-			const requested = (alert.owner ?? alert.tags?.['owner'])?.trim();
-			if (!requested) return result;
-			return { ...result, owner: await this.applyWebhookOwner(alert, requested) };
+			// The field beats the tag; either one PRESENT is an instruction, absent is silence.
+			const sent = alert.owner !== undefined ? alert.owner : alert.tags?.['owner'];
+			if (sent === undefined) return result;
+			const requested = sent?.trim() ?? '';
+			const decide =
+				requested === ''
+					? () => this.applyWebhookUnassign(alert)
+					: () => this.applyWebhookOwner(alert, requested);
+			return { ...result, owner: await this.serializeOwnerDecision(alert.id, decide) };
 		} catch (error) {
 			logger.error('Error inserting alert', error);
 			throw error;
 		}
 	}
 
+	// Webhook owner decisions for one alert run in arrival order. The resolver can take a
+	// while (a directory lookup), and a later "owner removed" must not be overtaken by an
+	// earlier assignment that finishes after it — the last message wins, as the sender
+	// expects. Keyed by alert id; an entry is dropped once its chain has drained.
+	private ownerDecisions = new Map<string, Promise<unknown>>();
+
+	private serializeOwnerDecision<T>(alertId: string, decide: () => Promise<T>): Promise<T> {
+		const previous = this.ownerDecisions.get(alertId) ?? Promise.resolve();
+		const next = previous.then(decide, decide);
+		this.ownerDecisions.set(alertId, next);
+		const drop = () => {
+			if (this.ownerDecisions.get(alertId) === next) this.ownerDecisions.delete(alertId);
+		};
+		void next.then(drop, drop);
+		return next;
+	}
+
 	// The owner a webhook named, applied once the row is committed. A default, not an
 	// authority: it fills an empty owner and never replaces one — a person's manual
-	// assignment survives every re-fire, and a missing or changed value unassigns nobody.
-	// Writes the history line the UI shows; fires no owner_assigned callback (that is for
-	// a person's decision — and the receiver is often the monitor that sent this).
+	// assignment survives every re-fire, and a changed value unassigns nobody (an EMPTY
+	// value does: applyWebhookUnassign). Writes the history line the UI shows; fires no
+	// owner_assigned callback (that is for a person's decision — and the receiver is often
+	// the monitor that sent this).
 	private async applyWebhookOwner(alert: IncomingAlert, requested: string): Promise<WebhookOwnerOutcome> {
 		if (!this.webhookOwnerResolver) return 'not_found';
 		try {
 			const current = await this.alertRepo.getAlert(alert.id);
 			if (current?.ownerId) return 'kept';
-			const user = await this.webhookOwnerResolver.resolve(requested);
+			const { user, failure } = await this.webhookOwnerResolver.lookup(requested);
 			if (!user) {
-				logger.warn(`Alert ${alert.id}: owner "${requested}" from the ${alert.type} webhook matches no user`);
+				// Left unassigned either way; the log says whether that is a verdict or not.
+				const why = failure
+					? `could not be resolved (${failure}); the next webhook retries`
+					: 'matches no user';
+				logger.warn(`Alert ${alert.id}: owner "${requested}" from the ${alert.type} webhook ${why}`);
 				return 'not_found';
 			}
 			await this.alertRepo.updateAlertOwner(alert.id, Number(user.id));
@@ -681,6 +729,22 @@ export class AlertBL {
 		} catch (error) {
 			logger.error(`Alert ${alert.id}: applying the webhook owner failed`, error);
 			return 'not_found';
+		}
+	}
+
+	// The webhook sent `owner` empty ("" or null): the source says nobody owns this now.
+	// Goes through setAlertOwner like a person's unassign, so the alert leaves its incident,
+	// the history says who did it, and owner_unassigned fires — an incident left without an
+	// owner is something downstream wants to hear about. Idempotent on an unowned alert.
+	private async applyWebhookUnassign(alert: IncomingAlert): Promise<WebhookOwnerOutcome> {
+		try {
+			const current = await this.alertRepo.getAlert(alert.id);
+			if (!current?.ownerId) return 'unassigned';
+			await this.setAlertOwner(alert.id, null, false, `${alert.type} webhook`, null);
+			return 'unassigned';
+		} catch (error) {
+			logger.error(`Alert ${alert.id}: removing the owner for the webhook failed`, error);
+			return 'kept';
 		}
 	}
 
@@ -1057,6 +1121,14 @@ export class AlertBL {
 			if (!alert) {
 				logger.warn(`Alert with id ${activeAlertId} not found, nothing to resolve`);
 				return false;
+			}
+			// A signed-in person (an actor with an id) cannot resolve an auto-fixed alert; a
+			// source reporting recovery — webhooks, the API token — has no user and can. The
+			// fix tag is read as the user sees it: enrichment rules may add or replace it,
+			// and the snapshot, the UI and the bulk preflight all judge the enriched value.
+			if (manualActor?.id != null) {
+				const effective = this.enrichmentBL ? (await this.enrichmentBL.applyEnrichments([alert]))[0] : alert;
+				if (isAutoFixed(effective)) throw new AutoFixResolveError([alert.id]);
 			}
 
 			// Insert into resolved table

@@ -1,11 +1,11 @@
 import { formatDateTime } from '@/lib/datetime';
-import { Alert, AlertStatus, AlertType } from '@OpsiMate/shared';
+import { Alert, AlertStatus, AlertType, normalizeAlertSeverity } from '@OpsiMate/shared';
 
 export interface MockAlertsConfig {
 	count?: number;
 	seed?: number;
 	distribution?: {
-		alertTypes?: Record<AlertType, number>;
+		alertTypes?: Partial<Record<AlertType, number>>;
 		statuses?: Record<string, number>;
 		tags?: Record<string, number>;
 		alertNames?: Record<string, number>;
@@ -193,7 +193,7 @@ class SeededRandom {
 const selectWeighted = <T>(
 	rng: SeededRandom,
 	items: T[],
-	weights: Record<string, number>,
+	weights: Partial<Record<string, number>>,
 	defaultWeight: number = 1
 ): T => {
 	const itemWeights = items.map((item) => weights[String(item)] ?? defaultWeight);
@@ -292,7 +292,8 @@ const generateMockAlert = (index: number, rng: SeededRandom, config: MockAlertsC
 		id: alertId,
 		type,
 		status,
-		tag,
+		severity: normalizeAlertSeverity(tag),
+		tags: { tag },
 		startsAt: startsAt.toISOString(),
 		updatedAt: updatedAt.toISOString(),
 		alertUrl: `${baseUrl}/alert/${index}`,

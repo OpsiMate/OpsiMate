@@ -14,7 +14,7 @@ export interface AlertFixColumnProps {
 export const AlertFixColumn = ({ alert, className }: AlertFixColumnProps) => {
 	const fix = getAlertFix(alert);
 	return (
-		<TableCell className={cn('py-1 px-2 overflow-hidden', className)}>
+		<TableCell className={cn('py-1 px-2 overflow-hidden', className)} data-copy-value="">
 			{fix ? <FixBadge fix={fix} /> : <span className="text-foreground text-xs">-</span>}
 		</TableCell>
 	);

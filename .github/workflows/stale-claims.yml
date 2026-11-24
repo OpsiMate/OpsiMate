@@ -1,0 +1,45 @@
+name: Release stale claims
+
+# Frees issue claims that went quiet: no activity for 14 days and no open PR
+# referencing the issue (in any repository). One comment, assignees removed, nothing
+# else touched. Hold a claim with the `keep-assigned` label. Logic and tests live in
+# .github/scripts/stale-claims.mjs.
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only report what would be released"
+        type: boolean
+        default: true
+      stale_days:
+        description: "Days without activity before a claim is released"
+        type: string
+        default: "14"
+
+permissions:
+  issues: write
+
+jobs:
+  release:
+    name: Release stale claims
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+
+      - name: Release stale claims
+        run: node .github/scripts/stale-claims.mjs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # A scheduled run applies; a manual run is a dry run unless unticked.
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || '0' }}
+          STALE_DAYS: ${{ inputs.stale_days || '14' }}
+          EXEMPT_ASSIGNEES: idanlodzki

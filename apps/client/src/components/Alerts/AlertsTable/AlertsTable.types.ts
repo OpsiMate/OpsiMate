@@ -33,6 +33,10 @@ export interface AlertsTableProps {
 	// Incident summaries keyed by id; rows whose alert carries a matching incidentId
 	// fold under a folder row. Absent = no folding (e.g. playground mode).
 	incidentsById?: Map<number, IncidentSummary>;
+	// Rows can be dragged onto incident folders / other rows (the page provides the DndContext).
+	dragAndDrop?: boolean;
+	// Incident members are being dragged: show the "out of the incident" drop zone.
+	removeDropZone?: boolean;
 	// Opens the incident details panel (folder-row name click).
 	onOpenIncident?: (incidentId: number) => void;
 	activeIncidentId?: number | null;
@@ -107,6 +111,9 @@ export type FlatGroupItem =
 			level: number;
 			isExpanded: boolean;
 			groupStatus: GroupStatus;
+			// Every alert under this group (nested groups included), so the header's
+			// checkbox can select them without a second lookup.
+			members: Alert[];
 	  }
 	// incidentMember: this leaf renders indented beneath its incident's folder row.
 	| { type: 'leaf'; alert: Alert; incidentMember?: boolean }
@@ -118,4 +125,7 @@ export type FlatGroupItem =
 			incident: IncidentSummary;
 			shownCount: number;
 			isExpanded: boolean;
+			// The members folded under this folder (the ones in the current rows), so the
+			// folder's checkbox can select them without a second lookup.
+			members: Alert[];
 	  };

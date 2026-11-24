@@ -36,10 +36,10 @@ describe('severity display helpers', () => {
 
 	test('defines every exported map for every severity', () => {
 		for (const severity of Object.values(AlertSeverity)) {
-			expect(Object.hasOwn(SEVERITY_RANK, severity)).toBe(true);
-			expect(Object.hasOwn(SEVERITY_LABELS, severity)).toBe(true);
-			expect(Object.hasOwn(SEVERITY_ROW_CLASSES, severity)).toBe(true);
-			expect(Object.hasOwn(SEVERITY_TEXT_CLASSES, severity)).toBe(true);
+			expect(Object.prototype.hasOwnProperty.call(SEVERITY_RANK, severity)).toBe(true);
+			expect(Object.prototype.hasOwnProperty.call(SEVERITY_LABELS, severity)).toBe(true);
+			expect(Object.prototype.hasOwnProperty.call(SEVERITY_ROW_CLASSES, severity)).toBe(true);
+			expect(Object.prototype.hasOwnProperty.call(SEVERITY_TEXT_CLASSES, severity)).toBe(true);
 		}
 	});
 });

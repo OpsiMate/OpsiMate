@@ -54,14 +54,6 @@ describe('sidebar community links', () => {
 	});
 });
 
-test('links to the API documentation on this server', () => {
-	render(<LeftSidebar collapsed={false} />);
-
-	const link = screen.getByRole('link', { name: 'Open the API documentation' });
-	expect(link.getAttribute('href')).toMatch(/\/api\/docs\/$/);
-	expect(link).toHaveAttribute('target', '_blank');
-});
-
 test('updates the sidebar toggle name when its state changes', () => {
 	localStorage.removeItem('sidebarCollapsed');
 	render(
@@ -132,7 +124,7 @@ describe('icon-only button accessible names', () => {
 			<CommentItem
 				comment={comment}
 				currentUserId="user-1"
-				userMap={new Map([['user-1', { fullName: 'Test User', email: 'test@example.com' }]])}
+				userMap={new Map([['user-1', { fullName: 'Test User', username: 'test', email: 'test@example.com' }]])}
 				onEdit={vi.fn()}
 				onDelete={vi.fn()}
 				isDeleting={false}

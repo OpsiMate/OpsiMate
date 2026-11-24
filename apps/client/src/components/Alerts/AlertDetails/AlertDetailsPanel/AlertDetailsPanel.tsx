@@ -1,12 +1,12 @@
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Alert } from '@OpsiMate/shared';
 import { useEffect, useState } from 'react';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
-import { AlertDetailsBody } from '../AlertDetailsBody';
+import { AlertDetailsTab } from '../AlertDetailsTab';
 import { AlertDetailsHeader } from '../AlertDetailsHeader';
 import { AlertFooterActions } from '../AlertFooterActions';
-import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from '../CollapsibleSection';
+import { SectionsExpandControls, useSectionsExpandBroadcast } from '../CollapsibleSection';
+import { AlertHistoryWall } from '../AlertHistoryWall';
 import { CommentsWall } from '../CommentsWall';
 import { useAlertHistory } from '../hooks';
 import { PanelResizeHandle } from './PanelResizeHandle';
@@ -35,7 +35,7 @@ export const AlertDetailsPanel = ({
 	onDelete,
 	onUnresolve,
 }: AlertDetailsPanelProps) => {
-	const historyData = useAlertHistory(alert.id);
+	const history = useAlertHistory(alert.id);
 	const [tab, setTab] = useState('details');
 	const { width, panelRef, startResizing, resetWidth } = useResizablePanelWidth();
 	const { signal, broadcast } = useSectionsExpandBroadcast();
@@ -53,6 +53,7 @@ export const AlertDetailsPanel = ({
 			ref={panelRef}
 			style={{ width }}
 			className="relative shrink-0 border-l bg-background flex flex-col h-full overflow-hidden"
+			data-selection-scope
 		>
 			<PanelResizeHandle onPointerDown={startResizing} onDoubleClick={resetWidth} />
 
@@ -65,22 +66,21 @@ export const AlertDetailsPanel = ({
 			<Tabs value={tab} onValueChange={setTab} className="flex-1 flex flex-col min-h-0">
 				<PanelTabsList />
 
-				<TabsContent value="details" className="flex-1 min-h-0 mt-0">
-					<ScrollArea className="h-full">
-						<SectionsExpandContext.Provider value={signal}>
-							<AlertDetailsBody
-								alert={alert}
-								historyData={historyData}
-								timeRange={timeRange}
-								onViewAllComments={() => setTab('comments')}
-								isResolved={!isActive}
-							/>
-						</SectionsExpandContext.Provider>
-					</ScrollArea>
+				<TabsContent value="details" className="flex-1 min-h-0 mt-0 flex flex-col">
+					<AlertDetailsTab
+						alert={alert}
+						isResolved={!isActive}
+						onViewAllComments={() => setTab('comments')}
+						signal={signal}
+					/>
 				</TabsContent>
 
 				<TabsContent value="comments" className="flex-1 min-h-0 mt-0">
 					<CommentsWall alertId={alert.id} />
+				</TabsContent>
+
+				<TabsContent value="history" className="flex-1 min-h-0 mt-0">
+					<AlertHistoryWall history={history} timeRange={timeRange} />
 				</TabsContent>
 			</Tabs>
 

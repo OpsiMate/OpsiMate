@@ -1,1 +1,0 @@
-export { AlertHistorySection } from './AlertHistorySection';

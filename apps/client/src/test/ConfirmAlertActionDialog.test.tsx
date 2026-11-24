@@ -65,6 +65,26 @@ describe('ConfirmAlertActionDialog', () => {
 		expect(run).not.toHaveBeenCalled();
 	});
 
+	test('with a comment box, the cursor starts in it so typing begins the moment the dialog opens', () => {
+		render(<ConfirmAlertActionDialog pending={pending({ withComment: true })} onClose={vi.fn()} />);
+		expect(commentBox()).toHaveFocus();
+	});
+
+	test('with a silence duration AND a comment box, the comment box still gets the cursor', () => {
+		render(
+			<ConfirmAlertActionDialog
+				pending={pending({ withComment: true, withSilenceDuration: true })}
+				onClose={vi.fn()}
+			/>
+		);
+		expect(commentBox()).toHaveFocus();
+	});
+
+	test('without a comment box, focus stays on Cancel (Enter on a destructive question must not confirm)', () => {
+		render(<ConfirmAlertActionDialog pending={pending({ destructive: true })} onClose={vi.fn()} />);
+		expect(screen.getByRole('button', { name: 'Cancel' })).toHaveFocus();
+	});
+
 	test('withComment shows optional label and placeholder by default', () => {
 		render(<ConfirmAlertActionDialog pending={pending({ withComment: true })} onClose={vi.fn()} />);
 		expect(commentBox()).toBeInTheDocument();

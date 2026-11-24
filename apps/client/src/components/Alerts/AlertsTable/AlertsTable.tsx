@@ -1,10 +1,12 @@
 import { Checkbox } from '@/components/ui/checkbox';
 import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { useDroppable } from '@dnd-kit/core';
+import { dropId, UngroupedDropZone } from '../AlertDragAndDrop';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { Activity, Plug, TriangleAlert, Wrench } from 'lucide-react';
-import { Fragment, ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { AlertsEmptyState } from './AlertsEmptyState';
 import {
 	ACTIONS_COLUMN,
@@ -22,19 +24,20 @@ import {
 } from './AlertsTable.constants';
 import { AlertSortField, AlertsTableProps } from './AlertsTable.types';
 import { IncidentSummary } from '@OpsiMate/shared';
-import { filterAlerts } from './AlertsTable.utils';
+import { filterAlerts, memberSelectionState } from './AlertsTable.utils';
 import { ColumnSettingsDropdown } from './ColumnSettingsDropdown';
 import { GroupByControls } from './GroupByControls';
 import {
 	useAlertGrouping,
 	useAlertKeyboardNav,
-	useIncidentFolding,
 	useAlertSelection,
 	useAlertSorting,
+	useCellCopyShortcut,
 	useColumnResize,
 	useContentColumnWidths,
 	useDragAutoScroll,
 	useDragSelection,
+	useIncidentFolding,
 	useStickyHeaders,
 } from './hooks';
 import { SearchBar } from './SearchBar';
@@ -81,6 +84,8 @@ export const AlertsTable = ({
 	onAlertClick,
 	activeAlertId = null,
 	incidentsById,
+	dragAndDrop = false,
+	removeDropZone = false,
 	onOpenIncident,
 	activeIncidentId = null,
 	onEditIncident,
@@ -124,6 +129,14 @@ export const AlertsTable = ({
 	// and cancel the pending settle timer exactly when a sidebar toggle re-renders
 	// the table mid-animation. Stable identity limits runs to real node changes.
 	// Everything captured is a ref or a setState, so the empty deps are sound.
+	// The whole scroller is a drop area for "take out of the incident" (see
+	// UngroupedDropZone); rows and folders inside it win when the pointer is over them.
+	// Scoped per table: the split view renders two, each with its own band and background.
+	const dropScope = useId();
+	const { setNodeRef: setDropAreaRef, isOver: isOverDropArea } = useDroppable({
+		id: dropId.ungroupedArea(dropScope),
+		disabled: !removeDropZone,
+	});
 	const observeScroller = useCallback((el: HTMLDivElement | null) => {
 		scrollerRef.current = el;
 		resizeObserverRef.current?.disconnect();
@@ -172,6 +185,14 @@ export const AlertsTable = ({
 		}
 	}, []);
 
+	const attachScroller = useCallback(
+		(el: HTMLDivElement | null) => {
+			observeScroller(el);
+			setDropAreaRef(el);
+		},
+		[observeScroller, setDropAreaRef]
+	);
+
 	const filteredAlerts = useMemo(() => filterAlerts(alerts, searchTerm), [alerts, searchTerm]);
 
 	const allColumnLabels = useMemo(() => ({ ...COLUMN_LABELS, ...tagKeyColumnLabels }), [tagKeyColumnLabels]);
@@ -201,9 +222,9 @@ export const AlertsTable = ({
 			return summary ? { ...item, count: summary.count, groupStatus: summary.status } : item;
 		});
 	}, [groupedRows, groupSummaryByKey]);
-	// Incident folding runs LAST, over the filtered/sorted/grouped rows: the folder sits
-	// where its best member would have, and folds only members visible under the current
-	// filters (see useIncidentFolding).
+	// Incident folding runs LAST, over the filtered/sorted/grouped rows: folders sit at the
+	// bottom of their segment and fold only members visible under the current filters
+	// (see useIncidentFolding).
 	const { foldedRows: flatRows, toggleIncident } = useIncidentFolding(
 		summarizedRows,
 		incidentsById ?? EMPTY_INCIDENTS
@@ -212,7 +233,16 @@ export const AlertsTable = ({
 		() => flatRows.flatMap((item) => (item.type === 'leaf' ? [item.alert] : [])),
 		[flatRows]
 	);
-	const { allSelected, handleSelectAll, handleSelectAlert, handleSelectRange, setAnchor } = useAlertSelection({
+	const {
+		allSelected,
+		handleSelectAll,
+		handleSelectAlert,
+		handleSelectRange,
+		handleSelectOnly,
+		handleExtendSelection,
+		handleToggleMembers,
+		setAnchor,
+	} = useAlertSelection({
 		sortedAlerts,
 		visibleAlerts,
 		selectedAlerts,
@@ -258,7 +288,17 @@ export const AlertsTable = ({
 	}, [expandRows, virtualizer]);
 
 	// ArrowUp/ArrowDown move the details-sidebar selection through the rows.
-	useAlertKeyboardNav({ flatRows, activeAlertId, onAlertClick, virtualizer, scrollerRef });
+	useAlertKeyboardNav({
+		flatRows,
+		activeAlertId,
+		onAlertClick,
+		onSelectOnly: onSelectAlerts ? handleSelectOnly : undefined,
+		onExtendSelection: onSelectAlerts ? handleExtendSelection : undefined,
+		virtualizer,
+		scrollerRef,
+	});
+	// Click a cell, Cmd/Ctrl+C copies it.
+	useCellCopyShortcut({ scrollerRef });
 
 	const virtualItems = virtualizer.getVirtualItems();
 
@@ -410,8 +450,11 @@ export const AlertsTable = ({
 					    filter click that flips the overflow state feeds back through the width
 					    observer (width change -> column widths recompute -> overflow can flip
 					    again), visible as a ~15px column jump and wasted re-renders. */}
+					{removeDropZone && (
+						<UngroupedDropZone id={dropId.ungrouped(dropScope)} areaIsOver={isOverDropArea} />
+					)}
 					<div
-						ref={observeScroller}
+						ref={attachScroller}
 						className="flex-1 min-h-0 overflow-auto"
 						style={{ scrollbarGutter: 'stable' }}
 					>
@@ -429,7 +472,10 @@ export const AlertsTable = ({
 								<div className="border-b bg-background">
 									<table className="table-fixed w-full text-sm">
 										<TableHeader>
-											<TableRow className={`h-8 ${COLUMN_SEPARATOR_CLASSES}`}>
+											<TableRow
+												className={`h-8 ${COLUMN_SEPARATOR_CLASSES}`}
+												data-selection-scope
+											>
 												{onSelectAlerts && (
 													<TableHead
 														className={TABLE_HEAD_CLASSES}
@@ -592,6 +638,16 @@ export const AlertsTable = ({
 												item={item}
 												onToggle={toggleGroup}
 												columnLabels={allColumnLabels}
+												selectionState={
+													onSelectAlerts && item.type === 'group'
+														? memberSelectionState(item.members, selectedAlerts)
+														: undefined
+												}
+												onToggleSelection={
+													onSelectAlerts && item.type === 'group'
+														? () => handleToggleMembers(item.members)
+														: undefined
+												}
 											/>
 										))}
 									</div>
@@ -621,8 +677,11 @@ export const AlertsTable = ({
 									onEditIncident={onEditIncident}
 									onUngroupIncident={onUngroupIncident}
 									onRemoveFromIncident={onRemoveFromIncident}
+									dragAndDrop={dragAndDrop}
 									onSelectAlert={handleSelectAlert}
 									onSelectRange={handleSelectRange}
+									onSelectOnly={handleSelectOnly}
+									onToggleMembersSelection={handleToggleMembers}
 									onAlertClick={onAlertClick}
 									activeAlertId={activeAlertId}
 									onSilenceAlert={onSilenceAlert}

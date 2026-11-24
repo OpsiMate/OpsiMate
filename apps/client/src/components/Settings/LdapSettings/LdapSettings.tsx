@@ -38,6 +38,7 @@ interface LdapForm {
 	bindDn: string;
 	searchBase: string;
 	searchFilter: string;
+	usernameAttribute: string;
 	emailAttribute: string;
 	nameAttribute: string;
 	groupsAttribute: string;
@@ -56,7 +57,7 @@ interface LdapForm {
 
 // Where a server-reported problem is shown: a form field, the password box, the
 // group-mapping block as a whole, or (undefined) only in the summary.
-type ProblemTarget = keyof LdapForm | 'bindPassword' | 'roleMapping' | 'testEmail';
+type ProblemTarget = keyof LdapForm | 'bindPassword' | 'roleMapping' | 'testLogin';
 
 interface FieldProps {
 	id: string;
@@ -93,6 +94,7 @@ const toForm = (data: LdapSettingsData): LdapForm => ({
 	bindDn: data.bindDn,
 	searchBase: data.searchBase,
 	searchFilter: data.searchFilter,
+	usernameAttribute: data.usernameAttribute,
 	emailAttribute: data.emailAttribute,
 	nameAttribute: data.nameAttribute,
 	groupsAttribute: data.groupsAttribute,
@@ -130,6 +132,7 @@ const toUpdate = (form: LdapForm): UpdateLdapSettings => {
 		bindDn: form.bindDn.trim(),
 		searchBase: form.searchBase.trim(),
 		searchFilter: form.searchFilter.trim(),
+		usernameAttribute: form.usernameAttribute.trim(),
 		emailAttribute: form.emailAttribute.trim(),
 		nameAttribute: form.nameAttribute.trim(),
 		groupsAttribute: form.groupsAttribute.trim(),
@@ -153,13 +156,15 @@ const sameForm = (a: LdapForm, b: LdapForm): boolean => JSON.stringify(a) === JS
 // case and underscores ignored.
 const PROBLEM_TARGETS: Record<string, ProblemTarget> = {
 	enabled: 'enabled',
-	email: 'testEmail',
+	login: 'testLogin',
+	email: 'testLogin',
 	url: 'url',
 	starttls: 'url',
 	binddn: 'bindDn',
 	bindpassword: 'bindPassword',
 	searchbase: 'searchBase',
 	searchfilter: 'searchFilter',
+	usernameattribute: 'usernameAttribute',
 	emailattribute: 'emailAttribute',
 	nameattribute: 'nameAttribute',
 	groupsattribute: 'groupsAttribute',
@@ -258,7 +263,7 @@ const TestResultView = ({ result, draft }: TestResultViewProps) => (
 	</div>
 );
 
-// Directory (LDAP) login: users sign in with their directory email and password; their
+// Directory (LDAP) login: users sign in with their directory username or email and password; their
 // OpsiMate account is created at first login and its role follows their groups. Test
 // runs on whatever is in the form (saved or not); Save stores it, including the on/off
 // switch. When the server's config.yml / LDAP_* env configures LDAP, those win and this
@@ -272,7 +277,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 
 	const [form, setForm] = useState<LdapForm | null>(null);
 	const [bindPassword, setBindPassword] = useState('');
-	const [testEmail, setTestEmail] = useState('');
+	const [testLogin, setTestLogin] = useState('');
 	const [testResult, setTestResult] = useState<{ result: LdapTestResult; draft: boolean } | null>(null);
 	// What the server refused in the last save or test, shown under the fields it names.
 	const [problems, setProblems] = useState<string[]>([]);
@@ -412,12 +417,12 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 
 	const runTest = async () => {
 		setTestResult(null);
-		const email = testEmail.trim();
+		const login = testLogin.trim();
 		// Unsaved edits go along for the test only; the saved settings are tested otherwise.
 		const draft = !readOnly && dirty;
 		try {
 			const result = await testMutation.mutateAsync({
-				...(email ? { email } : {}),
+				...(login ? { login } : {}),
 				...(draft ? { settings: draftUpdate() } : {}),
 			});
 			setTestResult({ result, draft });
@@ -662,10 +667,18 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							<Field
 								id="ldap-searchFilter"
 								label="Search filter"
-								hint="{{email}} is replaced by the address typed at login. AD: (&(objectClass=user)(mail={{email}}))"
+								hint="{{login}} is replaced by the username or email typed at login. AD: (&(objectClass=user)(|(sAMAccountName={{login}})(mail={{login}})))"
 								error={fieldError('searchFilter')}
 							>
 								<Input {...text('searchFilter')} />
+							</Field>
+							<Field
+								id="ldap-usernameAttribute"
+								label="Username attribute"
+								hint="The login name: uid; sAMAccountName on Active Directory."
+								error={fieldError('usernameAttribute')}
+							>
+								<Input {...text('usernameAttribute')} />
 							</Field>
 							<Field
 								id="ldap-emailAttribute"
@@ -757,7 +770,7 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 							<Field
 								id="ldap-loginMaxFailures"
 								label="Failed logins before a 15-minute block"
-								hint="Per email; keep it below your directory's lockout threshold. 0 = no limit."
+								hint="Counted per directory account, whichever of its names is typed; keep it below your directory's lockout threshold. 0 = no limit."
 								error={fieldError('loginMaxFailures')}
 							>
 								<Input type="number" min={0} max={1000} {...text('loginMaxFailures')} />
@@ -768,29 +781,29 @@ export const LdapSettings = ({ defaultOpen = false }: LdapSettingsProps) => {
 					<Card className="p-4 space-y-4">
 						<h3 className="text-sm font-semibold">Test</h3>
 						<p className="text-xs text-muted-foreground">
-							Runs the same steps as a login against what is in the form right now — saved or not. With an
-							email, it also shows the role that person would get.
+							Runs the same steps as a login against what is in the form right now — saved or not. With a
+							username or email, it also shows the role that person would get.
 						</p>
 						<div className="flex flex-wrap items-end gap-2">
 							<div className="flex-1 min-w-[14rem]">
 								<Field
-									id="ldap-testEmail"
+									id="ldap-testLogin"
 									label="Test with a user (optional)"
-									error={fieldError('testEmail')}
+									error={fieldError('testLogin')}
 								>
 									<Input
-										id="ldap-testEmail"
-										type="email"
+										id="ldap-testLogin"
+										type="text"
 										disabled={busy}
-										aria-invalid={fieldError('testEmail') ? true : undefined}
+										aria-invalid={fieldError('testLogin') ? true : undefined}
 										aria-describedby={
-											fieldError('testEmail') ? errorIdFor('ldap-testEmail') : undefined
+											fieldError('testLogin') ? errorIdFor('ldap-testLogin') : undefined
 										}
-										placeholder="someone@example.com"
-										value={testEmail}
+										placeholder="username or someone@example.com"
+										value={testLogin}
 										onChange={(e) => {
-											setTestEmail(e.target.value);
-											clearProblemsFor('testEmail');
+											setTestLogin(e.target.value);
+											clearProblemsFor('testLogin');
 										}}
 									/>
 								</Field>

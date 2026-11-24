@@ -264,6 +264,8 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 		alertBL.invalidateOwners();
 		webhookOwnerResolver.clear();
 	});
+	// LDAP switched on/off or repointed: an owner nobody could find may be findable now.
+	userBL.setOnDirectoryChanged(() => webhookOwnerResolver.clear());
 	// Outbound callbacks for user-made alert changes. Fired by AlertBL / ActionBL after a
 	// change is committed, delivered off the request path (see CallbackDispatcher).
 	const callbackDispatcher = new CallbackDispatcher(alertCallbackRepo);

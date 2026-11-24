@@ -10,9 +10,10 @@ import {
 	AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useUsers } from '@/hooks/queries/users';
 import { pluralize } from '@/lib/text';
-import { Alert } from '@OpsiMate/shared';
+import { Alert, isAutoFixed } from '@OpsiMate/shared';
 import { BellRing, CheckCircle2, Folder, MessageSquarePlus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -77,6 +78,9 @@ export const AlertsSelectionBar = ({
 	// "all" belongs to the "Select all N matching" link.
 	const allNotSilenced = selectedAlerts.every((alert) => !alert.isSilenced);
 	const allSilenced = selectedAlerts.every((alert) => alert.isSilenced);
+	// Resolve is for the whole selection or not at all: one alert its source fixes on its
+	// own (fix: auto) disables it, with the count so the user knows what to unselect.
+	const autoFixedCount = selectedAlerts.filter(isAutoFixed).length;
 
 	const handleAssignOwner = (ownerId: string | null) => {
 		if (onAssignOwnerAll) {
@@ -88,7 +92,7 @@ export const AlertsSelectionBar = ({
 		// Actions on the left: the checkboxes are the leftmost column, so the cursor is
 		// already there when selecting. The count is informational, not interactive, so it
 		// sits out of the way on the right.
-		<div className="mt-4 p-3 bg-muted rounded-lg flex items-center justify-between gap-4">
+		<div className="mt-4 p-3 bg-muted rounded-lg flex items-center justify-between gap-4" data-selection-scope>
 			<div className="flex flex-wrap items-center gap-2">
 				{onAssignOwnerAll && (
 					<PersonPicker
@@ -99,6 +103,35 @@ export const AlertsSelectionBar = ({
 						placeholder="Assign Owner"
 						className="h-8 px-3 text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md"
 					/>
+				)}
+				{onResolveAll && autoFixedCount > 0 && (
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span className="inline-flex" tabIndex={0}>
+								<Button variant="outline" size="sm" disabled className="gap-1.5">
+									<CheckCircle2 className="h-3.5 w-3.5" />
+									Resolve
+								</Button>
+							</span>
+						</TooltipTrigger>
+						<TooltipContent>
+							{autoFixedCount === selectedAlerts.length
+								? `${pluralize(autoFixedCount, 'This alert is', 'These alerts are')} fixed automatically; only the source can resolve ${pluralize(autoFixedCount, 'it', 'them')}`
+								: `${autoFixedCount} of the selected ${pluralize(selectedAlerts.length, 'alert')} ${pluralize(autoFixedCount, 'is', 'are')} fixed automatically; unselect ${pluralize(autoFixedCount, 'it', 'them')} to resolve the rest`}
+						</TooltipContent>
+					</Tooltip>
+				)}
+				{onResolveAll && autoFixedCount === 0 && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={onResolveAll}
+						disabled={actionsDisabled}
+						className="gap-1.5"
+					>
+						<CheckCircle2 className="h-3.5 w-3.5" />
+						Resolve
+					</Button>
 				)}
 				{allNotSilenced && (
 					<Button variant="outline" size="sm" onClick={onSilenceAll} disabled={actionsDisabled}>
@@ -115,18 +148,6 @@ export const AlertsSelectionBar = ({
 					>
 						<BellRing className="h-3.5 w-3.5" />
 						Unsilence
-					</Button>
-				)}
-				{onResolveAll && (
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={onResolveAll}
-						disabled={actionsDisabled}
-						className="gap-1.5"
-					>
-						<CheckCircle2 className="h-3.5 w-3.5" />
-						Resolve
 					</Button>
 				)}
 				{onCommentAll && (

@@ -1,0 +1,1 @@
+export { AlertDetailsBottomSections } from './AlertDetailsBottomSections';

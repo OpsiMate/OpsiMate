@@ -32,13 +32,22 @@ describe('UserBL login with a default domain', () => {
 	let userBL: UserBL;
 	const ldapSeen: string[] = [];
 
-	// Records the email the directory is asked for: the point of the test is that it is the
-	// completed one.
+	// Records every spelling the directory is asked for: the typed name first, then the
+	// address the default domain completes it to.
 	const directory = {
-		authenticate(email: string, password: string): Promise<LdapIdentity | null> {
-			ldapSeen.push(email);
-			if (email === 'dana@acme.test' && password === 'dir-pw') {
-				return Promise.resolve({ dn: 'cn=dana,dc=x', email, fullName: 'Dana', groups: [], role: Role.Viewer });
+		authenticate(identifier: string, password: string, alternatives: string[] = []): Promise<LdapIdentity | null> {
+			const asked = [identifier, ...alternatives];
+			ldapSeen.push(...asked);
+			if (asked.includes('dana@acme.test') && password === 'dir-pw') {
+				return Promise.resolve({
+					dn: 'cn=dana,dc=x',
+					objectId: 'uuid-dana',
+					username: 'dana',
+					email: 'dana@acme.test',
+					fullName: 'Dana',
+					groups: [],
+					role: Role.Viewer,
+				});
 			}
 			return Promise.resolve(null);
 		},
@@ -62,7 +71,13 @@ describe('UserBL login with a default domain', () => {
 	beforeEach(async () => {
 		db.exec('DELETE FROM users');
 		ldapSeen.length = 0;
-		await userRepo.createUser('idan@acme.test', await bcrypt.hash('local-pw', 4), 'Idan', Role.Admin);
+		await userRepo.createUser({
+			username: 'idan',
+			email: 'idan@acme.test',
+			passwordHash: await bcrypt.hash('local-pw', 4),
+			fullName: 'Idan',
+			role: Role.Admin,
+		});
 	});
 
 	afterAll(() => db.close());
@@ -74,10 +89,68 @@ describe('UserBL login with a default domain', () => {
 		await expect(userBL.login('idan', 'wrong')).rejects.toThrow('Invalid');
 	});
 
-	test('a directory user types the bare name; the directory is asked for the completed email', async () => {
-		const user = await userBL.login('dana', 'dir-pw');
+	test('a directory user types the bare name (legacy email field); the directory is asked for the completed email', async () => {
+		const user = await userBL.login('dana', 'dir-pw', { legacyEmailField: true });
 		expect(user.email).toBe('dana@acme.test');
-		expect(ldapSeen).toEqual(['dana@acme.test']);
+		expect(user.username).toBe('dana');
+		// Legacy field: the address it always meant first, then the name itself.
+		expect(ldapSeen).toEqual(['dana@acme.test', 'dana']);
+	});
+
+	test('two Danas: the legacy email field keeps meaning <name>@<domain>; the login field means the username', async () => {
+		// The contractor's email got "dana" at migration; company Dana is dana@acme.test.
+		db.exec('DELETE FROM users');
+		const sharedPassword = await bcrypt.hash('same-pw', 4);
+		const contractor = await userRepo.createUser({
+			username: 'dana',
+			email: 'dana@contractor.test',
+			passwordHash: sharedPassword,
+			fullName: 'Dana Contractor',
+			role: Role.Viewer,
+		});
+		await userRepo.createUser({
+			username: 'dana2',
+			email: 'dana@acme.test',
+			passwordHash: sharedPassword,
+			fullName: 'Dana Company',
+			role: Role.Editor,
+		});
+		const legacy = { legacyEmailField: true };
+		// Same password on both: the field decides who signs in.
+		expect((await userBL.login('dana', 'same-pw', legacy)).email).toBe('dana@acme.test');
+		expect((await userBL.login('dana', 'same-pw')).email).toBe('dana@contractor.test');
+		// Through the legacy field the contractor is still reachable by password; through
+		// the login field "dana" is only ever the contractor's username.
+		await userRepo.updateUserPassword(contractor.lastID, await bcrypt.hash('contractor-pw', 4));
+		expect((await userBL.login('dana', 'contractor-pw', legacy)).email).toBe('dana@contractor.test');
+		await expect(userBL.login('dana', 'same-pw', { legacyEmailField: false })).rejects.toThrow('Invalid');
+		expect((await userBL.login('dana2', 'same-pw')).email).toBe('dana@acme.test');
+		// Both are local: the directory was never asked.
+		expect(ldapSeen).toEqual([]);
+	});
+
+	test("through the login field a bare name is one account: a local holder's wrong password never reaches the directory", async () => {
+		db.exec('DELETE FROM users');
+		await userRepo.createUser({
+			username: 'dana',
+			email: 'dana@contractor.test',
+			passwordHash: await bcrypt.hash('contractor-pw', 4),
+			fullName: 'Dana Contractor',
+			role: Role.Viewer,
+		});
+		// dana@acme.test is a directory user with password dir-pw; typing "dana" + dir-pw in
+		// the login field must not sign in as her — "dana" is the contractor's username.
+		await expect(userBL.login('dana', 'dir-pw')).rejects.toThrow('Invalid');
+		expect(ldapSeen).toEqual([]);
+		// An unknown bare name is asked of the directory as a username only — never
+		// completed to an address through the login field.
+		await expect(userBL.login('nobody', 'dir-pw')).rejects.toThrow('Invalid');
+		expect(ldapSeen).toEqual(['nobody']);
+		// The legacy field still completes it and asks the directory — which answers with the
+		// username "dana", the contractor's: a directory entry never takes a local account's
+		// username, so this login is refused at provisioning.
+		await expect(userBL.login('dana', 'dir-pw', { legacyEmailField: true })).rejects.toThrow('Invalid');
+		expect(ldapSeen).toEqual(['nobody', 'dana@acme.test', 'dana']);
 	});
 
 	test('a name with its own domain is not rewritten', async () => {
@@ -107,16 +180,27 @@ describe('login API without a default domain', () => {
 		db.close();
 	});
 
-	test('a bare name is not a validation error — it is simply not a known login', async () => {
-		const res = await app.post('/api/v1/users/login').send({ email: 'admin', password: 'securepassword' });
+	test('a bare name is a username first: the address local part signs in with no domain configured', async () => {
+		// Registered by email only, so the username is the local part ("admin").
+		const asUsername = await app.post('/api/v1/users/login').send({ email: 'admin', password: 'securepassword' });
+		expect(asUsername.status).toBe(200);
+		expect(asUsername.body.data.username).toBe('admin');
+		const viaIdentifier = await app
+			.post('/api/v1/users/login')
+			.send({ identifier: 'Admin', password: 'securepassword' });
+		expect(viaIdentifier.status).toBe(200);
+	});
+
+	test('an unknown bare name is not a validation error — it is simply not a known login', async () => {
+		const res = await app.post('/api/v1/users/login').send({ email: 'nobody', password: 'securepassword' });
 		expect(res.status).toBe(401);
 		const ok = await app.post('/api/v1/users/login').send({ email: 'admin@acme.test', password: 'securepassword' });
 		expect(ok.status).toBe(200);
 	});
 
-	test('email-status tells the login page whether a default domain is set', async () => {
+	test('email-status does not expose the default domain: the login form has no use for it', async () => {
 		const res = await app.get('/email-status');
 		expect(res.status).toBe(200);
-		expect(res.body.data).toHaveProperty('loginDefaultEmailDomain');
+		expect(res.body.data).not.toHaveProperty('loginDefaultEmailDomain');
 	});
 });

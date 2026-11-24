@@ -10,18 +10,28 @@ import {
 	UpdateLdapSettings,
 	User,
 } from '@OpsiMate/shared';
-import { getLdapConfig, isLdapManagedByConfig, LdapConfig, validateLdapConfig } from '../../config/config';
+import {
+	getLdapConfig,
+	isLdapManagedByConfig,
+	isLegacyDefaultSearchFilter,
+	LdapConfig,
+	validateLdapConfig,
+} from '../../config/config';
 import { LdapConfigRepository, LdapConfigRow } from '../../dal/ldapConfigRepository';
 import { decryptPassword, encryptPassword } from '../../utils/encryption';
 import { AuditBL } from '../audit/audit.bl';
-import { LdapAuthenticator } from '../users/ldapAuthenticator';
+import {
+	DEFAULT_EMAIL_ATTRIBUTE,
+	DEFAULT_LDAP_TIMEOUT_MS,
+	DEFAULT_USERNAME_ATTRIBUTE,
+	defaultSearchFilter,
+	LdapAuthenticator,
+} from '../users/ldapAuthenticator';
 import { DEFAULT_LDAP_MAX_FAILURES, UserBL } from '../users/user.bl';
 
 const logger = new Logger('bl/ldap/ldapSettings.bl');
 
-const DEFAULT_SEARCH_FILTER = '(mail={{email}})';
 const DEFAULT_GROUP_SEARCH_FILTER = '(member={{dn}})';
-const DEFAULT_TIMEOUT_MS = 5000;
 
 // config.yml / LDAP_* env configure LDAP: the page can only show it.
 export class LdapSettingsManagedError extends Error {
@@ -138,14 +148,14 @@ export class LdapSettingsBL {
 
 	// Test the settings as saved (enabled or not), or — with a draft from the page — the
 	// unsaved edits laid over them, so a wrong value shows up before anything is stored.
-	// Optionally look up one user and report the role they would get.
-	async test(email?: string, draft?: UpdateLdapSettings, user?: User): Promise<LdapTestResult> {
+	// Optionally look up one user (username or email) and report the role they would get.
+	async test(login?: string, draft?: UpdateLdapSettings, user?: User): Promise<LdapTestResult> {
 		const { config, passwordWithheld } = await this.configForTest(draft);
 		// A draft test is a probe of any host from this server that leaves no audit row
 		// (nothing changed); the log at least says who aimed it where.
 		if (draft) {
 			logger.info(
-				`LDAP test with unsaved settings by ${user?.email ?? 'unknown'} against ${config.url ?? '(no url)'}`
+				`LDAP test with unsaved settings by ${user?.username ?? 'unknown'} against ${config.url ?? '(no url)'}`
 			);
 		}
 		if (!config.url || !config.search_base) {
@@ -173,7 +183,7 @@ export class LdapSettingsBL {
 			};
 		}
 		try {
-			return await new LdapAuthenticator(config).probe(email);
+			return await new LdapAuthenticator(config).probe(login);
 		} catch (error) {
 			return {
 				ok: false,
@@ -268,6 +278,9 @@ const parseSettings = (json: string): LdapConfig => {
 		const parsed = JSON.parse(json) as LdapConfig;
 		// The password never lives in this JSON; drop one if an old row had it.
 		delete parsed.bind_password;
+		// The pre-username default, saved as if it were a choice: it was not (see
+		// LEGACY_DEFAULT_SEARCH_FILTER), and kept it would leave logins email-only.
+		if (isLegacyDefaultSearchFilter(parsed.search_filter)) delete parsed.search_filter;
 		return { ...parsed, enabled: parsed.enabled === true };
 	} catch {
 		return { enabled: false };
@@ -284,6 +297,7 @@ type LdapTextKey =
 	| 'bind_dn'
 	| 'search_base'
 	| 'search_filter'
+	| 'username_attribute'
 	| 'email_attribute'
 	| 'name_attribute'
 	| 'groups_attribute'
@@ -304,6 +318,7 @@ const mergeUpdates = (base: LdapConfig, updates: UpdateLdapSettings): LdapConfig
 	setText('bind_dn', updates.bindDn);
 	setText('search_base', updates.searchBase);
 	setText('search_filter', updates.searchFilter);
+	setText('username_attribute', updates.usernameAttribute);
 	setText('email_attribute', updates.emailAttribute);
 	setText('name_attribute', updates.nameAttribute);
 	setText('groups_attribute', updates.groupsAttribute);
@@ -321,6 +336,18 @@ const mergeUpdates = (base: LdapConfig, updates: UpdateLdapSettings): LdapConfig
 				: {}),
 			...(updates.tlsCaCert !== undefined ? { ca: blankToUndefined(updates.tlsCaCert) } : {}),
 		};
+	}
+	// A filter equal to a generated default is not an override: left unset, it keeps
+	// following the attributes. The page always sends the filter it was shown — the one
+	// generated from the attributes BEFORE this edit — so that one counts too, or
+	// changing an attribute would freeze the old default as a custom filter.
+	if (
+		next.search_filter !== undefined &&
+		(next.search_filter === defaultSearchFilter(next) ||
+			next.search_filter === defaultSearchFilter(base) ||
+			isLegacyDefaultSearchFilter(next.search_filter))
+	) {
+		next.search_filter = undefined;
 	}
 	return next;
 };
@@ -348,15 +375,16 @@ const toSettings = (
 	bindDn: config.bind_dn ?? '',
 	hasBindPassword,
 	searchBase: config.search_base ?? '',
-	searchFilter: config.search_filter ?? DEFAULT_SEARCH_FILTER,
-	emailAttribute: config.email_attribute ?? 'mail',
+	searchFilter: config.search_filter ?? defaultSearchFilter(config),
+	usernameAttribute: config.username_attribute ?? DEFAULT_USERNAME_ATTRIBUTE,
+	emailAttribute: config.email_attribute ?? DEFAULT_EMAIL_ATTRIBUTE,
 	nameAttribute: config.name_attribute ?? 'displayName',
 	groupsAttribute: config.groups_attribute ?? 'memberOf',
 	groupSearchBase: config.group_search_base ?? '',
 	groupSearchFilter: config.group_search_filter ?? DEFAULT_GROUP_SEARCH_FILTER,
 	roleMapping: groupsFor(config),
 	defaultRole: (config.default_role as Role | undefined) ?? null,
-	timeoutMs: config.timeout_ms ?? DEFAULT_TIMEOUT_MS,
+	timeoutMs: config.timeout_ms ?? DEFAULT_LDAP_TIMEOUT_MS,
 	loginMaxFailures: config.login_max_failures ?? DEFAULT_LDAP_MAX_FAILURES,
 	tlsRejectUnauthorized: config.tls?.rejectUnauthorized !== false,
 	// A file-based CA is shown by path; the page only edits inline PEMs.

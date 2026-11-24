@@ -27,7 +27,7 @@ export const DestinationOption = ({
 		title={title}
 		onClick={onSelect}
 		className={cn(
-			'flex items-center justify-center gap-1.5 rounded px-2 py-1.5 text-sm transition-colors',
+			'flex items-center justify-center gap-1.5 whitespace-nowrap rounded px-2 py-1.5 text-sm transition-colors',
 			selected ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
 			disabled && 'opacity-50 cursor-not-allowed hover:bg-transparent'
 		)}

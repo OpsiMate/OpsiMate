@@ -35,9 +35,10 @@ import { useToast } from '@/hooks/use-toast';
 import { AlertFacetsResponse } from '@/lib/api';
 import { ACTIVE_ALERTS_POLL_MS, GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { pluralize } from '@/lib/text';
+import { getCurrentUser } from '@/lib/auth';
 import { isPlaygroundMode } from '@/lib/playground';
 import { cn } from '@/lib/utils';
-import { AiFilterResult, Alert } from '@OpsiMate/shared';
+import { AiFilterResult, Alert, AUTO_FIX_RESOLVE_REFUSED, isAutoFixed, IncidentSummary } from '@OpsiMate/shared';
 import {
 	Bell,
 	BellOff,
@@ -57,6 +58,9 @@ import { AlertDetailsPanel } from './AlertDetails';
 import { AlertsSelectionBar } from './AlertsSelectionBar';
 import { ConfirmAlertActionDialog, PendingAlertAction } from './ConfirmAlertActionDialog';
 import { AlertsTable } from './AlertsTable';
+import { AlertDragOverlay, dropId, IncidentDropTray, preferSpecificTargets } from './AlertDragAndDrop';
+import { useAlertDragAndDrop } from './hooks/useAlertDragAndDrop';
+import { DndContext, pointerWithin } from '@dnd-kit/core';
 import { AssignmentPane } from './AssignmentPane';
 import { VerticalSplit } from './VerticalSplit';
 import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
@@ -72,9 +76,10 @@ import { DashboardSettingsDrawer } from './DashboardSettingsDrawer';
 import { SaveDashboardAsDialog, SaveDashboardAsValues } from './SaveDashboardAsDialog';
 import {
 	useAlertActions,
+	useAlertTagKeys,
 	useAlertsFiltering,
 	useAlertsRefresh,
-	useAlertTagKeys,
+	useClickAwayDeselect,
 	useColumnManagement,
 	useExpandRows,
 	useFilterPanelCollapsed,
@@ -112,7 +117,8 @@ const GROUP_LOAD_ALL_MAX = 5000;
 // Rolling presets re-anchor to "now" continuously; a raw resolved window in the query
 // would mint a new cache key every tick. Rounding the window OUTWARD to the minute keeps
 // the key stable for a minute at a time while the server window stays a superset — the
-// client pipeline narrows to the exact rolling window on top.
+// client pipeline narrows to the exact rolling window on top. A preset has no end
+// (resolveTimeRange), so only `from` is ever rounded for one; `to` is a custom range's.
 const toCoarseWindow = (timeRange: TimeRange | undefined) => {
 	if (!timeRange) return { from: null, to: null };
 	const resolved = resolveTimeRange(timeRange);
@@ -375,6 +381,15 @@ const Alerts = () => {
 		setAllMatchingSelected(false);
 	}, [activeTab, dashboardState.filters, dashboardState.query, dashboardState.timeRange]);
 	const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+	// A press on empty space lets the selection go (and closes the details), like a plain
+	// click took it: see useClickAwayDeselect for what counts as "away".
+	useClickAwayDeselect({
+		active: selectedAlerts.length > 0 || selectedAlert !== null,
+		onClickAway: () => {
+			handleSelectAlerts([]);
+			setSelectedAlert(null);
+		},
+	});
 	const [showDashboardSettings, setShowDashboardSettings] = useState(false);
 	const [showSaveAs, setShowSaveAs] = useState(false);
 	const [pendingAction, setPendingAction] = useState<PendingAlertAction | null>(null);
@@ -795,7 +810,25 @@ const Alerts = () => {
 		isSubmitting: incidentSubmitting,
 		ungroupIncident: handleUngroupIncident,
 		removeAlertFromIncident: handleRemoveFromIncident,
+		incidents,
+		incidentsReady,
+		addAlertsToIncident,
+		removeAlertsFromIncidents,
+		openCreateDialogFor,
 	} = useIncidentActions({ selectedAlerts, onSelectAlerts: handleSelectAlerts, alertsById: loadedAlertsById });
+	const alertDrag = useAlertDragAndDrop({
+		selectedAlerts,
+		onSelectAlerts: handleSelectAlerts,
+		alertsById: loadedAlertsById,
+		incidents,
+		addAlertsToIncident,
+		removeAlertsFromIncidents,
+		openCreateDialogFor,
+		// Defined further down (they need runBulkAction); only called when a drop lands.
+		assignAlertsToMe: (alerts) => assignAlertsToMe(alerts),
+		unassignAlerts: (alerts) => unassignAlerts(alerts),
+		confirmUnassign: (alerts, dissolving) => confirmUnassign(alerts, dissolving),
+	});
 	const bulkAction = useBulkAlertAction();
 
 	// Bulk actions run as ONE server request: over the explicit ids of the loaded
@@ -809,7 +842,9 @@ const Alerts = () => {
 			comment?: string;
 			ownerId?: string | null;
 		},
-		labels: { title: string; verb: string }
+		labels: { title: string; verb: string },
+		// Explicit targets (a drop) instead of the selection / the armed "all matching" scope.
+		targets?: Alert[]
 	) => {
 		// The query is built HERE, not from a memo — the rolling window must be the one
 		// the user is looking at when they confirm, not the one from when they selected.
@@ -824,7 +859,11 @@ const Alerts = () => {
 			});
 			return;
 		}
-		const scope = allMatchingSelected ? { query: buildBulkScopeQuery() } : { ids: selectedAlerts.map((a) => a.id) };
+		const scope = targets
+			? { ids: targets.map((a) => a.id) }
+			: allMatchingSelected
+				? { query: buildBulkScopeQuery() }
+				: { ids: selectedAlerts.map((a) => a.id) };
 		// Cleared up front: the rows already show the change (optimistic), so a selection
 		// bar still offering actions on them would invite a second request for the same ids.
 		setSelectedAlerts([]);
@@ -857,6 +896,44 @@ const Alerts = () => {
 			{ action: 'silence', silencedUntil: silencedUntil ?? null, comment },
 			{ title: 'Alerts silenced', verb: 'Silenced' }
 		);
+
+	// Drop on the Assigned pane: the dragged unowned alerts become the dragger's. The same
+	// bulk assign-owner path as the selection bar, so the server fires its usual
+	// owner-assigned history entries and callbacks.
+	// Drop on the Unassigned pane: the dragged owned alerts lose their owner — the same
+	// bulk path as the selection bar's "unassign", so the server records it as usual (an
+	// alert that leaves its owner also leaves its incident; see the server's incident rule).
+	const unassignAlerts = async (alerts: Alert[]) =>
+		runBulkAction({ action: 'assignOwner', ownerId: null }, { title: 'Unassigned', verb: 'Unassigned' }, alerts);
+
+	// Unassigning the last owned members of an incident dissolves it: say so before doing it.
+	const confirmUnassign = (alerts: Alert[], dissolving: IncidentSummary[]) =>
+		setPendingAction({
+			title: `Unassign ${alerts.length} ${pluralize(alerts.length, 'alert')}?`,
+			description: `An alert that loses its owner also leaves its incident. This dissolves ${pluralize(dissolving.length, 'incident')} ${dissolving
+				.map((incident) => `"${incident.name}"`)
+				.join(', ')} — every member is being unassigned.`,
+			confirmLabel: 'Unassign',
+			destructive: true,
+			run: () => void unassignAlerts(alerts),
+		});
+
+	const assignAlertsToMe = async (alerts: Alert[]) => {
+		const me = getCurrentUser();
+		if (!me) {
+			toast({
+				title: 'Not signed in',
+				description: 'Sign in to take ownership of alerts.',
+				variant: 'destructive',
+			});
+			return;
+		}
+		await runBulkAction(
+			{ action: 'assignOwner', ownerId: String(me.id) },
+			{ title: 'Assigned to you', verb: 'Assigned to you' },
+			alerts
+		);
+	};
 
 	const handleAssignOwnerAllSelected = (ownerId: string | null) =>
 		runBulkAction(
@@ -904,7 +981,25 @@ const Alerts = () => {
 			run: (comment, silencedUntil) => void handleSilenceAlert(alertId, silencedUntil, comment),
 		});
 
-	const confirmResolveAlert = (alertId: string) =>
+	// Resolve is refused up front for an alert its source fixes on its own — the buttons
+	// are disabled, this covers any other way in (the server refuses too).
+	const refuseAutoFixResolve = (alerts: Alert[]): boolean => {
+		const autoFixed = alerts.filter(isAutoFixed);
+		if (autoFixed.length === 0) return false;
+		toast({
+			title: 'Cannot resolve',
+			description:
+				alerts.length === 1
+					? AUTO_FIX_RESOLVE_REFUSED
+					: `${autoFixed.length} of the selected ${pluralize(alerts.length, 'alert')} ${pluralize(autoFixed.length, 'is', 'are')} fixed automatically; unselect ${pluralize(autoFixed.length, 'it', 'them')} to resolve the rest`,
+			variant: 'destructive',
+		});
+		return true;
+	};
+
+	const confirmResolveAlert = (alertId: string) => {
+		const alert = loadedAlertsById.get(alertId);
+		if (alert && refuseAutoFixResolve([alert])) return;
 		setPendingAction({
 			title: 'Resolve this alert?',
 			description: 'The alert moves to the Resolved list. You can unresolve it later if it is still an issue.',
@@ -914,6 +1009,7 @@ const Alerts = () => {
 			commentPlaceholder: 'What fixed it / why is this resolved?',
 			run: (comment) => void handleDeleteAlert(alertId, comment),
 		});
+	};
 
 	const confirmDeleteResolvedAlert = (alertId: string) =>
 		setPendingAction({
@@ -991,7 +1087,9 @@ const Alerts = () => {
 			},
 		});
 
-	const confirmResolveAllSelected = () =>
+	const confirmResolveAllSelected = () => {
+		// The loaded selection is checked here; an "all matching" scope is the server's call.
+		if (!allMatchingSelected && refuseAutoFixResolve(selectedAlerts)) return;
 		setPendingAction({
 			title: `Resolve ${bulkCount} ${pluralize(bulkCount, 'alert')}?`,
 			description:
@@ -1003,6 +1101,7 @@ const Alerts = () => {
 			commentPlaceholder: 'What fixed it / why is this resolved?',
 			run: (comment) => void handleResolveAllSelected(comment),
 		});
+	};
 
 	// Next-page triggers per view; undefined when the loaded set is complete so the
 	// table doesn't keep firing at the bottom of a fully-loaded list.
@@ -1055,6 +1154,8 @@ const Alerts = () => {
 			onAlertClick={handleAlertClick}
 			activeAlertId={syncedSelectedAlert?.id ?? null}
 			incidentsById={incidentsById}
+			dragAndDrop={canDragIntoIncidents}
+			removeDropZone={draggingMembers}
 			onOpenIncident={handleOpenIncident}
 			activeIncidentId={selectedIncidentId}
 			onEditIncident={openIncidentDialog}
@@ -1147,6 +1248,18 @@ const Alerts = () => {
 		!isPlaygroundMode() &&
 		selectedAlerts.length > 0 &&
 		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
+	// Members are being dragged: the tables show the "out of the incident" drop zone.
+	const draggingMembers = alertDrag.dragging?.some((alert) => alert.incidentId != null) ?? false;
+	// Unowned alerts are being dragged: the Assigned pane can take them; owned ones: the
+	// Unassigned pane can.
+	const draggingUnowned = alertDrag.dragging?.some((alert) => alert.ownerId == null) ?? false;
+	const draggingOwned = alertDrag.dragging?.some((alert) => alert.ownerId != null) ?? false;
+	// Dragging rows into incidents: same guards, minus "something is selected" (a drag
+	// selects as it starts), plus a loaded incidents list for the drop targets.
+	const canDragIntoIncidents =
+		!isPlaygroundMode() &&
+		incidentsReady &&
+		!(allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length);
 
 	const handleAlertClick = (alert: Alert) => {
 		closeIncidentPanel();
@@ -1186,498 +1299,534 @@ const Alerts = () => {
 	);
 	return (
 		<DashboardLayout>
-			<div className="flex h-full">
-				<FilterSidebar collapsed={filterPanelCollapsed} onToggle={toggleFilterPanelCollapsed}>
-					<AlertsFilterPanel
-						alerts={currentAlertData}
-						serverFacets={
-							activeTab === AlertTab.Active
-								? activeFacets.data
-								: activeTab === AlertTab.Resolved
-									? resolvedFacets.data
-									: mergeFacetsResponses(suspendedActiveFacets.data, resolvedFacets.data)
-						}
-						filters={dashboardState.filters}
-						onFilterChange={handleFilterChange}
-						collapsed={filterPanelCollapsed}
-						tagKeys={tagKeys}
-						hideStatusFilter={activeTab !== AlertTab.Active}
-					/>
-				</FilterSidebar>
+			<DndContext
+				sensors={alertDrag.sensors}
+				collisionDetection={(args) => preferSpecificTargets(pointerWithin(args))}
+				onDragStart={alertDrag.onDragStart}
+				onDragEnd={alertDrag.onDragEnd}
+				onDragCancel={alertDrag.onDragCancel}
+			>
+				<div className="flex h-full">
+					<FilterSidebar collapsed={filterPanelCollapsed} onToggle={toggleFilterPanelCollapsed}>
+						<AlertsFilterPanel
+							alerts={currentAlertData}
+							serverFacets={
+								activeTab === AlertTab.Active
+									? activeFacets.data
+									: activeTab === AlertTab.Resolved
+										? resolvedFacets.data
+										: mergeFacetsResponses(suspendedActiveFacets.data, resolvedFacets.data)
+							}
+							filters={dashboardState.filters}
+							onFilterChange={handleFilterChange}
+							collapsed={filterPanelCollapsed}
+							tagKeys={tagKeys}
+							hideStatusFilter={activeTab !== AlertTab.Active}
+						/>
+					</FilterSidebar>
 
-				<div className="flex-1 flex min-h-0 overflow-hidden">
-					<div className={cn('flex flex-col p-4 min-h-0 transition-all duration-300', 'flex-1 min-w-0')}>
-						<div className="shrink-0 mb-4">
-							<DashboardHeader
-								dashboardName={dashboardState.name}
-								onDashboardNameChange={(name) => updateDashboardField('name', name)}
-								onDashboardNameBlur={() => {
-									// Not while Save as is opening: the blur-save writes the WHOLE view
-									// over the source dashboard, the one write Save as promises not to
-									// make. The typed name reaches the dialog's own Name field instead.
-									if (showSaveAs) return;
-									if (dashboardState.name && dashboardState.name !== initialState.name) {
-										handleSaveDashboard();
-									}
-								}}
-								isDirty={isDirty}
-								onSave={handleSaveDashboard}
-								onSaveAs={dashboardState.id ? () => setShowSaveAs(true) : undefined}
-								onSettingsClick={() => setShowDashboardSettings(true)}
-								isRefreshing={isRefreshing}
-								lastRefresh={lastRefresh}
-								onRefresh={handleManualRefresh}
-								dashboards={dashboards}
-								onDashboardSelect={handleDashboardSelect}
-								onNewDashboard={handleNewDashboard}
-								isDraft={!dashboardState.id}
-							/>
+					<div className="flex-1 flex min-h-0 overflow-hidden">
+						<div className={cn('flex flex-col p-4 min-h-0 transition-all duration-300', 'flex-1 min-w-0')}>
+							<div className="shrink-0 mb-4">
+								<DashboardHeader
+									dashboardName={dashboardState.name}
+									onDashboardNameChange={(name) => updateDashboardField('name', name)}
+									onDashboardNameBlur={() => {
+										// Not while Save as is opening: the blur-save writes the WHOLE view
+										// over the source dashboard, the one write Save as promises not to
+										// make. The typed name reaches the dialog's own Name field instead.
+										if (showSaveAs) return;
+										if (dashboardState.name && dashboardState.name !== initialState.name) {
+											handleSaveDashboard();
+										}
+									}}
+									isDirty={isDirty}
+									onSave={handleSaveDashboard}
+									onSaveAs={dashboardState.id ? () => setShowSaveAs(true) : undefined}
+									onSettingsClick={() => setShowDashboardSettings(true)}
+									isRefreshing={isRefreshing}
+									lastRefresh={lastRefresh}
+									onRefresh={handleManualRefresh}
+									dashboards={dashboards}
+									onDashboardSelect={handleDashboardSelect}
+									onNewDashboard={handleNewDashboard}
+									isDraft={!dashboardState.id}
+								/>
 
-							<div className="mt-3 flex items-center gap-4">
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<Button
-											variant="outline"
-											size="sm"
-											className="gap-1.5 shrink-0"
-											// Dynamic name: a static label would override the visible text and
-											// hide the current view + count from screen readers.
-											aria-label={`Choose which alerts to show — currently ${
-												ALERT_TAB_OPTIONS.find((option) => option.value === activeTab)?.label ??
-												'Active'
-											}, ${tabCounts[activeTab]} alerts`}
-										>
-											{/* All options render stacked in one grid cell (hidden except the
+								<div className="mt-3 flex flex-wrap items-center gap-4">
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<Button
+												variant="outline"
+												size="sm"
+												className="gap-1.5 shrink-0"
+												// Dynamic name: a static label would override the visible text and
+												// hide the current view + count from screen readers.
+												aria-label={`Choose which alerts to show — currently ${
+													ALERT_TAB_OPTIONS.find((option) => option.value === activeTab)
+														?.label ?? 'Active'
+												}, ${tabCounts[activeTab]} alerts`}
+											>
+												{/* All options render stacked in one grid cell (hidden except the
 											    current one) so the button keeps the width of the widest option
 											    and nothing shifts when switching views. */}
-											<span className="grid">
+												<span className="grid">
+													{ALERT_TAB_OPTIONS.map(({ value, label, Icon }) => (
+														<span
+															key={value}
+															aria-hidden={value !== activeTab}
+															className={cn(
+																'col-start-1 row-start-1 flex items-center gap-1.5 whitespace-nowrap',
+																value !== activeTab && 'invisible'
+															)}
+														>
+															<Icon className="h-4 w-4" />
+															<span>{label}</span>
+															<span className="text-xs text-muted-foreground tabular-nums">
+																{tabCounts[value]}
+															</span>
+														</span>
+													))}
+												</span>
+												<ChevronDown className="h-3.5 w-3.5 opacity-60" />
+											</Button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="start" className="w-44">
+											<DropdownMenuRadioGroup
+												value={activeTab}
+												onValueChange={(value) => {
+													setActiveTab(value as AlertTab);
+													setSelectedAlert(null);
+													handleSelectAlerts([]);
+												}}
+											>
 												{ALERT_TAB_OPTIONS.map(({ value, label, Icon }) => (
-													<span
+													<DropdownMenuRadioItem
 														key={value}
-														aria-hidden={value !== activeTab}
-														className={cn(
-															'col-start-1 row-start-1 flex items-center gap-1.5 whitespace-nowrap',
-															value !== activeTab && 'invisible'
-														)}
+														value={value}
+														className="gap-1.5"
 													>
 														<Icon className="h-4 w-4" />
 														<span>{label}</span>
-														<span className="text-xs text-muted-foreground tabular-nums">
+														<span className="ml-auto pl-4 text-xs text-muted-foreground tabular-nums">
 															{tabCounts[value]}
 														</span>
-													</span>
+													</DropdownMenuRadioItem>
 												))}
-											</span>
-											<ChevronDown className="h-3.5 w-3.5 opacity-60" />
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent align="start" className="w-44">
-										<DropdownMenuRadioGroup
-											value={activeTab}
-											onValueChange={(value) => {
-												setActiveTab(value as AlertTab);
-												setSelectedAlert(null);
-												handleSelectAlerts([]);
-											}}
-										>
-											{ALERT_TAB_OPTIONS.map(({ value, label, Icon }) => (
-												<DropdownMenuRadioItem key={value} value={value} className="gap-1.5">
-													<Icon className="h-4 w-4" />
-													<span>{label}</span>
-													<span className="ml-auto pl-4 text-xs text-muted-foreground tabular-nums">
-														{tabCounts[value]}
-													</span>
-												</DropdownMenuRadioItem>
-											))}
-										</DropdownMenuRadioGroup>
-									</DropdownMenuContent>
-								</DropdownMenu>
+											</DropdownMenuRadioGroup>
+										</DropdownMenuContent>
+									</DropdownMenu>
 
-								<div className="flex-1 min-w-0">
-									<SearchBar
-										searchTerm={dashboardState.query}
-										onSearchChange={(term) => updateDashboardField('query', term)}
-										onAiFilter={applyAiFilter}
-									/>
-								</div>
+									<div className="flex-1 min-w-[min(100%,20rem)]">
+										<SearchBar
+											searchTerm={dashboardState.query}
+											onSearchChange={(term) => updateDashboardField('query', term)}
+											onAiFilter={applyAiFilter}
+										/>
+									</div>
 
-								{/* Silenced alerts are usually filtered out (a dashboard's status filter
+									{/* Silenced alerts are usually filtered out (a dashboard's status filter
 								    typically pins Firing), and digging into the sidebar to check what's
 								    silenced is a lot of clicks for a routine question. Active-only: the
 								    Resolved and All views suspend the status filter, so the button would
 								    be inert there. */}
-								{activeTab === AlertTab.Active && (
+									{activeTab === AlertTab.Active && (
+										<Button
+											variant={silencedShown ? 'default' : 'outline'}
+											size="sm"
+											onClick={() =>
+												handleFilterChange(toggleSilencedAlerts(dashboardState.filters))
+											}
+											className="gap-1.5 shrink-0"
+											title={silencedShown ? 'Hide silenced alerts' : 'Show silenced alerts'}
+											aria-pressed={silencedShown}
+										>
+											<BellOff className="h-4 w-4" />
+											<span className="hidden lg:inline">Silenced</span>
+											{silencedCount > 0 && (
+												<span className="text-[10px] font-semibold tabular-nums opacity-80">
+													{silencedCount}
+												</span>
+											)}
+										</Button>
+									)}
+
+									{activeTab === AlertTab.Active && (
+										<Button
+											variant={splitByAssignment ? 'default' : 'outline'}
+											size="sm"
+											onClick={() =>
+												updateDashboardField('splitByAssignment', !splitByAssignment)
+											}
+											className="gap-1.5 shrink-0"
+											title="Split into Unassigned and Assigned"
+										>
+											<Columns2 className="h-4 w-4" />
+											<span className="hidden lg:inline">Split by owner</span>
+										</Button>
+									)}
+
 									<Button
-										variant={silencedShown ? 'default' : 'outline'}
+										variant={severityColors ? 'default' : 'outline'}
 										size="sm"
-										onClick={() => handleFilterChange(toggleSilencedAlerts(dashboardState.filters))}
+										onClick={() => updateDashboardField('severityColors', !severityColors)}
 										className="gap-1.5 shrink-0"
-										title={silencedShown ? 'Hide silenced alerts' : 'Show silenced alerts'}
-										aria-pressed={silencedShown}
+										title="Color rows by severity"
 									>
-										<BellOff className="h-4 w-4" />
-										<span className="hidden lg:inline">Silenced</span>
-										{silencedCount > 0 && (
-											<span className="text-[10px] font-semibold tabular-nums opacity-80">
-												{silencedCount}
-											</span>
-										)}
+										<Palette className="h-4 w-4" />
+										<span className="hidden lg:inline">Severity colors</span>
 									</Button>
-								)}
 
-								{activeTab === AlertTab.Active && (
 									<Button
-										variant={splitByAssignment ? 'default' : 'outline'}
+										variant={expandRows ? 'default' : 'outline'}
 										size="sm"
-										onClick={() => updateDashboardField('splitByAssignment', !splitByAssignment)}
+										onClick={toggleExpandRows}
 										className="gap-1.5 shrink-0"
-										title="Split into Unassigned and Assigned"
+										title="Expand rows to show full content"
+										aria-pressed={expandRows}
 									>
-										<Columns2 className="h-4 w-4" />
-										<span className="hidden lg:inline">Split by owner</span>
+										<WrapText className="h-4 w-4" />
+										<span className="hidden lg:inline">Expand rows</span>
 									</Button>
-								)}
 
-								<Button
-									variant={severityColors ? 'default' : 'outline'}
-									size="sm"
-									onClick={() => updateDashboardField('severityColors', !severityColors)}
-									className="gap-1.5 shrink-0"
-									title="Color rows by severity"
-								>
-									<Palette className="h-4 w-4" />
-									<span className="hidden lg:inline">Severity colors</span>
-								</Button>
-
-								<Button
-									variant={expandRows ? 'default' : 'outline'}
-									size="sm"
-									onClick={toggleExpandRows}
-									className="gap-1.5 shrink-0"
-									title="Expand rows to show full content"
-									aria-pressed={expandRows}
-								>
-									<WrapText className="h-4 w-4" />
-									<span className="hidden lg:inline">Expand rows</span>
-								</Button>
-
-								<TimeFilter
-									value={dashboardState.timeRange ?? createEmptyTimeRange()}
-									onChange={(range) => updateDashboardField('timeRange', range)}
-								/>
+									<TimeFilter
+										value={dashboardState.timeRange ?? createEmptyTimeRange()}
+										onChange={(range) => updateDashboardField('timeRange', range)}
+									/>
+								</div>
 							</div>
-						</div>
 
-						{/* ONE strip for every reason this view is narrower than it looks: a
+							{/* ONE strip for every reason this view is narrower than it looks: a
 						    free-text search, filters the user changed since the dashboard was
 						    saved, or both. Two stacked notices cost twice the vertical space and
 						    read as two unrelated warnings about the same view — so they share a
 						    row, each keeping its own way out. Filter changes are shown in BOTH
 						    directions: removing a filter the dashboard was saved with widens the
 						    view just as invisibly as adding one narrows it. */}
-						{(hasSearch || filterChanges.length > 0) && (
-							<ViewNotice
-								icon={
-									hasSearch ? <Search className="h-3.5 w-3.5" /> : <Filter className="h-3.5 w-3.5" />
-								}
-								title={
-									[
-										hasSearch ? `Matching “${dashboardState.query}”` : '',
-										changeSummary ? `Filters: ${changeSummary}` : '',
-									]
-										.filter(Boolean)
-										.join(' · ') || undefined
-								}
-								actions={noticeActions}
-							>
-								{hasSearch && (
-									<>
-										Showing only alerts matching{' '}
-										<span className="font-semibold">“{dashboardState.query}”</span>
-										<span className="text-muted-foreground">
-											{' '}
-											— {matchTotal.toLocaleString()} {pluralize(matchTotal, 'match', 'matches')}{' '}
-											in this view
-										</span>
-									</>
-								)}
-								{hasSearch && filterChanges.length > 0 && (
-									<span className="text-muted-foreground"> · </span>
-								)}
-								{filterChanges.length > 0 && (
-									<>
-										Filters changed <span className="font-semibold">{namedChanges}</span>
-										{changeOverflow > 0 && (
-											<span className="text-muted-foreground"> +{changeOverflow} more</span>
-										)}
-									</>
-								)}
-							</ViewNotice>
-						)}
+							{(hasSearch || filterChanges.length > 0) && (
+								<ViewNotice
+									icon={
+										hasSearch ? (
+											<Search className="h-3.5 w-3.5" />
+										) : (
+											<Filter className="h-3.5 w-3.5" />
+										)
+									}
+									title={
+										[
+											hasSearch ? `Matching “${dashboardState.query}”` : '',
+											changeSummary ? `Filters: ${changeSummary}` : '',
+										]
+											.filter(Boolean)
+											.join(' · ') || undefined
+									}
+									actions={noticeActions}
+								>
+									{hasSearch && (
+										<>
+											Showing only alerts matching{' '}
+											<span className="font-semibold">“{dashboardState.query}”</span>
+											<span className="text-muted-foreground">
+												{' '}
+												— {matchTotal.toLocaleString()}{' '}
+												{pluralize(matchTotal, 'match', 'matches')} in this view
+											</span>
+										</>
+									)}
+									{hasSearch && filterChanges.length > 0 && (
+										<span className="text-muted-foreground"> · </span>
+									)}
+									{filterChanges.length > 0 && (
+										<>
+											Filters changed <span className="font-semibold">{namedChanges}</span>
+											{changeOverflow > 0 && (
+												<span className="text-muted-foreground"> +{changeOverflow} more</span>
+											)}
+										</>
+									)}
+								</ViewNotice>
+							)}
 
-						{activeTab === AlertTab.Active ? (
-							<>
-								{splitByAssignment ? (
-									<VerticalSplit
-										className="flex-1"
-										top={
-											<AssignmentPane
-												title="Unassigned"
-												// Server-counted total over the full matching set — the
-												// loaded page's split is a lie past 500 rows. Falls back
-												// to the loaded count until the first response.
-												count={unassignedTotal ?? unassignedAlerts.length}
-												tone="amber"
-												isEmpty={unassignedAlerts.length === 0 && !isLoading}
-												emptyText="Nothing waiting — all alerts are assigned."
-											>
-												{renderActiveAlertsTable(unassignedAlerts)}
-											</AssignmentPane>
-										}
-										bottom={
-											<AssignmentPane
-												title="Assigned"
-												count={assignedTotal ?? assignedAlerts.length}
-												tone="emerald"
-												isEmpty={assignedAlerts.length === 0 && !isLoading}
-												emptyText="No alerts assigned yet."
-											>
-												{renderActiveAlertsTable(assignedAlerts)}
-											</AssignmentPane>
-										}
-									/>
-								) : (
-									<div
-										className={cn(
-											'flex-1 min-h-0',
-											alerts.length === 0 && !isLoading && 'flex items-center justify-center'
-										)}
-									>
-										{renderActiveAlertsTable(filteredAlerts)}
+							{activeTab === AlertTab.Active ? (
+								<>
+									{splitByAssignment ? (
+										<VerticalSplit
+											className="flex-1"
+											top={
+												<AssignmentPane
+													title="Unassigned"
+													dropTargetId={
+														canDragIntoIncidents ? dropId.unassignedPane : undefined
+													}
+													dropActive={draggingOwned}
+													// Server-counted total over the full matching set — the
+													// loaded page's split is a lie past 500 rows. Falls back
+													// to the loaded count until the first response.
+													count={unassignedTotal ?? unassignedAlerts.length}
+													tone="amber"
+													isEmpty={unassignedAlerts.length === 0 && !isLoading}
+													emptyText="Nothing waiting — all alerts are assigned."
+												>
+													{renderActiveAlertsTable(unassignedAlerts)}
+												</AssignmentPane>
+											}
+											bottom={
+												<AssignmentPane
+													title="Assigned"
+													dropTargetId={
+														canDragIntoIncidents ? dropId.assignedPane : undefined
+													}
+													dropActive={draggingUnowned}
+													count={assignedTotal ?? assignedAlerts.length}
+													tone="emerald"
+													isEmpty={assignedAlerts.length === 0 && !isLoading}
+													emptyText="No alerts assigned yet."
+												>
+													{renderActiveAlertsTable(assignedAlerts)}
+												</AssignmentPane>
+											}
+										/>
+									) : (
+										<div
+											className={cn(
+												'flex-1 min-h-0',
+												alerts.length === 0 && !isLoading && 'flex items-center justify-center'
+											)}
+										>
+											{renderActiveAlertsTable(filteredAlerts)}
+										</div>
+									)}
+
+									<div className="shrink-0">
+										<AlertsSelectionBar
+											selectedAlerts={selectedAlerts}
+											hasUnloadedMatches={showPartialNotice && !allMatchingSelected}
+											matchingTotal={bulkMatchCount}
+											allMatchingSelected={allMatchingSelected}
+											// Offered Gmail-style: every VISIBLE row is selected (membership,
+											// not a length compare — a filter change can leave a stale larger
+											// selection over a smaller list) and the server counts more
+											// matching this exact view.
+											onSelectAllMatching={
+												!allMatchingSelected &&
+												allVisibleSelected &&
+												bulkMatchCount !== undefined &&
+												bulkMatchCount > selectedAlerts.length
+													? () => setAllMatchingSelected(true)
+													: undefined
+											}
+											onClearSelection={() => handleSelectAlerts([])}
+											// Hidden when "all N matching" is armed but only a page is
+											// loaded: grouping would silently take the loaded subset
+											// while the bar claims the whole match set is selected.
+											onGroupIntoIncident={
+												canOpenIncidentDialog ? () => openIncidentDialog('create') : undefined
+											}
+											onSilenceAll={confirmSilenceAllSelected}
+											onUnsilenceAll={handleUnsilenceAllSelected}
+											onAssignOwnerAll={handleAssignOwnerAllSelected}
+											onResolveAll={confirmResolveAllSelected}
+											onCommentAll={confirmCommentAllSelected}
+											// Permanent delete never runs by-filter — it stays on the loaded
+											// selection, so it's hidden while "all matching" is armed.
+											onDeleteAll={
+												canDelete() && !allMatchingSelected
+													? handleDeleteAllSelected
+													: undefined
+											}
+											actionsDisabled={bulkAction.isPending}
+										/>
 									</div>
-								)}
-
-								<div className="shrink-0">
-									<AlertsSelectionBar
-										selectedAlerts={selectedAlerts}
-										hasUnloadedMatches={showPartialNotice && !allMatchingSelected}
-										matchingTotal={bulkMatchCount}
-										allMatchingSelected={allMatchingSelected}
-										// Offered Gmail-style: every VISIBLE row is selected (membership,
-										// not a length compare — a filter change can leave a stale larger
-										// selection over a smaller list) and the server counts more
-										// matching this exact view.
-										onSelectAllMatching={
-											!allMatchingSelected &&
-											allVisibleSelected &&
-											bulkMatchCount !== undefined &&
-											bulkMatchCount > selectedAlerts.length
-												? () => setAllMatchingSelected(true)
-												: undefined
-										}
-										onClearSelection={() => handleSelectAlerts([])}
-										// Hidden when "all N matching" is armed but only a page is
-										// loaded: grouping would silently take the loaded subset
-										// while the bar claims the whole match set is selected.
-										onGroupIntoIncident={
-											canOpenIncidentDialog ? () => openIncidentDialog('create') : undefined
-										}
-										onSilenceAll={confirmSilenceAllSelected}
-										onUnsilenceAll={handleUnsilenceAllSelected}
-										onAssignOwnerAll={handleAssignOwnerAllSelected}
-										onResolveAll={confirmResolveAllSelected}
-										onCommentAll={confirmCommentAllSelected}
-										// Permanent delete never runs by-filter — it stays on the loaded
-										// selection, so it's hidden while "all matching" is armed.
-										onDeleteAll={
-											canDelete() && !allMatchingSelected ? handleDeleteAllSelected : undefined
-										}
-										actionsDisabled={bulkAction.isPending}
+								</>
+							) : activeTab === AlertTab.Resolved ? (
+								<div
+									className={cn(
+										'flex-1 min-h-0',
+										// Matches the list the table actually renders, so the empty state
+										// centers also when filters (not just an empty source) clear it.
+										resolvedViewAlerts.length === 0 &&
+											!isLoadingResolved &&
+											'flex items-center justify-center'
+									)}
+								>
+									<AlertsTable
+										alerts={resolvedViewAlerts}
+										onEndReached={loadMoreResolved}
+										groupSummaryByKey={groupSummaryByKey}
+										sortField={alertSort.field}
+										sortDirection={alertSort.dir}
+										onSortChange={(field, dir) => setAlertSort({ field, dir })}
+										onSilenceAlert={undefined}
+										onUnsilenceAlert={undefined}
+										onDeleteAlert={getResolvedAlertDeleteHandler(
+											canDelete(),
+											confirmDeleteResolvedAlert
+										)}
+										onUnresolveAlert={handleUnresolveAlert}
+										onSelectAlerts={undefined}
+										selectedAlerts={[]}
+										isLoading={isLoadingResolved}
+										isResolved={true}
+										visibleColumns={visibleColumns}
+										columnOrder={columnOrder}
+										columnWidths={dashboardState.columnWidths}
+										onColumnWidthsChange={handleColumnWidthsChange}
+										onAlertClick={handleAlertClick}
+										activeAlertId={syncedSelectedAlert?.id ?? null}
+										incidentsById={incidentsById}
+										dragAndDrop={canDragIntoIncidents}
+										removeDropZone={draggingMembers}
+										onOpenIncident={handleOpenIncident}
+										activeIncidentId={selectedIncidentId}
+										onEditIncident={openIncidentDialog}
+										onUngroupIncident={handleUngroupIncident}
+										onRemoveFromIncident={handleRemoveFromIncident}
+										tagKeyColumnLabels={allColumnLabels}
+										groupByColumns={dashboardState.groupBy}
+										onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
+										onColumnToggle={handleColumnToggle}
+										onColumnOrderChange={handleColumnOrderChange}
+										tagKeys={tagKeys}
+										timeRange={dashboardState.timeRange}
+										onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
+										searchTerm={dashboardState.query}
+										onSearchTermChange={(term) => updateDashboardField('query', term)}
+										renderToolbar={false}
+										severityColors={severityColors}
+										expandRows={expandRows}
 									/>
 								</div>
-							</>
-						) : activeTab === AlertTab.Resolved ? (
-							<div
-								className={cn(
-									'flex-1 min-h-0',
-									// Matches the list the table actually renders, so the empty state
-									// centers also when filters (not just an empty source) clear it.
-									resolvedViewAlerts.length === 0 &&
-										!isLoadingResolved &&
-										'flex items-center justify-center'
-								)}
-							>
-								<AlertsTable
-									alerts={resolvedViewAlerts}
-									onEndReached={loadMoreResolved}
-									groupSummaryByKey={groupSummaryByKey}
-									sortField={alertSort.field}
-									sortDirection={alertSort.dir}
-									onSortChange={(field, dir) => setAlertSort({ field, dir })}
-									onSilenceAlert={undefined}
-									onUnsilenceAlert={undefined}
-									onDeleteAlert={getResolvedAlertDeleteHandler(
-										canDelete(),
-										confirmDeleteResolvedAlert
+							) : (
+								<div
+									className={cn(
+										'flex-1 min-h-0',
+										filteredAllAlerts.length === 0 &&
+											!isLoading &&
+											!isLoadingResolved &&
+											'flex items-center justify-center'
 									)}
-									onUnresolveAlert={handleUnresolveAlert}
-									onSelectAlerts={undefined}
-									selectedAlerts={[]}
-									isLoading={isLoadingResolved}
-									isResolved={true}
-									visibleColumns={visibleColumns}
-									columnOrder={columnOrder}
-									columnWidths={dashboardState.columnWidths}
-									onColumnWidthsChange={handleColumnWidthsChange}
-									onAlertClick={handleAlertClick}
-									activeAlertId={syncedSelectedAlert?.id ?? null}
-									incidentsById={incidentsById}
-									onOpenIncident={handleOpenIncident}
-									activeIncidentId={selectedIncidentId}
-									onEditIncident={openIncidentDialog}
-									onUngroupIncident={handleUngroupIncident}
-									onRemoveFromIncident={handleRemoveFromIncident}
-									tagKeyColumnLabels={allColumnLabels}
-									groupByColumns={dashboardState.groupBy}
-									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
-									onColumnToggle={handleColumnToggle}
-									onColumnOrderChange={handleColumnOrderChange}
-									tagKeys={tagKeys}
-									timeRange={dashboardState.timeRange}
-									onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
-									searchTerm={dashboardState.query}
-									onSearchTermChange={(term) => updateDashboardField('query', term)}
-									renderToolbar={false}
-									severityColors={severityColors}
-									expandRows={expandRows}
-								/>
-							</div>
-						) : (
-							<div
-								className={cn(
-									'flex-1 min-h-0',
-									filteredAllAlerts.length === 0 &&
-										!isLoading &&
-										!isLoadingResolved &&
-										'flex items-center justify-center'
-								)}
-							>
-								<AlertsTable
-									alerts={filteredAllAlerts}
-									onEndReached={loadMoreAll}
-									groupSummaryByKey={groupSummaryByKey}
-									sortField={alertSort.field}
-									sortDirection={alertSort.dir}
-									onSortChange={(field, dir) => setAlertSort({ field, dir })}
-									onSilenceAlert={confirmSilenceAlert}
-									onUnsilenceAlert={handleUnsilenceAlert}
-									onDeleteAlert={confirmDeleteAnyAlert}
-									onUnresolveAlert={handleUnresolveAlert}
-									onSelectAlerts={undefined}
-									selectedAlerts={[]}
-									isLoading={isLoading || isLoadingResolved}
-									visibleColumns={visibleColumns}
-									columnOrder={columnOrder}
-									columnWidths={dashboardState.columnWidths}
-									onColumnWidthsChange={handleColumnWidthsChange}
-									onAlertClick={handleAlertClick}
-									activeAlertId={syncedSelectedAlert?.id ?? null}
-									incidentsById={incidentsById}
-									onOpenIncident={handleOpenIncident}
-									activeIncidentId={selectedIncidentId}
-									onEditIncident={openIncidentDialog}
-									onUngroupIncident={handleUngroupIncident}
-									onRemoveFromIncident={handleRemoveFromIncident}
-									tagKeyColumnLabels={allColumnLabels}
-									groupByColumns={dashboardState.groupBy}
-									onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
-									onColumnToggle={handleColumnToggle}
-									onColumnOrderChange={handleColumnOrderChange}
-									tagKeys={tagKeys}
-									timeRange={dashboardState.timeRange}
-									onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
-									searchTerm={dashboardState.query}
-									onSearchTermChange={(term) => updateDashboardField('query', term)}
-									renderToolbar={false}
-									severityColors={severityColors}
-									expandRows={expandRows}
-								/>
-							</div>
+								>
+									<AlertsTable
+										alerts={filteredAllAlerts}
+										onEndReached={loadMoreAll}
+										groupSummaryByKey={groupSummaryByKey}
+										sortField={alertSort.field}
+										sortDirection={alertSort.dir}
+										onSortChange={(field, dir) => setAlertSort({ field, dir })}
+										onSilenceAlert={confirmSilenceAlert}
+										onUnsilenceAlert={handleUnsilenceAlert}
+										onDeleteAlert={confirmDeleteAnyAlert}
+										onUnresolveAlert={handleUnresolveAlert}
+										onSelectAlerts={undefined}
+										selectedAlerts={[]}
+										isLoading={isLoading || isLoadingResolved}
+										visibleColumns={visibleColumns}
+										columnOrder={columnOrder}
+										columnWidths={dashboardState.columnWidths}
+										onColumnWidthsChange={handleColumnWidthsChange}
+										onAlertClick={handleAlertClick}
+										activeAlertId={syncedSelectedAlert?.id ?? null}
+										incidentsById={incidentsById}
+										dragAndDrop={canDragIntoIncidents}
+										removeDropZone={draggingMembers}
+										onOpenIncident={handleOpenIncident}
+										activeIncidentId={selectedIncidentId}
+										onEditIncident={openIncidentDialog}
+										onUngroupIncident={handleUngroupIncident}
+										onRemoveFromIncident={handleRemoveFromIncident}
+										tagKeyColumnLabels={allColumnLabels}
+										groupByColumns={dashboardState.groupBy}
+										onGroupByChange={(cols) => updateDashboardField('groupBy', cols)}
+										onColumnToggle={handleColumnToggle}
+										onColumnOrderChange={handleColumnOrderChange}
+										tagKeys={tagKeys}
+										timeRange={dashboardState.timeRange}
+										onTimeRangeChange={(range) => updateDashboardField('timeRange', range)}
+										searchTerm={dashboardState.query}
+										onSearchTermChange={(term) => updateDashboardField('query', term)}
+										renderToolbar={false}
+										severityColors={severityColors}
+										expandRows={expandRows}
+									/>
+								</div>
+							)}
+						</div>
+
+						{selectedIncident && (
+							<IncidentPanel
+								incident={selectedIncident}
+								alertsById={loadedAlertsById}
+								onClose={closeIncidentPanel}
+								onOpenAlert={handleAlertClick}
+								onEdit={openIncidentDialog}
+								onUngroup={handleUngroupIncident}
+							/>
 						)}
+						{syncedSelectedAlert &&
+							(() => {
+								// Data-driven (not tab-driven): resolving an alert while its panel is
+								// open flips the panel to resolved mode in place, and unresolving
+								// flips it back.
+								// The active list wins: right after a re-fire the resolved list (slower
+								// poll) can still hold the id for a while.
+								const selectedIsResolved =
+									resolvedIds.has(syncedSelectedAlert.id) &&
+									!alerts.some((alert) => alert.id === syncedSelectedAlert.id);
+								return (
+									<AlertDetailsPanel
+										alert={syncedSelectedAlert}
+										isActive={!selectedIsResolved}
+										timeRange={dashboardState.timeRange}
+										onClose={() => setSelectedAlert(null)}
+										onSilence={confirmSilenceAlert}
+										onUnsilence={handleUnsilenceAlert}
+										onDelete={
+											selectedIsResolved
+												? canDelete()
+													? confirmDeleteResolvedAlert
+													: undefined
+												: confirmResolveAlert
+										}
+										onUnresolve={handleUnresolveAlert}
+									/>
+								);
+							})()}
 					</div>
-
-					{selectedIncident && (
-						<IncidentPanel
-							incident={selectedIncident}
-							alertsById={loadedAlertsById}
-							onClose={closeIncidentPanel}
-							onOpenAlert={handleAlertClick}
-							onEdit={openIncidentDialog}
-							onUngroup={handleUngroupIncident}
-						/>
-					)}
-					{syncedSelectedAlert &&
-						(() => {
-							// Data-driven (not tab-driven): resolving an alert while its panel is
-							// open flips the panel to resolved mode in place, and unresolving
-							// flips it back.
-							// The active list wins: right after a re-fire the resolved list (slower
-							// poll) can still hold the id for a while.
-							const selectedIsResolved =
-								resolvedIds.has(syncedSelectedAlert.id) &&
-								!alerts.some((alert) => alert.id === syncedSelectedAlert.id);
-							return (
-								<AlertDetailsPanel
-									alert={syncedSelectedAlert}
-									isActive={!selectedIsResolved}
-									timeRange={dashboardState.timeRange}
-									onClose={() => setSelectedAlert(null)}
-									onSilence={confirmSilenceAlert}
-									onUnsilence={handleUnsilenceAlert}
-									onDelete={
-										selectedIsResolved
-											? canDelete()
-												? confirmDeleteResolvedAlert
-												: undefined
-											: confirmResolveAlert
-									}
-									onUnresolve={handleUnresolveAlert}
-								/>
-							);
-						})()}
 				</div>
-			</div>
 
-			<ConfirmAlertActionDialog pending={pendingAction} onClose={() => setPendingAction(null)} />
-			<IncidentDialog
-				target={incidentDialogTarget}
-				onOpenChange={(open) => {
-					if (!open) closeIncidentDialog();
-				}}
-				onSubmit={handleIncidentDialogSubmit}
-				isSubmitting={incidentSubmitting}
-			/>
+				<ConfirmAlertActionDialog pending={pendingAction} onClose={() => setPendingAction(null)} />
+				<IncidentDialog
+					target={incidentDialogTarget}
+					onOpenChange={(open) => {
+						if (!open) closeIncidentDialog();
+					}}
+					onSubmit={handleIncidentDialogSubmit}
+					isSubmitting={incidentSubmitting}
+				/>
 
-			<DashboardSettingsDrawer
-				open={showDashboardSettings}
-				onOpenChange={setShowDashboardSettings}
-				dashboardName={dashboardState.name}
-				onDashboardNameChange={(name) => updateDashboardField('name', name)}
-				dashboardDescription={dashboardState.description}
-				onDashboardDescriptionChange={(desc) => updateDashboardField('description', desc)}
-				onDelete={handleDeleteDashboard}
-				canDelete={!!dashboardState.id}
-			/>
+				<DashboardSettingsDrawer
+					open={showDashboardSettings}
+					onOpenChange={setShowDashboardSettings}
+					dashboardName={dashboardState.name}
+					onDashboardNameChange={(name) => updateDashboardField('name', name)}
+					dashboardDescription={dashboardState.description}
+					onDashboardDescriptionChange={(desc) => updateDashboardField('description', desc)}
+					onDelete={handleDeleteDashboard}
+					canDelete={!!dashboardState.id}
+				/>
 
-			<SaveDashboardAsDialog
-				open={showSaveAs}
-				onOpenChange={setShowSaveAs}
-				sourceName={dashboardState.name}
-				sourceDescription={dashboardState.description}
-				existingNames={dashboards.map((d) => d.name)}
-				namesStatus={dashboardsPending ? 'loading' : dashboardsFailed ? 'error' : 'ready'}
-				onSubmit={handleSaveDashboardAs}
-			/>
+				<SaveDashboardAsDialog
+					open={showSaveAs}
+					onOpenChange={setShowSaveAs}
+					sourceName={dashboardState.name}
+					sourceDescription={dashboardState.description}
+					existingNames={dashboards.map((d) => d.name)}
+					namesStatus={dashboardsPending ? 'loading' : dashboardsFailed ? 'error' : 'ready'}
+					onSubmit={handleSaveDashboardAs}
+				/>
+				{alertDrag.dragging && <IncidentDropTray dragging={alertDrag.dragging} incidents={incidents} />}
+				<AlertDragOverlay dragging={alertDrag.dragging} />
+			</DndContext>
 		</DashboardLayout>
 	);
 };

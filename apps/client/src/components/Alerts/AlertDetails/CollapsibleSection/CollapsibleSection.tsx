@@ -16,7 +16,17 @@ interface CollapsibleSectionProps {
 	headerClassName?: string;
 	children: ReactNode;
 	className?: string;
+	// In a flex column: the section takes its content's height while there is room and
+	// shrinks with its siblings when there is not (its content then scrolls), so a long
+	// summary gets the whole panel when alone and a fair share next to a root cause.
+	// It never grows past its content (that would leave gaps between sections). Folded,
+	// it is just its header.
+	fill?: boolean;
 }
+
+// Content-sized, shrinkable column item while open; a fixed header while folded.
+const fillClasses = (open: boolean): string => (open ? 'flex min-h-0 flex-col flex-[0_1_auto]' : 'shrink-0');
+const contentClasses = (fill: boolean): string => (fill ? 'mt-2 flex min-h-0 flex-1 flex-col' : 'mt-2');
 
 // A titled, collapsible block used to build the Alert Details panel. Each section shows a
 // chevron + icon + uppercase title, an optional count badge, and optional right-side controls
@@ -30,6 +40,7 @@ export const CollapsibleSection = ({
 	headerClassName,
 	children,
 	className,
+	fill = false,
 }: CollapsibleSectionProps) => {
 	const [open, setOpen] = useState(defaultOpen);
 
@@ -45,7 +56,7 @@ export const CollapsibleSection = ({
 	}, [signal]);
 
 	return (
-		<div className={cn('border-t border-border pt-2', className)}>
+		<div className={cn('border-t border-border pt-2', fill && fillClasses(open), className)}>
 			<div className="flex items-center justify-between gap-2">
 				<button
 					type="button"
@@ -69,7 +80,7 @@ export const CollapsibleSection = ({
 				</button>
 				{headerRight && <div className="shrink-0">{headerRight}</div>}
 			</div>
-			{open && <div className="mt-2">{children}</div>}
+			{open && <div className={contentClasses(fill)}>{children}</div>}
 		</div>
 	);
 };

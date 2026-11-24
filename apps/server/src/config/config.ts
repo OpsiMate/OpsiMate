@@ -23,8 +23,8 @@ export interface LdapTlsConfig {
 	ca?: string;
 }
 
-// Directory login. Users sign in with their email and directory password; the
-// account is created in OpsiMate on first login, with the role from role_mapping.
+// Directory login. Users sign in with their username or email and directory password;
+// the account is created in OpsiMate on first login, with the role from role_mapping.
 export interface LdapConfig {
 	enabled: boolean;
 	// ldap://host:389 or ldaps://host:636
@@ -34,10 +34,13 @@ export interface LdapConfig {
 	// Service account used to look users up. Omit both for an anonymous search.
 	bind_dn?: string;
 	bind_password?: string;
-	// Where users live, and how to find one by the email typed at login.
+	// Where users live, and how to find one by what was typed at login (a username or
+	// an email).
 	search_base?: string;
-	// {{email}} is replaced by the (escaped) email. Default: (mail={{email}})
+	// {{login}} is replaced by the (escaped) typed value; {{email}} is its old name and
+	// means the same. Default: (|(<username_attribute>={{login}})(<email_attribute>={{login}}))
 	search_filter?: string;
+	username_attribute?: string; // default: uid (sAMAccountName on Active Directory)
 	email_attribute?: string; // default: mail
 	name_attribute?: string; // default: displayName (falls back to cn)
 	// Groups: read from the user's memberOf attribute, and/or searched for.
@@ -225,6 +228,15 @@ const envList = (value: string | undefined): string[] | undefined =>
 // (the Docker / Helm way to configure it), validated. An enabled but incomplete
 // section is switched off with a warning rather than failing the boot: the local
 // login keeps working and the log says what is missing.
+// The search filter default before usernames. Installations that saved LDAP settings
+// through the page (which always sent the filter it showed) have it stored as an explicit
+// filter, and a config file may carry it copied from the old example; read back as a
+// choice it would keep every login email-only. It is the default, not an override, and
+// wherever settings are read it is dropped so the current default applies.
+export const LEGACY_DEFAULT_SEARCH_FILTER = '(mail={{email}})';
+export const isLegacyDefaultSearchFilter = (filter: unknown): boolean =>
+	typeof filter === 'string' && filter.trim() === LEGACY_DEFAULT_SEARCH_FILTER;
+
 export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig {
 	const env = process.env;
 	const ldap: LdapConfig = { ...(fromFile ?? { enabled: false }) };
@@ -236,7 +248,19 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	if (env.LDAP_BIND_DN) ldap.bind_dn = env.LDAP_BIND_DN;
 	if (env.LDAP_BIND_PASSWORD) ldap.bind_password = env.LDAP_BIND_PASSWORD;
 	if (env.LDAP_SEARCH_BASE) ldap.search_base = env.LDAP_SEARCH_BASE;
+	// YAML's empty value (`search_filter:`) is null: no filter. The old default copied
+	// from the file is the default, not an override. An environment value is a choice
+	// made now and stands as written — "(mail={{email}})" there means email-only.
+	const fileFilter = ldap.search_filter as unknown;
+	if (
+		fileFilter === null ||
+		(typeof fileFilter === 'string' && fileFilter.trim() === '') ||
+		isLegacyDefaultSearchFilter(fileFilter)
+	) {
+		delete ldap.search_filter;
+	}
 	if (env.LDAP_SEARCH_FILTER) ldap.search_filter = env.LDAP_SEARCH_FILTER;
+	if (env.LDAP_USERNAME_ATTRIBUTE) ldap.username_attribute = env.LDAP_USERNAME_ATTRIBUTE;
 	if (env.LDAP_EMAIL_ATTRIBUTE) ldap.email_attribute = env.LDAP_EMAIL_ATTRIBUTE;
 	if (env.LDAP_NAME_ATTRIBUTE) ldap.name_attribute = env.LDAP_NAME_ATTRIBUTE;
 	if (env.LDAP_GROUPS_ATTRIBUTE) ldap.groups_attribute = env.LDAP_GROUPS_ATTRIBUTE;
@@ -263,6 +287,14 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	}
 	ldap.role_mapping = mapping;
 	if (env.LDAP_DEFAULT_ROLE) ldap.default_role = env.LDAP_DEFAULT_ROLE as LdapRole;
+	// A blank attribute name means "the default", not an attribute called ""; stray
+	// spaces around a name are not part of it.
+	for (const key of ['username_attribute', 'email_attribute', 'name_attribute', 'groups_attribute'] as const) {
+		if (typeof ldap[key] !== 'string') continue;
+		const trimmed = ldap[key].trim();
+		if (trimmed === '') delete ldap[key];
+		else ldap[key] = trimmed;
+	}
 
 	if (!ldap.enabled) return ldap;
 	const problems = validateLdapConfig(ldap);
@@ -276,6 +308,11 @@ export function resolveLdapConfig(fromFile: LdapConfig | undefined): LdapConfig 
 	return ldap;
 }
 
+// An LDAP attribute description (RFC 4512): a name (`mail`, `sAMAccountName`) or a
+// numeric OID (`0.9.2342.19200300.100.1.3`), with optional `;option`s (`cn;lang-en`).
+const ATTRIBUTE_DESCRIPTION = /^(?:[A-Za-z][A-Za-z0-9-]*|\d+(?:\.\d+)*)(?:;[A-Za-z0-9-]+)*$/;
+const isAttributeDescription = (value: string): boolean => ATTRIBUTE_DESCRIPTION.test(value.trim());
+
 // What stops this LDAP config from working, as short field notes; empty = usable.
 // Shared by config.yml / env loading and the Settings page.
 export function validateLdapConfig(ldap: LdapConfig): string[] {
@@ -283,10 +320,24 @@ export function validateLdapConfig(ldap: LdapConfig): string[] {
 	const problems: string[] = [];
 	if (!ldap.url || !/^ldaps?:\/\//i.test(ldap.url)) problems.push('url (ldap:// or ldaps://)');
 	if (!ldap.search_base) problems.push('search_base');
+	for (const key of ['username_attribute', 'email_attribute', 'name_attribute', 'groups_attribute'] as const) {
+		const value = ldap[key];
+		// Blank means the default (see resolveLdapConfig); anything else must be an
+		// attribute description — a list, or a name with a space, would break the filter.
+		if (
+			value !== undefined &&
+			!(typeof value === 'string' && (value.trim() === '' || isAttributeDescription(value)))
+		)
+			problems.push(`${key} (an attribute name)`);
+	}
 	if (ldap.bind_dn && !ldap.bind_password) problems.push('bind_password (bind_dn is set)');
 	if (ldap.default_role && !LDAP_ROLES.includes(ldap.default_role)) problems.push('default_role');
-	if (ldap.search_filter && !ldap.search_filter.includes('{{email}}'))
-		problems.push('search_filter must contain {{email}}');
+	if (
+		ldap.search_filter !== undefined &&
+		(typeof ldap.search_filter !== 'string' ||
+			(!ldap.search_filter.includes('{{login}}') && !ldap.search_filter.includes('{{email}}')))
+	)
+		problems.push('search_filter must contain {{login}}');
 	if (ldap.group_search_filter && !ldap.group_search_filter.includes('{{dn}}')) {
 		problems.push('group_search_filter must contain {{dn}}');
 	}
@@ -327,6 +378,7 @@ const LDAP_ENV_KEYS = [
 	'LDAP_BIND_PASSWORD',
 	'LDAP_SEARCH_BASE',
 	'LDAP_SEARCH_FILTER',
+	'LDAP_USERNAME_ATTRIBUTE',
 	'LDAP_EMAIL_ATTRIBUTE',
 	'LDAP_NAME_ATTRIBUTE',
 	'LDAP_GROUPS_ATTRIBUTE',

@@ -1,6 +1,6 @@
 import { DashboardLayout } from '@/components/DashboardLayout';
 import { useDashboard } from '@/context/DashboardContext';
-import { deserializeTimeRange } from '@/context/DashboardContext.utils';
+import { deserializeTimeRange, readLegacySeverityColors } from '@/context/DashboardContext.utils';
 import {
 	useAddTagToDashboard,
 	useDeleteDashboard,
@@ -95,6 +95,12 @@ export const Dashboards = () => {
 				visibleColumns: dashboard.visibleColumns || [],
 				filters: dashboard.filters || {},
 				columnOrder: dashboard.columnOrder || [],
+				columnWidths: dashboard.columnWidths || {},
+				splitByAssignment: dashboard.splitByAssignment ?? false,
+				// ?? not ||: a dashboard saved with severity colors explicitly OFF must stay
+				// off, and only a dashboard with no opinion at all falls back to the legacy
+				// per-browser preference.
+				severityColors: dashboard.severityColors ?? readLegacySeverityColors(),
 				groupBy: dashboard.groupBy || [],
 				query: dashboard.query || '',
 				timeRange: deserializeTimeRange(dashboard.timeRange),

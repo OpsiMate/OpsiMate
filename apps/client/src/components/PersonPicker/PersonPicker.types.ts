@@ -1,6 +1,9 @@
 export interface PersonPickerUser {
 	id: string;
-	email: string;
+	// Shown where the account has no email.
+	username: string;
+	// null for an account without a contact address.
+	email: string | null;
 	fullName: string;
 }
 

@@ -13,18 +13,29 @@ import {
 	AlertHistoryData,
 	AlertHistoryEventType,
 	AlertStatus,
+	HttpActionConfig,
+	JiraActionConfig,
 	OncallTeam,
+	SlackActionConfig,
+	TeamsActionConfig,
 	applyAlertListQuery,
 	computeAlertAnalytics,
 	computeAlertFacets,
 	computeAlertGroupSummaries,
 	EpisodeRow,
 	UserEventRow,
+	AUTO_FIX_RESOLVE_REFUSED,
+	isAutoFixed,
 } from '@OpsiMate/shared';
 import { http, HttpResponse } from 'msw';
 import { getPlaygroundUser, OncallTeamState, playgroundState, randomId } from './state';
 
 const API_BASE = '*/api/v1';
+
+// The preview handler reads whichever template fields the action's type carries; a
+// Partial over every config shape types that lookup without narrowing the union.
+type AnyActionConfig = Partial<SlackActionConfig & TeamsActionConfig & JiraActionConfig & HttpActionConfig>;
+
 const nowIso = () => new Date().toISOString();
 
 const PLAYGROUND_ACTOR = getPlaygroundUser().fullName;
@@ -203,7 +214,8 @@ const toOncallTeam = (team: OncallTeamState): OncallTeam => {
 		return {
 			userId,
 			fullName: user?.fullName ?? `user #${userId}`,
-			email: user?.email ?? '',
+			username: user?.username ?? `user${userId}`,
+			email: user?.email ?? null,
 			phoneNumber: user?.phoneNumber ?? null,
 			priority: ((position - shift + count) % count) + 1,
 		};
@@ -329,6 +341,18 @@ const assignPlaygroundAlertOwner = (alertId: string, ownerId: string | null) => 
 	return alert;
 };
 
+// The playground's user is a person: like the server, it refuses to resolve an alert its
+// source fixes on its own — the whole request, 409, naming the alerts.
+const autoFixRefusal = (alertIds: string[]) => {
+	const ids = new Set(alertIds);
+	const autoFixed = playgroundState.alerts.filter((a) => ids.has(a.id) && isAutoFixed(a)).map((a) => a.id);
+	if (autoFixed.length === 0) return null;
+	return HttpResponse.json(
+		{ success: false, error: AUTO_FIX_RESOLVE_REFUSED, autoFixedAlertIds: autoFixed },
+		{ status: 409 }
+	);
+};
+
 const resolvePlaygroundAlert = (alertId: string, comment?: string): boolean => {
 	const alertIndex = playgroundState.alerts.findIndex((a) => a.id === alertId);
 	if (alertIndex === -1) return false;
@@ -420,7 +444,8 @@ const ldapSettingsState: LdapSettings = {
 	bindDn: '',
 	hasBindPassword: false,
 	searchBase: '',
-	searchFilter: '(mail={{email}})',
+	searchFilter: '(|(uid={{login}})(mail={{login}}))',
+	usernameAttribute: 'uid',
 	emailAttribute: 'mail',
 	nameAttribute: 'displayName',
 	groupsAttribute: 'memberOf',
@@ -729,6 +754,8 @@ export const handlers = [
 	http.delete(`${API_BASE}/alerts/:alertId`, async ({ params, request }) => {
 		// Optional resolve note in the body (mirrors the server: stored as a comment).
 		const body = (await request.json().catch(() => null)) as { comment?: string } | null;
+		const refused = autoFixRefusal([params.alertId as string]);
+		if (refused) return refused;
 		if (!resolvePlaygroundAlert(params.alertId as string, body?.comment)) {
 			return HttpResponse.json({ success: true, message: 'Alert not found, nothing to resolve' });
 		}
@@ -763,6 +790,10 @@ export const handlers = [
 				search: body.query?.search,
 			});
 			targetIds = items.map((a) => a.id);
+		}
+		if (body.action === 'resolve') {
+			const refused = autoFixRefusal(targetIds);
+			if (refused) return refused;
 		}
 		let succeeded = 0;
 		for (const id of targetIds) {
@@ -1285,7 +1316,7 @@ export const handlers = [
 		if (!action) {
 			return HttpResponse.json({ success: false, error: 'Action not found' }, { status: 404 });
 		}
-		const cfg = action.config as Record<string, string>;
+		const cfg: AnyActionConfig = action.config;
 		const preview =
 			action.type === 'slack'
 				? {

@@ -158,3 +158,71 @@ describe('useAlertSelection handleSelectAlert', () => {
 		expect(result.current.allSelected).toBe(false);
 	});
 });
+
+describe('useAlertSelection plain click and folder checkbox', () => {
+	test('handleSelectOnly replaces the whole selection, other pane included', () => {
+		const onSelectAlerts = vi.fn();
+		const { result } = renderSelection({
+			sortedAlerts: activeRows,
+			selectedAlerts: [...copyOf(resolvedRows), copyOf(activeRows)[1]],
+			onSelectAlerts,
+		});
+		act(() => result.current.handleSelectOnly(activeRows[0]));
+		expect(onSelectAlerts).toHaveBeenCalledWith([activeRows[0]]);
+	});
+
+	test('handleExtendSelection adds the row and keeps everything else (Cmd/Ctrl+arrow); already in: no call', () => {
+		const onSelectAlerts = vi.fn();
+		const selected = [...copyOf(resolvedRows), copyOf(activeRows)[1]];
+		const { result } = renderSelection({ sortedAlerts: activeRows, selectedAlerts: selected, onSelectAlerts });
+		act(() => result.current.handleExtendSelection(activeRows[0]));
+		expect(onSelectAlerts).toHaveBeenCalledWith([...selected, activeRows[0]]);
+		onSelectAlerts.mockClear();
+		act(() => result.current.handleExtendSelection(activeRows[1]));
+		expect(onSelectAlerts).not.toHaveBeenCalled();
+	});
+
+	test('handleExtendSelection backing up onto a selected row drops the row the cursor left', () => {
+		const onSelectAlerts = vi.fn();
+		const other = copyOf(resolvedRows)[0];
+		// Cmd+Down went active-1 → active-2; both are selected. Cmd+Up lands back on
+		// active-1 (already selected): active-2, the row left behind, is dropped.
+		const { result } = renderSelection({
+			sortedAlerts: activeRows,
+			selectedAlerts: [other, ...copyOf(activeRows)],
+			onSelectAlerts,
+		});
+		act(() => result.current.handleExtendSelection(activeRows[0], activeRows[1]));
+		expect(onSelectAlerts).toHaveBeenCalledWith([other, copyOf(activeRows)[0]]);
+	});
+
+	test('handleExtendSelection onto a selected row drops nothing when the row left was not selected, or there was none', () => {
+		const onSelectAlerts = vi.fn();
+		const { result } = renderSelection({
+			sortedAlerts: activeRows,
+			selectedAlerts: [copyOf(activeRows)[0]],
+			onSelectAlerts,
+		});
+		// Coming from an unselected row (it was Cmd/Ctrl+clicked off): nothing to drop.
+		act(() => result.current.handleExtendSelection(activeRows[0], activeRows[1]));
+		// First press with nothing active: no row was left.
+		act(() => result.current.handleExtendSelection(activeRows[0], null));
+		expect(onSelectAlerts).not.toHaveBeenCalled();
+	});
+
+	test('handleToggleMembers adds the missing members, then drops them all once every one is selected', () => {
+		const onSelectAlerts = vi.fn();
+		const other = copyOf(resolvedRows)[0];
+		const { result, rerender } = renderSelection({
+			sortedAlerts: activeRows,
+			selectedAlerts: [other, copyOf(activeRows)[0]],
+			onSelectAlerts,
+		});
+		act(() => result.current.handleToggleMembers(activeRows));
+		expect(onSelectAlerts).toHaveBeenLastCalledWith([other, copyOf(activeRows)[0], activeRows[1]]);
+		rerender({ sortedAlerts: activeRows, selectedAlerts: [other, ...copyOf(activeRows)], onSelectAlerts });
+		act(() => result.current.handleToggleMembers(activeRows));
+		// Every member was selected: only they leave; the other pane's pick survives.
+		expect(onSelectAlerts).toHaveBeenLastCalledWith([other]);
+	});
+});

@@ -8,7 +8,8 @@ export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
 // Who may call the route:
 // - public:  no credentials
-// - user:    a signed-in user (Bearer JWT) or the instance API token (x-api-token)
+// - user:    a signed-in user (Bearer JWT) or the instance API token (x-api-token, or
+//            the token itself as Bearer credentials)
 // - userJwt: a signed-in user only (Bearer JWT): the route acts as that person, so the
 //            API token, which has no user, is refused
 // - admin:   a signed-in user with the admin role (Bearer JWT)

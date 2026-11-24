@@ -4,3 +4,6 @@ export const CELL_PADDING = 'py-1 px-2';
 export const ROW_INTERACTIVE_CONTROL_SELECTOR = 'button, a, input, textarea, [role="menuitem"]';
 // The checkbox cell (marked data-select-cell): its own mousedown handles the press, so the row's skips it.
 export const SELECT_CELL_SELECTOR = '[data-select-cell]';
+// A cell's full underlying value for copying (the display text may be truncated or
+// reformatted); cells without it copy their text.
+export const COPY_VALUE_ATTR = 'data-copy-value';

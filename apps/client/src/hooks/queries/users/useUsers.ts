@@ -4,7 +4,9 @@ import { queryKeys } from '../queryKeys';
 
 export interface UserInfo {
 	id: string;
-	email: string;
+	username: string;
+	// null for an account without a contact address.
+	email: string | null;
 	fullName: string;
 	role: string;
 	phoneNumber?: string | null;

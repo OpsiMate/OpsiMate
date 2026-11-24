@@ -45,8 +45,11 @@ export class LdapController {
 
 	testHandler = async (req: AuthenticatedRequest, res: Response) => {
 		try {
-			const { email, settings } = LdapTestRequestSchema.parse(req.body ?? {});
-			return res.json({ success: true, data: await this.ldapSettingsBL.test(email, settings, req.user) });
+			const { login, email, settings } = LdapTestRequestSchema.parse(req.body ?? {});
+			return res.json({
+				success: true,
+				data: await this.ldapSettingsBL.test(login ?? email, settings, req.user),
+			});
 		} catch (error) {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });

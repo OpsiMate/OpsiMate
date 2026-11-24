@@ -1,4 +1,5 @@
 import { formatLongDateTime, formatShortDateTime } from '@/lib/datetime';
+import { cn } from '@/lib/utils';
 import { buildHistoryGraph, HistoryLaneFilter } from './alertHistory.utils';
 import { AlertHistoryData, AlertHistoryEventType, AlertStatus } from '@OpsiMate/shared';
 import {
@@ -24,6 +25,8 @@ interface AlertHistoryTimelineProps {
 	isFiltered?: boolean;
 	// 'all' renders the two-branch git-style graph; a single lane renders flat.
 	laneFilter?: HistoryLaneFilter;
+	// Overrides the graph container (e.g. lift the max-height when a parent scrolls).
+	className?: string;
 }
 
 const formatFullDate = (dateStr: string) => formatLongDateTime(dateStr);
@@ -167,7 +170,12 @@ const EventBody = ({ item, style }: { item: AlertHistoryData; style: EventStyle 
 // the newest entry of a run curves out of the main rail, entries in between share a
 // straight side rail, and the oldest curves back in, reading as branched-and-merged.
 // When a single lane is filtered, that lane renders as a flat one-rail timeline.
-export const AlertHistoryTimeline = ({ data, isFiltered, laneFilter = 'all' }: AlertHistoryTimelineProps) => {
+export const AlertHistoryTimeline = ({
+	data,
+	isFiltered,
+	laneFilter = 'all',
+	className,
+}: AlertHistoryTimelineProps) => {
 	if (!data.length) {
 		// Name what is actually missing: with a lane isolated, "no history available"
 		// would read as a bug when the OTHER lane visibly has entries.
@@ -193,7 +201,9 @@ export const AlertHistoryTimeline = ({ data, isFiltered, laneFilter = 'all' }: A
 	const flat = laneFilter !== 'all';
 
 	return (
-		<div className="border border-border rounded-lg bg-background overflow-y-auto max-h-[300px] p-4">
+		<div
+			className={cn('border border-border rounded-lg bg-background overflow-y-auto max-h-[300px] p-4', className)}
+		>
 			<ol className="relative">
 				{graph.map((row, index) => {
 					const style = resolveStyle(row.entry);

@@ -1,5 +1,7 @@
 import { Alert, AlertSeverity, AlertStatus, Role } from '@OpsiMate/shared';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { getUserRole } from '@/lib/auth';
 import { AlertsSelectionBar } from '@/components/Alerts/AlertsSelectionBar/AlertsSelectionBar';
@@ -113,5 +115,65 @@ describe('AlertsSelectionBar incident action', () => {
 			/>
 		);
 		expect(screen.getByRole('button', { name: /^Incident$/ })).toBeDisabled();
+	});
+});
+
+describe('AlertsSelectionBar with auto-fixed alerts in the selection', () => {
+	const withFix = (id: string, fix?: string): Alert => ({
+		...alert(id),
+		isResolved: false,
+		tags: fix ? { fix } : {},
+	});
+	const renderMixed = (alerts: Alert[], onResolveAll = () => {}) =>
+		render(
+			<TooltipProvider delayDuration={0}>
+				<AlertsSelectionBar
+					selectedAlerts={alerts}
+					onClearSelection={noop}
+					onSilenceAll={noop}
+					onResolveAll={onResolveAll}
+					onCommentAll={noop}
+				/>
+			</TooltipProvider>
+		);
+
+	beforeEach(() => {
+		vi.mocked(getUserRole).mockReturnValue(Role.Admin);
+	});
+
+	test('one auto-fixed alert disables Resolve for the whole selection and says which to unselect', async () => {
+		const user = userEvent.setup();
+		const onResolveAll = vi.fn();
+		renderMixed([withFix('a1', 'manual'), withFix('a2', 'auto'), withFix('a3')], onResolveAll);
+		const resolve = screen.getByRole('button', { name: 'Resolve' });
+		expect(resolve).toBeDisabled();
+		await user.click(resolve);
+		expect(onResolveAll).not.toHaveBeenCalled();
+		await user.hover(resolve.parentElement as HTMLElement);
+		expect(await screen.findByRole('tooltip')).toHaveTextContent(
+			'1 of the selected alerts is fixed automatically; unselect it to resolve the rest'
+		);
+		// The other actions are unaffected.
+		expect(screen.getByRole('button', { name: 'Silence' })).toBeEnabled();
+		expect(screen.getByRole('button', { name: 'Comment' })).toBeEnabled();
+	});
+
+	test('all auto-fixed: disabled too, worded for the whole selection', async () => {
+		const user = userEvent.setup();
+		renderMixed([withFix('a1', 'auto'), withFix('a2', 'autofix')]);
+		const resolve = screen.getByRole('button', { name: 'Resolve' });
+		expect(resolve).toBeDisabled();
+		await user.hover(resolve.parentElement as HTMLElement);
+		expect(await screen.findByRole('tooltip')).toHaveTextContent(
+			'These alerts are fixed automatically; only the source can resolve them'
+		);
+	});
+
+	test('no auto-fixed alert: Resolve works as before', async () => {
+		const user = userEvent.setup();
+		const onResolveAll = vi.fn();
+		renderMixed([withFix('a1', 'manual'), withFix('a2')], onResolveAll);
+		await user.click(screen.getByRole('button', { name: 'Resolve' }));
+		expect(onResolveAll).toHaveBeenCalledTimes(1);
 	});
 });

@@ -8,6 +8,11 @@ interface UseAlertKeyboardNavOptions {
 	// Alert currently open in the details sidebar; arrows move relative to it.
 	activeAlertId: string | null;
 	onAlertClick?: (alert: Alert) => void;
+	// The checkbox follows the cursor: a plain arrow selects just the row it lands on
+	// (like a plain click); Cmd/Ctrl+arrow extends the selection instead — `from` is
+	// the row the cursor left, so backing up over an already-selected row can drop it.
+	onSelectOnly?: (alert: Alert) => void;
+	onExtendSelection?: (alert: Alert, from: Alert | null) => void;
 	virtualizer: Virtualizer<HTMLDivElement, Element>;
 	scrollerRef: RefObject<HTMLDivElement | null>;
 }
@@ -26,8 +31,29 @@ interface NavInstance {
 	// left to its default (scrolling) instead of being swallowed by preventDefault.
 	canNavigate: () => boolean;
 	containsActive: () => boolean;
-	navigate: (delta: 1 | -1) => void;
+	// extend: Cmd/Ctrl held — the row joins the selection instead of replacing it.
+	navigate: (delta: 1 | -1, extend: boolean) => void;
 }
+
+// One keyboard step, as the checkbox sees it: the row landed on, the position the
+// cursor left (-1 when nothing was active), and whether Cmd/Ctrl was held.
+interface CheckboxStep extends Pick<UseAlertKeyboardNavOptions, 'onSelectOnly' | 'onExtendSelection'> {
+	extend: boolean;
+	landed: Alert;
+	rows: IndexedAlertRow[];
+	leftPos: number;
+}
+
+// The checkbox's move for one step. A plain arrow selects just the row landed on; with
+// Cmd/Ctrl the selection extends from the row the cursor left (null on the very first
+// press), which is how backing up over the trail un-selects.
+const followWithCheckbox = ({ extend, landed, rows, leftPos, onSelectOnly, onExtendSelection }: CheckboxStep) => {
+	if (!extend) {
+		onSelectOnly?.(landed);
+		return;
+	}
+	onExtendSelection?.(landed, leftPos === -1 ? null : rows[leftPos].alert);
+};
 
 // Arrows must not fire while the user is typing or inside any overlay that has its own
 // arrow-key semantics (Radix menus/selects/dialogs render in portals with these roles;
@@ -62,8 +88,10 @@ const resolveOwner = (): NavInstance | null => {
 
 const handleWindowKeyDown = (e: KeyboardEvent) => {
 	if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
-	// Modified arrows are someone else's shortcut (e.g. Alt+arrows navigates history).
-	if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+	// Cmd/Ctrl+arrow extends the selection; Alt/Shift+arrows are someone else's shortcut
+	// (Alt+arrows navigates history, Shift+arrows extends a text selection).
+	if (e.altKey || e.shiftKey) return;
+	const extend = e.metaKey || e.ctrlKey;
 	if (isTextEntry(e.target)) return;
 	if (e.target instanceof HTMLElement && e.target.closest(OVERLAY_SELECTOR)) return;
 	const owner = resolveOwner();
@@ -71,25 +99,31 @@ const handleWindowKeyDown = (e: KeyboardEvent) => {
 	// Also claims the boundary press (first/last row): the key is "spent" on row
 	// navigation either way, rather than falling through to a surprise page scroll.
 	e.preventDefault();
-	owner.navigate(e.key === 'ArrowDown' ? 1 : -1);
+	owner.navigate(e.key === 'ArrowDown' ? 1 : -1, extend);
 };
 
 // ArrowUp/ArrowDown step the details-sidebar selection through the table's rows —
 // group headers are skipped, collapsed groups' alerts are simply absent from flatRows.
-// With nothing selected, Down starts at the first row and Up at the last. Selection
-// goes through onAlertClick, so keyboard and mouse share one code path (including
-// mark-as-read).
+// With nothing selected, Down starts at the first row and Up at the last. Opening goes
+// through onAlertClick, so keyboard and mouse share one code path (including
+// mark-as-read); the checkbox follows through onSelectOnly / onExtendSelection, the
+// same handlers a plain click and a Cmd/Ctrl+click use.
 export const useAlertKeyboardNav = ({
 	flatRows,
 	activeAlertId,
 	onAlertClick,
+	onSelectOnly,
+	onExtendSelection,
 	virtualizer,
 	scrollerRef,
 }: UseAlertKeyboardNavOptions) => {
 	// The window listener lives for the instance's lifetime; reading through a ref keeps
-	// it current without re-registering (and re-ordering the registry) every render.
-	const latest = useRef({ flatRows, activeAlertId, onAlertClick, virtualizer });
-	latest.current = { flatRows, activeAlertId, onAlertClick, virtualizer };
+	// it current without re-registering (and re-ordering the registry) every render. The
+	// ref is synced after commit, so a render React discards never reaches the handler.
+	const latest = useRef({ flatRows, activeAlertId, onAlertClick, onSelectOnly, onExtendSelection, virtualizer });
+	useEffect(() => {
+		latest.current = { flatRows, activeAlertId, onAlertClick, onSelectOnly, onExtendSelection, virtualizer };
+	});
 
 	useEffect(() => {
 		// The row index the keyboard last navigated to, or null when nothing is pinned.
@@ -194,8 +228,15 @@ export const useAlertKeyboardNav = ({
 				const { flatRows: rows, activeAlertId: id } = latest.current;
 				return id !== null && rows.some((r) => r.type === 'leaf' && r.alert.id === id);
 			},
-			navigate: (delta) => {
-				const { flatRows: rows, activeAlertId: id, onAlertClick: open, virtualizer: v } = latest.current;
+			navigate: (delta, extend) => {
+				const {
+					flatRows: rows,
+					activeAlertId: id,
+					onAlertClick: open,
+					onSelectOnly: selectOnly,
+					onExtendSelection: extendSelection,
+					virtualizer: v,
+				} = latest.current;
 				if (!open) return;
 				// Leaf rows with their flatRows index, so scrollToIndex can address the
 				// virtualizer while stepping skips the group headers.
@@ -221,8 +262,18 @@ export const useAlertKeyboardNav = ({
 				// reset, and the next keypress starts fresh anyway.)
 				if (!wasPinned) requestAnimationFrame(() => pinTargetVisible(0));
 				// Guarded: onAlertClick TOGGLES on a repeated id, so calling it at a list
-				// boundary (where the step clamps in place) would close the sidebar.
-				if (alert.id !== id) open(alert);
+				// boundary (where the step clamps in place) would close the sidebar; the
+				// checkbox likewise only moves when the cursor does.
+				if (alert.id === id) return;
+				followWithCheckbox({
+					extend,
+					landed: alert,
+					rows: alertRows,
+					leftPos: currentPos,
+					onSelectOnly: selectOnly,
+					onExtendSelection: extendSelection,
+				});
+				open(alert);
 			},
 		};
 		instances.add(instance);

@@ -2,6 +2,7 @@ import type Database from 'better-sqlite3';
 import { NextFunction, Request, Response } from 'express';
 import { performance } from 'node:perf_hooks';
 import { collectDefaultMetrics, Counter, Gauge, Histogram, Registry } from 'prom-client';
+import { MS_PER_SECOND } from './utils/time';
 
 // Prometheus metrics (issue #658). Everything here is deliberately OUTSIDE the hot
 // path: the alert gauges run plain COUNT/GROUP BY prepared statements at SCRAPE time
@@ -246,7 +247,7 @@ new Gauge({
 		if (!oldestFiringStartsAt) return;
 		const row = oldestFiringStartsAt.get() as OldestFiringRow;
 		const started = row.oldest ? Date.parse(row.oldest) : NaN;
-		this.set(Number.isFinite(started) ? Math.max(0, (Date.now() - started) / 1000) : 0);
+		this.set(Number.isFinite(started) ? Math.max(0, (Date.now() - started) / MS_PER_SECOND) : 0);
 	},
 });
 

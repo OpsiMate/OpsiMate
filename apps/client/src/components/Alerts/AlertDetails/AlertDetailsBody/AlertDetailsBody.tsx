@@ -1,23 +1,13 @@
-import { AlertHistory, Alert as SharedAlert } from '@OpsiMate/shared';
-import { FileText, Link2, PhoneCall, Tag } from 'lucide-react';
-import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
-import { AlertActionsSection } from '../AlertActionsSection';
-import { AlertHistorySection } from '../AlertHistorySection';
+import { Alert as SharedAlert } from '@OpsiMate/shared';
+import { FileText } from 'lucide-react';
 import { AlertInfoSection } from '../AlertInfoSection';
 import { AlertLastCommentSection } from '../AlertLastCommentSection';
 import { AlertRootCauseSection } from '../AlertRootCauseSection';
-import { AlertLinksSection } from '../AlertLinksSection';
-import { getAlertLinks } from '../../utils/links.utils';
 import { AlertSummarySection } from '../AlertSummarySection';
-import { AlertTagsSection } from '../AlertTagsSection';
-import { AlertTeamSection } from '../AlertTeamSection';
 import { CollapsibleSection } from '../CollapsibleSection';
 
 interface AlertDetailsBodyProps {
 	alert: SharedAlert;
-	historyData: AlertHistory | null;
-	// Active time-range filter, passed through to the History section.
-	timeRange?: TimeRange | null;
 	// Switches to the Comments tab (containers with tabs only).
 	onViewAllComments?: () => void;
 	// The alert is in the resolved list (see AlertInfoSection).
@@ -25,52 +15,30 @@ interface AlertDetailsBodyProps {
 }
 
 // The Details-tab body, shared by all alert-detail containers. Identity stays pinned at the
-// top; everything else lives in collapsible sections (summary, latest comment, history,
-// labels, links) followed by the custom-actions section. The silence/resolve buttons are
-// NOT part of the body — containers pin them at the bottom via AlertFooterActions.
-export const AlertDetailsBody = ({
-	alert,
-	historyData,
-	timeRange,
-	onViewAllComments,
-	isResolved,
-}: AlertDetailsBodyProps) => {
+// top (labels and the id live behind its tag icon); everything else lives in collapsible
+// sections (summary, root cause, latest comment); the owning team is a chip in the owner
+// row (AlertTeamPopover). The body is a flex column that fills the tab: the summary and
+// the root cause take their content's height while there is room and split the room
+// (scrolling inside) when there is not — alone, the summary gets most of the panel; next
+// to a root cause and a comment, its share. No dead space either way. Links and custom actions are NOT
+// part of the body either: containers pin them under it (AlertDetailsBottomSections),
+// above the silence/resolve footer (AlertFooterActions). History has its own tab.
+export const AlertDetailsBody = ({ alert, onViewAllComments, isResolved }: AlertDetailsBodyProps) => {
 	return (
-		<div className="p-4 space-y-2">
-			<AlertInfoSection alert={alert} isResolved={isResolved} />
+		<div className="flex min-h-0 flex-1 flex-col gap-2 p-4">
+			<div className="shrink-0">
+				<AlertInfoSection alert={alert} isResolved={isResolved} />
+			</div>
 
 			{alert.summary && (
-				<CollapsibleSection title="Summary" icon={<FileText className="h-3.5 w-3.5" />} defaultOpen>
+				<CollapsibleSection title="Summary" icon={<FileText className="h-3.5 w-3.5" />} defaultOpen fill>
 					<AlertSummarySection summary={alert.summary} />
-				</CollapsibleSection>
-			)}
-
-			{alert.team && (
-				<CollapsibleSection title="Team" icon={<PhoneCall className="h-3.5 w-3.5" />} defaultOpen={false}>
-					<AlertTeamSection team={alert.team} />
 				</CollapsibleSection>
 			)}
 
 			<AlertRootCauseSection alertId={alert.id} />
 
 			<AlertLastCommentSection alertId={alert.id} onViewAll={onViewAllComments} />
-
-			{historyData && historyData.data.length > 0 && (
-				<AlertHistorySection historyData={historyData} timeRange={timeRange} />
-			)}
-
-			{/* Always present: the alert id is listed here even when the alert has no tags. */}
-			<CollapsibleSection title="Labels" icon={<Tag className="h-3.5 w-3.5" />} defaultOpen={false}>
-				<AlertTagsSection alert={alert} />
-			</CollapsibleSection>
-
-			{getAlertLinks(alert).length > 0 && (
-				<CollapsibleSection title="Links" icon={<Link2 className="h-3.5 w-3.5" />} defaultOpen={false}>
-					<AlertLinksSection alert={alert} />
-				</CollapsibleSection>
-			)}
-
-			<AlertActionsSection alert={alert} />
 		</div>
 	);
 };

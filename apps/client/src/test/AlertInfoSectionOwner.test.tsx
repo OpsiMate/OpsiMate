@@ -87,4 +87,14 @@ describe('AlertInfoSection owner picker', () => {
 		await waitFor(() => expect(setResolvedAlertOwner).toHaveBeenCalledWith('a1', '7'));
 		expect(setAlertOwner).not.toHaveBeenCalled();
 	});
+
+	test('the owner row carries the labels trigger with the tag count', () => {
+		render(
+			<TooltipProvider>
+				<AlertInfoSection alert={mkAlert({ tags: { env: 'prod', team: 'core' } })} />
+			</TooltipProvider>
+		);
+
+		expect(screen.getByRole('button', { name: /2 labels/i })).toHaveTextContent('2');
+	});
 });

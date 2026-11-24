@@ -11,7 +11,7 @@ import {
 	UpsertRootCauseSchema,
 	RateRootCauseSchema,
 } from '@OpsiMate/shared';
-import { AlertBL, IncomingAlert, WebhookOwnerOutcome } from '../../../bl/alerts/alert.bl';
+import { AlertBL, AutoFixResolveError, IncomingAlert, WebhookOwnerOutcome } from '../../../bl/alerts/alert.bl';
 import {
 	ALERT_QUERY_PARAM_KEYS,
 	AlertAnalyticsParamsSchema,
@@ -38,6 +38,7 @@ import { routeParam } from '../../../utils/routeParams.ts';
 import { RootCauseBL, RootCauseNotFoundError } from '../../../bl/rootCause/rootCause.bl.ts';
 import { ifNoneMatchSatisfied } from '../../../utils/etag';
 import { AuthenticatedRequest } from '../../../middleware/auth.ts';
+import { MS_PER_SECOND } from '../../../utils/time.ts';
 
 const logger: Logger = new Logger('api/v1/alerts/controller');
 
@@ -46,6 +47,67 @@ const actorIdOf = (req: AuthenticatedRequest): string | null => (req.user != nul
 
 const hasAlertQueryParams = (req: Request): boolean =>
 	ALERT_QUERY_PARAM_KEYS.some((key) => req.query[key] !== undefined);
+
+interface UptimeKumaNotice {
+	kind: 'certificate' | 'domain' | 'notice';
+	id: string;
+	alertName: string;
+	summary: string;
+	alertUrl: string;
+	tags: Record<string, string>;
+}
+
+// Uptime Kuma's Test button sends `${notification.name} Testing` (server.js, the
+// testNotification handler). Anything else arriving without a monitor is a notice the
+// monitor loop sent by message only: a certificate expiry
+// ("[name][url] <type> certificate <CN> will expire in N days") or a domain expiry
+// ("Domain name <domain> will expire in N days"). Such notices have no "up" heartbeat
+// to resolve them, so they get a stable id per subject (not per message) and are
+// updated in place as the day count shrinks.
+const UPTIME_KUMA_TEST_MESSAGE = /(^|\s)Testing$/;
+const UPTIME_KUMA_CERT_NOTICE = /^\[(.+?)\]\[(.+?)\] (.+?) certificate (.+?) will expire in (\d+) days?$/;
+const UPTIME_KUMA_DOMAIN_NOTICE = /^Domain name (.+?) will expire in (\d+) days?$/;
+
+const noticeId = (subject: string): string => createHash('sha1').update(subject).digest('hex').slice(0, 12);
+
+export function parseUptimeKumaNotice(msg: string): UptimeKumaNotice | null {
+	const message = msg.trim();
+	if (message === '' || UPTIME_KUMA_TEST_MESSAGE.test(message)) {
+		return null;
+	}
+	const cert = UPTIME_KUMA_CERT_NOTICE.exec(message);
+	if (cert) {
+		const [, monitorName, url, certType, certCN, days] = cert;
+		return {
+			kind: 'certificate',
+			id: `UPTIMEKUMA_CERT_${noticeId(url)}`,
+			alertName: `${monitorName}: TLS certificate expires in ${days} days`,
+			summary: message,
+			alertUrl: url,
+			tags: { notice: 'certificate', monitor: monitorName, certificate: certCN, certificate_type: certType },
+		};
+	}
+	const domain = UPTIME_KUMA_DOMAIN_NOTICE.exec(message);
+	if (domain) {
+		const [, name, days] = domain;
+		return {
+			kind: 'domain',
+			id: `UPTIMEKUMA_DOMAIN_${noticeId(name)}`,
+			alertName: `Domain ${name} expires in ${days} days`,
+			summary: message,
+			alertUrl: '',
+			tags: { notice: 'domain', domain: name },
+		};
+	}
+	return {
+		kind: 'notice',
+		id: `UPTIMEKUMA_NOTICE_${noticeId(message)}`,
+		alertName: message.length > 120 ? `${message.slice(0, 117)}...` : message,
+		summary: message,
+		alertUrl: '',
+		tags: { notice: 'other' },
+	};
+}
 
 export class AlertController {
 	constructor(
@@ -129,6 +191,12 @@ export class AlertController {
 
 	// One request acts on many alerts — by explicit ids (the loaded selection) or by a
 	// list query the BL resolves against the full dataset ("apply to all N matching").
+	// 409: the request was understood, the alert's state forbids it — a person cannot
+	// resolve what its source fixes on its own. Which alerts, so a bulk caller can unselect them.
+	private static refuseAutoFixResolve(res: Response, error: AutoFixResolveError) {
+		return res.status(409).json({ success: false, error: error.message, autoFixedAlertIds: error.alertIds });
+	}
+
 	async bulkAlertAction(req: AuthenticatedRequest, res: Response) {
 		try {
 			const body = AlertBulkActionSchema.parse(req.body ?? {});
@@ -149,6 +217,7 @@ export class AlertController {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
+			if (error instanceof AutoFixResolveError) return AlertController.refuseAutoFixResolve(res, error);
 			logger.error('Error running bulk alert action:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -266,26 +335,56 @@ export class AlertController {
 			// payload with one real field and the other missing/null is a malformed alert
 			// and must fall through to the strict parse (400), not become a phantom
 			// "Test Alert".
+			//
+			// Certificate-expiry and domain-expiry notices use the same call with the same
+			// null defaults (model/monitor.js sendCertNotificationByTargetDays,
+			// model/domain_expiry.js sendDomainNotificationByTargetDays); only `msg`
+			// distinguishes them from the Test button, so a message that is not the
+			// "<notification name> Testing" string becomes a firing notice alert instead.
 			const raw: unknown = req.body;
-			const field = (key: 'heartbeat' | 'monitor'): unknown =>
+			const field = (key: 'heartbeat' | 'monitor' | 'msg'): unknown =>
 				typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>)[key] : undefined;
-			const isTestRequest = field('heartbeat') == null && field('monitor') == null;
-			if (isTestRequest) {
-				logger.info('UptimeKuma Test Alert Created');
-				await this.alertBL.insertOrUpdateAlert({
-					id: randomUUID(),
+			const isBodyWithoutMonitor = field('heartbeat') == null && field('monitor') == null;
+			if (isBodyWithoutMonitor) {
+				const msg = field('msg');
+				const notice = parseUptimeKumaNotice(typeof msg === 'string' ? msg : '');
+				if (!notice) {
+					logger.info('UptimeKuma Test Alert Created');
+					await this.alertBL.insertOrUpdateAlert({
+						id: randomUUID(),
+						type: 'UptimeKuma',
+						status: AlertStatus.FIRING,
+						tags: {},
+						startsAt: new Date().toISOString(),
+						updatedAt: new Date().toISOString(),
+						alertUrl: '',
+						alertName: 'Test Alert',
+						summary: 'Test Alert by UptimeKuma was created successfully',
+						runbookUrl: undefined,
+					});
+
+					return res.status(200).json({ success: true, data: null });
+				}
+
+				logger.info(`Received Uptime Kuma ${notice.kind} notice: ${notice.summary}`);
+				const now = new Date().toISOString();
+				const { owner } = await this.alertBL.insertOrUpdateAlert({
+					id: notice.id,
 					type: 'UptimeKuma',
 					status: AlertStatus.FIRING,
-					tags: {},
-					startsAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-					alertUrl: '',
-					alertName: 'Test Alert',
-					summary: 'Test Alert by UptimeKuma was created successfully',
+					tags: notice.tags,
+					startsAt: now,
+					updatedAt: now,
+					alertUrl: notice.alertUrl,
+					alertName: notice.alertName,
+					summary: notice.summary,
 					runbookUrl: undefined,
 				});
 
-				return res.status(200).json({ success: true, data: null });
+				return res.status(200).json({
+					success: true,
+					data: { alertId: notice.id, updated: true, ...(owner ? { owner } : {}) },
+				});
 			}
 
 			const payload = UptimeKumaWebhookPayloadSchema.parse(req.body);
@@ -776,7 +875,7 @@ export class AlertController {
 			const { owner } = await this.alertBL.insertOrUpdateAlert(
 				AlertController.customToIncoming(alert, alert.startsAt || new Date().toISOString())
 			);
-			// `owner` says what became of the one sent: assigned, kept (already owned), not_found.
+			// `owner` says what became of the one sent: assigned, kept (already owned), unassigned (sent empty), not_found.
 			return res
 				.status(200)
 				.json({ success: true, data: { alertId: alert.id, status: 'firing', ...(owner ? { owner } : {}) } });
@@ -926,6 +1025,7 @@ export class AlertController {
 			if (isZodError(error)) {
 				return res.status(400).json({ success: false, error: 'Validation error', details: error.issues });
 			}
+			if (error instanceof AutoFixResolveError) return AlertController.refuseAutoFixResolve(res, error);
 			logger.error('Error resolving alert:', error);
 			return res.status(500).json({ success: false, error: 'Internal server error' });
 		}
@@ -1062,12 +1162,12 @@ export class AlertController {
 
 		// If it's a number (unix seconds)
 		if (typeof value === 'number') {
-			return new Date(value * 1000).toISOString();
+			return new Date(value * MS_PER_SECOND).toISOString();
 		}
 
 		// If it's a numeric string (e.g. "1763324240" or "1763324240.0")
 		if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value)) {
-			return new Date(Number(value) * 1000).toISOString();
+			return new Date(Number(value) * MS_PER_SECOND).toISOString();
 		}
 
 		// If it's an ISO-like string, try parsing

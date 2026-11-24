@@ -220,8 +220,22 @@ describe('Settings user role labels', () => {
 
 	test('names each user role dropdown and the bulk role dropdown', async () => {
 		const users: User[] = [
-			{ id: 1, email: 'alice@example.com', fullName: 'Alice', role: Role.Viewer, createdAt: '2026-01-01' },
-			{ id: 2, email: 'bob@example.com', fullName: 'Bob', role: Role.Editor, createdAt: '2026-01-01' },
+			{
+				id: 1,
+				username: 'alice',
+				email: 'alice@example.com',
+				fullName: 'Alice',
+				role: Role.Viewer,
+				createdAt: '2026-01-01',
+			},
+			{
+				id: 2,
+				username: 'bob',
+				email: 'bob@example.com',
+				fullName: 'Bob',
+				role: Role.Editor,
+				createdAt: '2026-01-01',
+			},
 		];
 		vi.spyOn(api, 'apiRequest').mockImplementation(async (path) => ({
 			success: true,
@@ -233,7 +247,7 @@ describe('Settings user role labels', () => {
 		await screen.findByRole('row', { name: /alice@example.com/ });
 		for (const account of users) {
 			const row = screen.getByRole('row', { name: new RegExp(account.email) });
-			const select = screen.getByRole('combobox', { name: `Role for ${account.email}` });
+			const select = screen.getByRole('combobox', { name: `Role for ${account.username}` });
 			expect(within(row).getByRole('combobox')).toBe(select);
 		}
 

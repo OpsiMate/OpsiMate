@@ -63,6 +63,41 @@ export const useAlertSelection = ({
 		onSelectAlerts(isSelected ? selectedAlerts.filter((a) => a.id !== alert.id) : [...selectedAlerts, alert]);
 	};
 
+	// Plain click on a row: the selection becomes just this alert (the row is also what
+	// the details panel opens), replacing whatever was selected — in every pane.
+	const handleSelectOnly = (alert: Alert) => {
+		if (!onSelectAlerts) return;
+		anchorIdRef.current = alert.id;
+		onSelectAlerts([alert]);
+	};
+
+	// Cmd/Ctrl+arrow from `from` onto `alert`. Landing on an unselected row adds it.
+	// Landing on a row that is ALREADY selected means the cursor is backing up over its
+	// own trail, so the row it just left is dropped — Cmd+Down four times then Cmd+Up
+	// once leaves three selected, as in Finder or a spreadsheet. Only the row left
+	// behind ever leaves; a Cmd/Ctrl+click is the gesture that toggles the row itself.
+	const handleExtendSelection = (alert: Alert, from: Alert | null = null) => {
+		if (!onSelectAlerts) return;
+		anchorIdRef.current = alert.id;
+		if (selectedIds.has(alert.id)) {
+			if (from && from.id !== alert.id && selectedIds.has(from.id)) {
+				onSelectAlerts(selectedAlerts.filter((a) => a.id !== from.id));
+			}
+			return;
+		}
+		addToSelection([alert]);
+	};
+
+	// The folder checkbox: when every member is already selected, drop them all;
+	// otherwise add the missing ones (union, like select-all).
+	const handleToggleMembers = (members: Alert[]) => {
+		if (!onSelectAlerts || members.length === 0) return;
+		const memberIds = new Set(members.map((member) => member.id));
+		const allIn = members.every((member) => selectedIds.has(member.id));
+		if (allIn) onSelectAlerts(selectedAlerts.filter((alert) => !memberIds.has(alert.id)));
+		else addToSelection(members);
+	};
+
 	// Shift+click: select every visible row from the anchor to this one (inclusive), added
 	// to the selection like select-all. With no usable anchor it falls back to a plain
 	// toggle: none yet, its group collapsed, or it is no longer selected (unselected since,
@@ -80,6 +115,9 @@ export const useAlertSelection = ({
 		handleSelectAll,
 		handleSelectAlert,
 		handleSelectRange,
+		handleSelectOnly,
+		handleExtendSelection,
+		handleToggleMembers,
 		setAnchor,
 	};
 };

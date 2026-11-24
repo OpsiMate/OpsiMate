@@ -4,6 +4,7 @@ import { formatDateTime } from '@/lib/datetime';
 import { Input } from '@/components/ui/input';
 import { pluralize } from '@/lib/text';
 import { Switch } from '@/components/ui/switch';
+import { SettingsSectionHeader } from '@/components/Settings/SettingsSectionHeader';
 import { useToast } from '@/components/ui/use-toast';
 import {
 	useRetentionSettings,
@@ -223,13 +224,15 @@ export const RetentionSettings = () => {
 
 	return (
 		<div className="space-y-6">
-			<div>
-				<h2 className="text-2xl font-semibold text-foreground">Data Retention</h2>
-				<p className="text-muted-foreground">
-					Automatically delete old data to keep the database small. Each category is{' '}
-					<strong>off by default</strong> — enable it and set how long to keep data.
-				</p>
-			</div>
+			<SettingsSectionHeader
+				title="Data Retention"
+				description={
+					<>
+						Automatically delete old data to keep the database small. Each category is{' '}
+						<strong>off by default</strong> — enable it and set how long to keep data.
+					</>
+				}
+			/>
 
 			{/* Schedule + run-now */}
 			<Card className="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

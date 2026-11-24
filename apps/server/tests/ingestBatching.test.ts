@@ -9,7 +9,7 @@ import { AlertCommentsRepository } from '../src/dal/alertCommentsRepository';
 import { AlertHistoryRepository } from '../src/dal/alertHistoryRepository';
 import { ResolvedAlertRepository } from '../src/dal/resolvedAlertRepository';
 import { UserRepository } from '../src/dal/userRepository';
-import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
+import { setupDB, setupListeningExpressApp, setupUserWithToken } from './setup';
 
 // The ingest queue (bl/alerts/ingestQueue.ts) coalesces webhook writes into one
 // transaction per flush. These tests pin the contract the rest of the server relies
@@ -18,6 +18,7 @@ import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 // take its batch-mates down with it.
 
 let app: SuperTest<Test>;
+let closeApp: () => Promise<void>;
 let db: Database.Database;
 let jwtToken: string;
 
@@ -46,11 +47,13 @@ beforeAll(async () => {
 	// BL level and do not depend on it).
 	process.env.ALERTS_INGEST_FLUSH_MS = '150';
 	db = await setupDB();
-	app = await setupExpressApp(db);
+	// The burst test below fires 300 requests at once; see setupListeningExpressApp.
+	({ app, close: closeApp } = await setupListeningExpressApp(db));
 	jwtToken = await setupUserWithToken(app);
 });
 
-afterAll(() => {
+afterAll(async () => {
+	await closeApp();
 	db.close();
 });
 

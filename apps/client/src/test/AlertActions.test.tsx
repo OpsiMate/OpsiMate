@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { AlertStatus, AlertSeverity, type Action, type Alert } from '@OpsiMate/shared';
 import { AlertActions } from '@/components/Alerts/AlertDetails/AlertActionsSection/AlertActions';
+import { SectionsExpandContext } from '@/components/Alerts/AlertDetails/CollapsibleSection';
 import { render, screen, fireEvent } from './test-utils';
 
 const query = vi.hoisted(() => ({ data: [] as Action[], isLoading: false }));
@@ -33,7 +34,7 @@ const action = (overrides: Partial<Action> = {}): Action => ({
 	updatedAt: new Date(0).toISOString(),
 	...overrides,
 });
-const expand = () => fireEvent.click(screen.getByRole('button', { name: /^Actions/ }));
+const toggle = () => fireEvent.click(screen.getByRole('button', { name: /^Actions/ }));
 
 beforeEach(() => {
 	query.data = [];
@@ -43,8 +44,6 @@ beforeEach(() => {
 describe('AlertActions empty states', () => {
 	test('keeps the create prompt when no actions are configured', () => {
 		render(<AlertActions alert={alert} />);
-		expect(screen.queryByText(/No actions configured/)).not.toBeInTheDocument();
-		expand();
 		expect(screen.getByText(/No actions configured/)).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Create one' })).toHaveAttribute('href', '/actions');
 		expect(screen.queryByText(/No actions apply/)).not.toBeInTheDocument();
@@ -52,7 +51,6 @@ describe('AlertActions empty states', () => {
 	test('explains a name-filter mismatch and links to manage existing actions', () => {
 		query.data = [action({ name: 'Database runbook', nameContainsAny: ['Database'] })];
 		render(<AlertActions alert={alert} />);
-		expand();
 		expect(screen.getByText(/No actions apply to this alert/)).toBeInTheDocument();
 		expect(screen.getByRole('link', { name: 'Manage actions' })).toHaveAttribute('href', '/actions');
 		expect(screen.queryByText(/No actions configured/)).not.toBeInTheDocument();
@@ -61,21 +59,18 @@ describe('AlertActions empty states', () => {
 	test('uses the same state for a label-filter mismatch', () => {
 		query.data = [action({ labelMatchers: [{ key: 'environment', value: 'staging' }] })];
 		render(<AlertActions alert={alert} />);
-		expand();
 		expect(screen.getByText(/No actions apply to this alert/)).toBeInTheDocument();
 		expect(screen.queryByText(/No actions configured/)).not.toBeInTheDocument();
 	});
 	test('shows an unfiltered action without either empty message', () => {
 		query.data = [action()];
 		render(<AlertActions alert={alert} />);
-		expand();
 		expect(screen.getByRole('button', { name: 'Notify on-call' })).toBeInTheDocument();
 		expect(screen.queryByText(/No actions configured|No actions apply/)).not.toBeInTheDocument();
 	});
 	test('lists only matching actions when matching and nonmatching actions coexist', () => {
 		query.data = [action(), action({ id: 2, name: 'Database runbook', nameContainsAny: ['Database'] })];
 		render(<AlertActions alert={alert} />);
-		expand();
 		expect(screen.getByRole('button', { name: 'Notify on-call' })).toBeInTheDocument();
 		expect(screen.queryByRole('button', { name: 'Database runbook' })).not.toBeInTheDocument();
 		expect(screen.queryByText(/No actions configured|No actions apply/)).not.toBeInTheDocument();
@@ -85,5 +80,38 @@ describe('AlertActions empty states', () => {
 		render(<AlertActions alert={alert} />);
 		expect(screen.queryByRole('button', { name: /^Actions/ })).not.toBeInTheDocument();
 		expect(screen.queryByText(/No actions configured|No actions apply/)).not.toBeInTheDocument();
+	});
+});
+
+describe('AlertActions header', () => {
+	test('is open by default and folds on the header', () => {
+		query.data = [action()];
+		render(<AlertActions alert={alert} />);
+		expect(screen.getByRole('button', { name: /^Actions/ })).toHaveAttribute('aria-expanded', 'true');
+		expect(screen.getByRole('button', { name: /Notify on-call/ })).toBeInTheDocument();
+		toggle();
+		expect(screen.queryByRole('button', { name: /Notify on-call/ })).toBeNull();
+	});
+
+	test("folds and unfolds with the header's collapse-all / expand-all broadcast", () => {
+		query.data = [action()];
+		const { rerender } = render(
+			<SectionsExpandContext.Provider value={{ token: 0, open: true }}>
+				<AlertActions alert={alert} />
+			</SectionsExpandContext.Provider>
+		);
+		expect(screen.getByRole('button', { name: /Notify on-call/ })).toBeInTheDocument();
+		rerender(
+			<SectionsExpandContext.Provider value={{ token: 1, open: false }}>
+				<AlertActions alert={alert} />
+			</SectionsExpandContext.Provider>
+		);
+		expect(screen.queryByRole('button', { name: /Notify on-call/ })).toBeNull();
+		rerender(
+			<SectionsExpandContext.Provider value={{ token: 2, open: true }}>
+				<AlertActions alert={alert} />
+			</SectionsExpandContext.Provider>
+		);
+		expect(screen.getByRole('button', { name: /Notify on-call/ })).toBeInTheDocument();
 	});
 });

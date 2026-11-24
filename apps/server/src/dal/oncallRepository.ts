@@ -112,7 +112,7 @@ export class OncallRepository {
 			return this.db
 				.prepare(
 					`
-					SELECT m.id, m.team_id, m.user_id, m.position, u.full_name, u.email, u.phone_number
+					SELECT m.id, m.team_id, m.user_id, m.position, u.full_name, u.username, u.email, u.phone_number
 					FROM oncall_team_members m
 					JOIN users u ON u.id = m.user_id
 					WHERE m.team_id = ?

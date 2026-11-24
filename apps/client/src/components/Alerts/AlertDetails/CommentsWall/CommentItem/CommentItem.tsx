@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { formatRelativeTime } from '@/lib/datetime';
+import { formatDateTime, formatTimestamp } from '@/lib/datetime';
 import { cn } from '@/lib/utils';
 import { ALERT_COMMENT_MAX_LENGTH, AlertComment } from '@OpsiMate/shared';
 import { Check, Pencil, Trash2, X } from 'lucide-react';
@@ -9,7 +9,7 @@ import { useState } from 'react';
 interface CommentItemProps {
 	comment: AlertComment;
 	currentUserId: string | number;
-	userMap: Map<string, { fullName: string; email: string }>;
+	userMap: Map<string, { fullName: string; username: string; email: string | null }>;
 	onEdit: (commentId: string, newText: string) => void;
 	onDelete: (commentId: string) => void;
 	isDeleting: boolean;
@@ -30,7 +30,7 @@ export const CommentItem = ({
 
 	const isOwnComment = String(currentUserId) === String(comment.userId);
 	const user = userMap.get(comment.userId);
-	const displayName = user?.fullName || user?.email || 'Unknown User';
+	const displayName = user?.fullName || user?.username || 'Unknown User';
 	const initials = displayName
 		.split(' ')
 		.map((n) => n[0])
@@ -59,11 +59,20 @@ export const CommentItem = ({
 				<div className="flex items-center justify-between gap-2 mb-1">
 					<div className="flex items-center gap-2 min-w-0">
 						<span className="font-medium text-sm text-foreground truncate">{displayName}</span>
-						<span className="text-xs text-muted-foreground shrink-0">
-							{formatRelativeTime(comment.createdAt)}
-						</span>
+						<time
+							className="text-xs text-muted-foreground shrink-0"
+							dateTime={comment.createdAt}
+							title={formatDateTime(comment.createdAt)}
+						>
+							{formatTimestamp(comment.createdAt)}
+						</time>
 						{comment.updatedAt !== comment.createdAt && (
-							<span className="text-xs text-muted-foreground italic shrink-0">(edited)</span>
+							<span
+								className="text-xs text-muted-foreground italic shrink-0"
+								title={`Edited ${formatDateTime(comment.updatedAt)}`}
+							>
+								(edited)
+							</span>
 						)}
 					</div>
 					{isOwnComment && !isEditing && (

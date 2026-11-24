@@ -459,4 +459,38 @@ describe('Authentication API', () => {
 			expect(badJwt.status).toBe(401);
 		});
 	});
+
+	describe('API token as Bearer credentials', () => {
+		// Grafana keeps only "Authentication Header Credentials" encrypted, so the instance
+		// token must work there too, with exactly the rights of x-api-token.
+		const guarded = express();
+		guarded.get('/user', authenticateJWT, (_req, res) => res.json({ success: true }));
+		guarded.post('/write', authenticateJWT, (_req, res) => res.json({ success: true }));
+
+		test('accepts the instance token in the Authorization header', async () => {
+			const token = getSecurityConfig().api_token;
+			const read = await request(guarded).get('/user').set('Authorization', `Bearer ${token}`);
+			expect(read.status).toBe(200);
+			const write = await request(guarded).post('/write').set('Authorization', `Bearer ${token}`);
+			expect(write.status).toBe(200);
+			const spaced = await request(guarded).get('/user').set('Authorization', `Bearer  ${token} `);
+			expect(spaced.status).toBe(200);
+		});
+
+		test('still rejects anything else in the Authorization header', async () => {
+			const token = getSecurityConfig().api_token;
+			for (const value of [`Bearer ${token}x`, `Bearer ${token.slice(0, -1)}`, 'Bearer ', `Token ${token}`]) {
+				const res = await request(guarded).get('/user').set('Authorization', value);
+				expect(res.status).toBe(401);
+			}
+		});
+
+		test('carries no user, so admin-only routes refuse it like x-api-token', async () => {
+			const token = getSecurityConfig().api_token;
+			const viaHeader = await app.get('/api/v1/users').set('x-api-token', token);
+			const viaBearer = await app.get('/api/v1/users').set('Authorization', `Bearer ${token}`);
+			expect(viaBearer.status).toBe(viaHeader.status);
+			expect(viaBearer.status).toBe(403);
+		});
+	});
 });

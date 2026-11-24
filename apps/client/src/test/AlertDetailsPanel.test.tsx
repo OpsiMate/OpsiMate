@@ -1,3 +1,4 @@
+import { AlertHistoryQueryState } from '@/components/Alerts/AlertDetails/hooks';
 import { Alert, AlertStatus } from '@OpsiMate/shared';
 import { fireEvent, screen } from '@testing-library/react';
 import { describe, expect, test, vi } from 'vitest';
@@ -23,14 +24,31 @@ vi.mock('@/components/Alerts/AlertDetails/AlertDetailsBody', () => ({
 		<div>{isResolved ? 'details-body:resolved' : 'details-body'}</div>
 	),
 }));
+vi.mock('@/components/Alerts/AlertDetails/AlertDetailsBottomSections', () => ({
+	AlertDetailsBottomSections: () => <div>bottom-sections</div>,
+}));
 vi.mock('@/components/Alerts/AlertDetails/AlertFooterActions', () => ({
 	AlertFooterActions: () => <div>footer-actions</div>,
 }));
 vi.mock('@/components/Alerts/AlertDetails/CommentsWall', () => ({
 	CommentsWall: ({ alertId }: MockCommentsWallProps) => <div>{`comments-wall:${alertId}`}</div>,
 }));
+// The history stub echoes the alert id its data carries, proving the tab is fed the
+// history of the selected alert (the panel owns the query and hands the result down).
+interface MockAlertHistoryWallProps {
+	history: AlertHistoryQueryState;
+}
+vi.mock('@/components/Alerts/AlertDetails/AlertHistoryWall', () => ({
+	AlertHistoryWall: ({ history }: MockAlertHistoryWallProps) => (
+		<div>{`history-wall:${history.data?.alertId ?? 'loading'}`}</div>
+	),
+}));
 vi.mock('@/components/Alerts/AlertDetails/hooks', () => ({
-	useAlertHistory: () => null,
+	useAlertHistory: (alertId: string): AlertHistoryQueryState => ({
+		data: { alertId, data: [] },
+		isLoading: false,
+		isError: false,
+	}),
 }));
 
 const mkAlert = (id: string): Alert =>
@@ -51,6 +69,22 @@ const noop = () => {};
 
 // Radix activates a tab on mousedown, not click.
 const openComments = () => fireEvent.mouseDown(screen.getByRole('tab', { name: /comments/i }));
+const openHistory = () => fireEvent.mouseDown(screen.getByRole('tab', { name: /history/i }));
+
+describe('AlertDetailsPanel bottom sections', () => {
+	test('stay outside the body scroll area and before the footer', () => {
+		render(<AlertDetailsPanel alert={mkAlert('a')} isActive onClose={noop} />);
+		const body = screen.getByText('details-body');
+		const bottomSections = screen.getByText('bottom-sections');
+		const footer = screen.getByText('footer-actions');
+		// The body's scroll container wraps the body only; the block sits after it, before the footer.
+		const viewport = body.closest('[data-testid="alert-details-body-scroll"]');
+		expect(viewport).not.toBeNull();
+		expect(viewport).not.toContainElement(bottomSections);
+		expect(body.compareDocumentPosition(bottomSections) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+		expect(bottomSections.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0);
+	});
+});
 
 describe('AlertDetailsPanel tab reset', () => {
 	test('selecting a different alert returns to Details', () => {
@@ -63,6 +97,22 @@ describe('AlertDetailsPanel tab reset', () => {
 
 		expect(screen.getByText('details-body')).toBeInTheDocument();
 		expect(screen.queryByText('comments-wall:b')).not.toBeInTheDocument();
+	});
+
+	test("History is its own tab, fed the selected alert's history, and resets with the alert", () => {
+		const { rerender } = render(<AlertDetailsPanel alert={mkAlert('a')} isActive onClose={noop} />);
+
+		// Details is the landing tab: no history content until the tab is opened.
+		expect(screen.queryByText('history-wall:a')).not.toBeInTheDocument();
+
+		openHistory();
+		expect(screen.getByText('history-wall:a')).toBeInTheDocument();
+		expect(screen.queryByText('details-body')).not.toBeInTheDocument();
+
+		rerender(<AlertDetailsPanel alert={mkAlert('b')} isActive onClose={noop} />);
+
+		expect(screen.getByText('details-body')).toBeInTheDocument();
+		expect(screen.queryByText('history-wall:b')).not.toBeInTheDocument();
 	});
 
 	test('the same alert re-rendering (polling) keeps the open tab', () => {

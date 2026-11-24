@@ -11,7 +11,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { ALERT_COMMENT_MAX_LENGTH } from '@OpsiMate/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // How long a silence lasts. The expiry timestamp is computed at confirm time, so
 // re-silencing an alert always restarts the timer from "now". Every choice expires —
@@ -80,6 +80,17 @@ interface ConfirmAlertActionDialogProps {
 export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActionDialogProps) => {
 	const [comment, setComment] = useState('');
 	const [duration, setDuration] = useState<SilenceDuration>('midnight');
+	const commentRef = useRef<HTMLTextAreaElement>(null);
+
+	// Radix's AlertDialog lands focus on Cancel, so a note needed a click before typing.
+	// With a comment box the cursor starts in it instead: the user can type the moment
+	// the dialog opens, and Enter then confirms with the note. Without one (delete,
+	// unsilence) the default stays — Enter on a destructive question still cancels.
+	const focusCommentOnOpen = (event: Event) => {
+		if (!pending?.withComment) return;
+		event.preventDefault();
+		commentRef.current?.focus();
+	};
 
 	// Fresh state per confirmation — a note or duration chosen for one action must not
 	// leak into the next.
@@ -104,7 +115,7 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 
 	return (
 		<AlertDialog open={!!pending} onOpenChange={(open) => !open && onClose()}>
-			<AlertDialogContent>
+			<AlertDialogContent onOpenAutoFocus={focusCommentOnOpen}>
 				<AlertDialogHeader>
 					<AlertDialogTitle>{pending?.title}</AlertDialogTitle>
 					<AlertDialogDescription>{pending?.description}</AlertDialogDescription>
@@ -139,6 +150,7 @@ export const ConfirmAlertActionDialog = ({ pending, onClose }: ConfirmAlertActio
 							)}
 						</label>
 						<Textarea
+							ref={commentRef}
 							id="action-comment"
 							value={comment}
 							onChange={(e) => setComment(e.target.value)}

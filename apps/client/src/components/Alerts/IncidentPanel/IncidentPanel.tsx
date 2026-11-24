@@ -45,6 +45,7 @@ export const IncidentPanel = ({
 		<div
 			ref={panelRef}
 			style={{ width }}
+			data-selection-scope
 			className="relative shrink-0 border-l bg-background flex flex-col h-full overflow-hidden"
 		>
 			<PanelResizeHandle

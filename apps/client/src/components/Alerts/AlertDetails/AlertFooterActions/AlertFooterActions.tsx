@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button';
-import { Alert } from '@OpsiMate/shared';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Alert, AUTO_FIX_RESOLVE_REFUSED, isAutoFixed } from '@OpsiMate/shared';
 import { BellOff, CheckCircle2, Flame, RotateCcw, Trash2 } from 'lucide-react';
 
 interface AlertFooterActionsProps {
@@ -41,6 +42,26 @@ export const AlertFooterActions = ({
 
 	return (
 		<div className="grid grid-cols-2 gap-2">
+			{isAutoFixed(alert) ? (
+				// Disabled, with the reason on hover: a disabled button gets no pointer events,
+				// so the span carries the tooltip.
+				<Tooltip>
+					<TooltipTrigger asChild>
+						<span className="inline-flex" tabIndex={0}>
+							<Button variant="outline" size="sm" className="w-full gap-2" disabled>
+								<CheckCircle2 className="h-3 w-3" />
+								Resolve
+							</Button>
+						</span>
+					</TooltipTrigger>
+					<TooltipContent>{AUTO_FIX_RESOLVE_REFUSED}</TooltipContent>
+				</Tooltip>
+			) : (
+				<Button variant="outline" size="sm" className="gap-2" onClick={() => onDelete?.(alert.id)}>
+					<CheckCircle2 className="h-3 w-3" />
+					Resolve
+				</Button>
+			)}
 			{alert.isSilenced ? (
 				<Button variant="outline" size="sm" className="gap-2" onClick={() => onUnsilence?.(alert.id)}>
 					<RotateCcw className="h-3 w-3" />
@@ -52,10 +73,6 @@ export const AlertFooterActions = ({
 					Silence
 				</Button>
 			)}
-			<Button variant="outline" size="sm" className="gap-2" onClick={() => onDelete?.(alert.id)}>
-				<CheckCircle2 className="h-3 w-3" />
-				Resolve
-			</Button>
 		</div>
 	);
 };

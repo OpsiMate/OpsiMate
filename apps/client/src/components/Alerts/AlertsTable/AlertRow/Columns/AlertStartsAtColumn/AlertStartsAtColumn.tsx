@@ -16,7 +16,11 @@ export const AlertStartsAtColumn = ({ alert, className, style }: AlertStartsAtCo
 	// timestamp so the date is one hover away.
 	const fullTimestamp = formatFullTimestamp(alert.startsAt);
 	return (
-		<TableCell style={style} className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}>
+		<TableCell
+			style={style}
+			data-copy-value={fullTimestamp ?? String(alert.startsAt)}
+			className={cn('relative group/cell py-1 px-2 overflow-hidden', className)}
+		>
 			<span className="text-xs text-foreground truncate block" title={fullTimestamp}>
 				{formatDate(alert.startsAt)}
 			</span>

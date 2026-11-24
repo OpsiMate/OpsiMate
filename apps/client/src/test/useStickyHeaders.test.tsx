@@ -15,6 +15,7 @@ const createGroup = (level: number, key: string): FlatGroupItem => ({
 	level,
 	isExpanded: true,
 	groupStatus: 'firing',
+	members: [],
 });
 
 const createLeaf = (): FlatGroupItem => ({

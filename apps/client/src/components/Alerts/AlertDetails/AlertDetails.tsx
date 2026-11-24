@@ -1,11 +1,9 @@
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Alert } from '@OpsiMate/shared';
-import { AlertDetailsBody } from './AlertDetailsBody';
+import { AlertDetailsTab } from './AlertDetailsTab';
 import { AlertDetailsHeader } from './AlertDetailsHeader';
 import { AlertFooterActions } from './AlertFooterActions';
-import { SectionsExpandContext, SectionsExpandControls, useSectionsExpandBroadcast } from './CollapsibleSection';
-import { useAlertHistory } from './hooks';
+import { SectionsExpandControls, useSectionsExpandBroadcast } from './CollapsibleSection';
 
 interface AlertDetailsProps {
 	isActive: boolean;
@@ -26,7 +24,6 @@ export const AlertDetails = ({
 	onDelete,
 	className,
 }: AlertDetailsProps) => {
-	const historyData = useAlertHistory(alert?.id);
 	const { signal, broadcast } = useSectionsExpandBroadcast();
 
 	if (!alert) return null;
@@ -35,11 +32,7 @@ export const AlertDetails = ({
 		<div className={cn('h-full flex flex-col bg-background border-l', className)}>
 			<AlertDetailsHeader onClose={onClose} actions={<SectionsExpandControls onBroadcast={broadcast} />} />
 
-			<ScrollArea className="flex-1">
-				<SectionsExpandContext.Provider value={signal}>
-					<AlertDetailsBody alert={alert} historyData={historyData} isResolved={!isActive} />
-				</SectionsExpandContext.Provider>
-			</ScrollArea>
+			<AlertDetailsTab alert={alert} isResolved={!isActive} signal={signal} />
 
 			{/* Primary actions pinned at the bottom, outside the scroll area. */}
 			<div className="border-t p-3 shrink-0">

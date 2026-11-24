@@ -23,7 +23,12 @@ export type DashboardType = (typeof DASHBOARD_TYPES)[number];
 
 export interface User {
 	id: string;
-	email: string;
+	// The login name: unique, lowercase, letters/digits/dot/underscore/hyphen. Directory
+	// (LDAP) accounts carry the directory's own username (uid / sAMAccountName).
+	username: string;
+	// Contact address, optional: a user without one signs in with the username and gets no
+	// mailed password reset (an admin sets the password instead).
+	email: string | null;
 	fullName: string;
 	role: Role;
 	createdAt: string;
@@ -42,7 +47,8 @@ export type UserAuthSource = 'local' | 'ldap';
 export interface OncallTeamMember {
 	userId: string;
 	fullName: string;
-	email: string;
+	username: string;
+	email: string | null;
 	phoneNumber?: string | null;
 	// 1-based call priority after applying the rotation shift (1 = on call now).
 	priority: number;
@@ -924,6 +930,8 @@ export interface LdapSettings {
 	hasBindPassword: boolean;
 	searchBase: string;
 	searchFilter: string;
+	// The attribute that holds the login name (uid; sAMAccountName on Active Directory).
+	usernameAttribute: string;
 	emailAttribute: string;
 	nameAttribute: string;
 	groupsAttribute: string;
@@ -949,6 +957,7 @@ export interface UpdateLdapSettings {
 	bindPassword?: string | null;
 	searchBase?: string;
 	searchFilter?: string;
+	usernameAttribute?: string;
 	emailAttribute?: string;
 	nameAttribute?: string;
 	groupsAttribute?: string;
@@ -963,8 +972,9 @@ export interface UpdateLdapSettings {
 }
 
 export interface LdapTestRequest {
-	// Optional: look this user up too and show the role they would get (no password
-	// is needed or checked).
+	// Optional: look this user up too — a username or an email — and show the role they
+	// would get (no password is needed or checked). `email` is the old name of the field.
+	login?: string;
 	email?: string;
 	// Optional: unsaved edits from the Settings page, laid over the stored settings for
 	// this test only. Nothing is saved. Omitted = test the settings as saved.

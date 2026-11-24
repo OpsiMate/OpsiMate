@@ -1,3 +1,4 @@
+import type { GroupStatus } from './AlertsTable.types';
 export const ACTIONS_COLUMN = 'actions';
 
 export const SELECT_COLUMN_WIDTH = '40px';
@@ -103,3 +104,33 @@ export const COLUMN_MIN_WIDTHS: Record<string, number> = {
 // cell (actions) and the aria-hidden filler cell that absorbs leftover width.
 export const COLUMN_SEPARATOR_CLASSES =
 	'[&>*:not(:last-child,[aria-hidden])]:shadow-[inset_-1px_0_0_0] [&>*:not(:last-child,[aria-hidden])]:shadow-border';
+
+// The count badge a group header (and an incident folder) opens with: its colour is the
+// group's rolled-up status, its width fixed so the numbers line up down the table.
+export const GROUP_COUNT_BADGE_CLASSES = 'h-5 min-w-10 justify-center px-1.5 text-xs rounded-sm shrink-0';
+export const GROUP_STATUS_BADGE_VARIANT: Record<GroupStatus, 'destructive' | 'success' | 'muted' | 'secondary'> = {
+	firing: 'destructive',
+	muted: 'secondary',
+	resolved: 'success',
+	silenced: 'muted',
+};
+// Muted groups are amber on top of the secondary variant.
+export const GROUP_STATUS_BADGE_CLASS: Record<GroupStatus, string> = {
+	firing: '',
+	muted: 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30',
+	resolved: '',
+	silenced: '',
+};
+
+// How many of a row's members (an incident folder's, a group's) are selected: drives
+// that row's checkbox.
+export type MemberSelectionState = 'none' | 'some' | 'all';
+export const MEMBER_SELECTION_STATE: Record<Uppercase<MemberSelectionState>, MemberSelectionState> = {
+	NONE: 'none',
+	SOME: 'some',
+	ALL: 'all',
+};
+// The checkbox a folder or group header selects its members with: the same small box
+// the rows use, filled for checked and mixed states.
+export const MEMBER_CHECKBOX_CLASSES =
+	'h-3 w-3 border-2 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:border-primary';

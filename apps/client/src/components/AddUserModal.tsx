@@ -5,7 +5,13 @@ import { Label } from './ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
 import { apiRequest } from '../lib/api';
-import { Role } from '@OpsiMate/shared';
+import {
+	Role,
+	USERNAME_HTML_PATTERN,
+	USERNAME_MAX_LENGTH,
+	USERNAME_MIN_LENGTH,
+	USERNAME_RULES,
+} from '@OpsiMate/shared';
 import { User } from '../types';
 import { ErrorAlert } from './ErrorAlert';
 import { useFormErrors } from '../hooks/useFormErrors';
@@ -18,14 +24,16 @@ interface AddUserModalProps {
 
 export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalProps) => {
 	const roleId = useId();
+	const usernameId = useId();
 	const [formData, setFormData] = useState({
+		username: '',
 		email: '',
 		fullName: '',
 		password: '',
 		role: Role.Viewer,
 	});
 	const [creatingUser, setCreatingUser] = useState(false);
-	const { generalError, clearErrors, handleApiResponse } = useFormErrors();
+	const { errors, generalError, clearErrors, handleApiResponse } = useFormErrors();
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -43,11 +51,16 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 		}
 
 		try {
-			const response = await apiRequest<User>('/users', 'POST', formData);
+			// An empty email box means no address, not an empty one.
+			const response = await apiRequest<User>('/users', 'POST', {
+				...formData,
+				email: formData.email.trim() || null,
+			});
 			if (response.success && response.data) {
 				onUserCreated(response.data);
 				// Reset form
 				setFormData({
+					username: '',
 					email: '',
 					fullName: '',
 					password: '',
@@ -71,6 +84,7 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 		if (!creatingUser) {
 			clearErrors();
 			setFormData({
+				username: '',
 				email: '',
 				fullName: '',
 				password: '',
@@ -95,15 +109,46 @@ export const AddUserModal = ({ isOpen, onClose, onUserCreated }: AddUserModalPro
 				<form onSubmit={handleSubmit} className="space-y-4">
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<div className="space-y-2">
-							<Label htmlFor="email">Email</Label>
+							<Label htmlFor={usernameId}>Username</Label>
+							<Input
+								id={usernameId}
+								type="text"
+								autoComplete="off"
+								value={formData.username}
+								onChange={(e) =>
+									setFormData((prev) => ({ ...prev, username: e.target.value.toLowerCase() }))
+								}
+								required
+								minLength={USERNAME_MIN_LENGTH}
+								maxLength={USERNAME_MAX_LENGTH}
+								pattern={USERNAME_HTML_PATTERN}
+								aria-invalid={!!errors.username}
+								disabled={creatingUser}
+							/>
+							{errors.username && (
+								<p className="text-xs text-destructive" role="alert">
+									{errors.username}
+								</p>
+							)}
+							<p className="text-xs text-muted-foreground">{USERNAME_RULES}</p>
+						</div>
+						<div className="space-y-2">
+							<Label htmlFor="email">Email (optional)</Label>
 							<Input
 								id="email"
 								type="email"
 								value={formData.email}
 								onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
-								required
 								disabled={creatingUser}
 							/>
+							{errors.email && (
+								<p className="text-xs text-destructive" role="alert">
+									{errors.email}
+								</p>
+							)}
+							<p className="text-xs text-muted-foreground">
+								Without one, password resets go through an admin.
+							</p>
 						</div>
 						<div className="space-y-2">
 							<Label htmlFor="fullName">Full Name</Label>

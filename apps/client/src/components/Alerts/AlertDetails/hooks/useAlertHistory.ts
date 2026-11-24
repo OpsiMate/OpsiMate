@@ -18,14 +18,23 @@ export const alertHistoryQueryOptions = (alertId: string) => ({
 	},
 });
 
+export interface AlertHistoryQueryState {
+	// null until the first successful fetch (or when the server sent nothing).
+	data: AlertHistory | null;
+	isLoading: boolean;
+	isError: boolean;
+}
+
 // Fetches an alert's history timeline. Backed by React Query keyed on the alert id, so any
 // mutation that records a history event (ownership, silence, action run) can invalidate
 // queryKeys.alertHistory(...) and the open panel refreshes immediately — no need to reopen it.
-export const useAlertHistory = (alertId: string | undefined): AlertHistory | null => {
-	const { data } = useQuery({
+// Loading and error are surfaced separately from "no data" so the History tab can say
+// which one it is instead of showing a loading message forever after a failed fetch.
+export const useAlertHistory = (alertId: string | undefined): AlertHistoryQueryState => {
+	const { data, isLoading, isError } = useQuery({
 		...alertHistoryQueryOptions(alertId ?? 'none'),
 		enabled: !!alertId,
 	});
 
-	return data ?? null;
+	return { data: data ?? null, isLoading, isError };
 };

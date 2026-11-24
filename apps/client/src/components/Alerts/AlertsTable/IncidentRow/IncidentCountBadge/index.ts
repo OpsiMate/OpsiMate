@@ -1,0 +1,1 @@
+export { IncidentCountBadge } from './IncidentCountBadge';

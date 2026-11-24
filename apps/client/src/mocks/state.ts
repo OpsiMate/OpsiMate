@@ -159,6 +159,7 @@ const createUsers = (): User[] => [
 	{ ...getPlaygroundUser(), phoneNumber: '+972 50 111 2233' },
 	{
 		id: '1',
+		username: 'editor',
 		email: 'editor@opsimate.local',
 		fullName: 'Demo Editor',
 		role: Role.Editor,
@@ -167,6 +168,7 @@ const createUsers = (): User[] => [
 	},
 	{
 		id: '2',
+		username: 'viewer',
 		email: 'viewer@opsimate.local',
 		fullName: 'Demo Viewer',
 		role: Role.Viewer,
@@ -383,7 +385,7 @@ const createAuditLogs = (): AuditLog[] => {
 };
 
 // The diverse-alerts generator doesn't attach labels, so we add realistic, deterministic
-// tags here. This powers the filter facets, the Labels section, tag-based dashboards, and
+// tags here. This powers the filter facets, the labels popover, tag-based dashboards, and
 // enrichment/action label matching in the playground.
 const TAG_SEVERITY = ['critical', 'warning', 'info'];
 const TAG_SERVICE = ['api-gateway', 'postgres', 'redis', 'elasticsearch', 'kafka', 'nginx'];

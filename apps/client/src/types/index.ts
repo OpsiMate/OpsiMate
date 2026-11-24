@@ -4,7 +4,10 @@ export { Role };
 
 export interface User {
 	id: number;
-	email: string;
+	// The login name; unique, lowercase.
+	username: string;
+	// Contact address; null for an account without one.
+	email: string | null;
 	fullName: string;
 	role: Role;
 	createdAt: string;

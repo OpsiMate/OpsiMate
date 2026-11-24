@@ -5,6 +5,7 @@ import { AlertRow } from '../AlertRow';
 import { FlatGroupItem } from '../AlertsTable.types';
 import { GroupHeader } from '../GroupHeader';
 import { IncidentRow } from '../IncidentRow';
+import { memberSelectionState } from '../AlertsTable.utils';
 
 interface VirtualizedAlertListProps {
 	virtualizer: Virtualizer<HTMLDivElement, Element>;
@@ -21,8 +22,12 @@ interface VirtualizedAlertListProps {
 	onUngroupIncident?: (incidentId: number) => void;
 	// Offered on member rows (rendered under a folder) only.
 	onRemoveFromIncident?: (alertId: string) => void;
+	dragAndDrop?: boolean;
 	onSelectAlert: (alert: Alert) => void;
 	onSelectRange?: (alert: Alert) => void;
+	onSelectOnly?: (alert: Alert) => void;
+	// The folder checkbox: select (or unselect) every member folded under it.
+	onToggleMembersSelection?: (members: Alert[]) => void;
 	onAlertClick?: (alert: Alert) => void;
 	activeAlertId?: string | null;
 	onSilenceAlert?: (alertId: string) => void;
@@ -57,8 +62,11 @@ export const VirtualizedAlertList = ({
 	onEditIncident,
 	onUngroupIncident,
 	onRemoveFromIncident,
+	dragAndDrop = false,
 	onSelectAlert,
 	onSelectRange,
+	onSelectOnly,
+	onToggleMembersSelection,
 	onAlertClick,
 	activeAlertId = null,
 	onSilenceAlert,
@@ -121,12 +129,27 @@ export const VirtualizedAlertList = ({
 								transform: `translateY(${virtualRow.start}px)`,
 							}}
 						>
-							<GroupHeader item={item} onToggle={onToggleGroup} columnLabels={columnLabels} />
+							<GroupHeader
+								item={item}
+								onToggle={onToggleGroup}
+								columnLabels={columnLabels}
+								selectionState={
+									onSelectAlerts && onToggleMembersSelection
+										? memberSelectionState(item.members, selectedAlerts)
+										: undefined
+								}
+								onToggleSelection={
+									onSelectAlerts && onToggleMembersSelection
+										? () => onToggleMembersSelection(item.members)
+										: undefined
+								}
+							/>
 						</div>
 					);
 				}
 
 				if (item.type === 'incident') {
+					const selectionState = memberSelectionState(item.members, selectedAlerts);
 					return (
 						<div
 							key={virtualRow.key}
@@ -149,6 +172,13 @@ export const VirtualizedAlertList = ({
 								onEdit={onEditIncident}
 								onUngroup={onUngroupIncident}
 								isActive={item.incident.id === activeIncidentId}
+								selectionState={onSelectAlerts && onToggleMembersSelection ? selectionState : undefined}
+								dropTarget={dragAndDrop}
+								onToggleSelection={
+									onSelectAlerts && onToggleMembersSelection
+										? () => onToggleMembersSelection(item.members)
+										: undefined
+								}
 							/>
 						</div>
 					);
@@ -187,6 +217,7 @@ export const VirtualizedAlertList = ({
 								contentColumnWidths={contentColumnWidths}
 								onSelectAlert={onSelectAlert}
 								onSelectRange={onSelectRange}
+								onSelectOnly={onSelectOnly}
 								onAlertClick={onAlertClick}
 								isActiveRow={alert.id === activeAlertId}
 								onSilenceAlert={onSilenceAlert}
@@ -194,6 +225,7 @@ export const VirtualizedAlertList = ({
 								onDeleteAlert={onDeleteAlert}
 								onUnresolveAlert={onUnresolveAlert}
 								onRemoveFromIncident={item.incidentMember ? onRemoveFromIncident : undefined}
+								dragAndDrop={dragAndDrop}
 								onSelectAlerts={onSelectAlerts}
 								isResolved={isResolved}
 								severityColors={severityColors}

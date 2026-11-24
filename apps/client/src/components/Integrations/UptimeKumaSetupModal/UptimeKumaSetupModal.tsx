@@ -36,9 +36,13 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 					{/* Webhook URL Section */}
 					<div className="space-y-3">
 						<div>
-							<h3 className="text-lg font-semibold mb-2 text-foreground">1. Copy Your Webhook URL</h3>
+							<h3 className="text-lg font-semibold mb-2 text-foreground">
+								1. Copy Your Webhook URL (Uptime Kuma 2.x)
+							</h3>
 							<p className="text-sm text-muted-foreground mb-3">
-								Use this URL in Uptime Kuma to send alerts to OpsiMate
+								Use this URL in Uptime Kuma 2.x to send alerts to OpsiMate. Uptime Kuma 3.0 and later
+								does not use it: the built-in OpsiMate notification type takes the server address
+								instead (see step 2)
 							</p>
 						</div>
 						<div className="flex gap-2">
@@ -75,6 +79,16 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 							<h3 className="text-lg font-semibold mb-2 text-foreground">
 								2. Configure Notification in Uptime Kuma
 							</h3>
+							<div className="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-3">
+								<p className="text-sm text-green-900 dark:text-green-100">
+									<strong>Uptime Kuma 3.0 and later:</strong> pick the built-in{' '}
+									<strong>OpsiMate</strong> notification type instead of Webhook. It asks for the
+									OpsiMate API base URL and the API token. The URL is the address Uptime Kuma can
+									reach the API at, with no path (the server on port 3001 by default, or the origin
+									that proxies it); the provider appends the endpoint path itself and sends the same
+									payload, so the notes below apply. The webhook steps are for Uptime Kuma 2.x.
+								</p>
+							</div>
 							<ol className="list-decimal list-inside space-y-3 text-sm text-foreground">
 								<li className="space-y-2">
 									<span>Open your Uptime Kuma dashboard</span>
@@ -93,7 +107,10 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 									Paste your webhook URL into the <strong>Post URL</strong> field
 								</li>
 								<li>
-									Ensure <strong>Content Type</strong> is set to "JSON" (default)
+									Ensure <strong>Content Type</strong> is set to "JSON" (default) and keep the default
+									Uptime Kuma payload (malformed <code>heartbeat</code> or <code>monitor</code> fields
+									return HTTP 400, while payloads omitting both fields return HTTP 200 and create a
+									"Test Alert"; extra keys on the default payload are accepted)
 								</li>
 								<li>Click "Test" to verify the connection</li>
 								<li>
@@ -117,8 +134,18 @@ export const UptimeKumaSetupModal = ({ open, onOpenChange }: UptimeKumaSetupModa
 								<li>Your webhook endpoint must be accessible from your Uptime Kuma instance</li>
 								<li>Alerts will appear in OpsiMate's Alerts page once configured</li>
 								<li>
-									The "Test" button in Uptime Kuma will send a test alert that should appear in
-									OpsiMate
+									Each monitor maps to alert ID <code>UPTIMEKUMA_&lt;monitor.id&gt;</code>. The alert
+									name uses <code>pathName</code> or <code>name</code>, the summary uses{' '}
+									<code>heartbeat.msg</code>, and the tags use <code>name: value</code> monitor tags.
+								</li>
+								<li>
+									Status <code>0</code> (down) or <code>2</code> (pending) fires the alert, and status{' '}
+									<code>1</code> (up) auto-resolves it and moves it to the <strong>Resolved</strong>{' '}
+									list
+								</li>
+								<li>
+									The "Test" button in Uptime Kuma creates a firing alert named{' '}
+									<strong>Test Alert</strong> in OpsiMate; resolve it manually afterwards
 								</li>
 							</ul>
 						</div>

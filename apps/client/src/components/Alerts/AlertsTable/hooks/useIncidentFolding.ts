@@ -14,12 +14,14 @@ export interface IncidentFoldingState {
 }
 
 // Folds alerts that belong to an incident under a single folder row, AFTER filtering,
-// sorting and grouping have all run — so the folder appears exactly where its
-// best-sorted member would have sat, only members that pass the active filters/search/
-// time window are folded (the folder's shownCount vs the summary's alertCount is the
-// "3 of 5" the row renders), and in group-by mode each group segment folds
-// independently: an incident spanning two groups shows a folder in each, holding that
-// group's members. Collapsed by default; expansion is per-session UI state.
+// sorting and grouping have all run. Within a segment (a run of rows between group
+// headers) the plain alerts keep their sort order and the folders come AFTER them, in
+// order of their best-sorted member: incidents are already-handled work, so they sit
+// below the alerts still waiting for someone. Only members that pass the active
+// filters/search/time window are folded (the folder's shownCount vs the summary's
+// alertCount is the "3 of 5" the row renders), and in group-by mode each group segment
+// folds independently: an incident spanning two groups shows a folder in each, holding
+// that group's members. Collapsed by default; expansion is per-session UI state.
 export const useIncidentFolding = (
 	flatRows: FlatGroupItem[],
 	incidentsById: Map<number, IncidentSummary>
@@ -51,6 +53,7 @@ export const useIncidentFolding = (
 			if (membersByIncident.size === 0) return segment;
 
 			const out: FlatGroupItem[] = [];
+			const folders: FlatGroupItem[] = [];
 			const emitted = new Set<number>();
 			for (const row of segment) {
 				const incidentId = row.alert.incidentId;
@@ -64,11 +67,18 @@ export const useIncidentFolding = (
 				emitted.add(incident.id);
 				const members = membersByIncident.get(incident.id) ?? [];
 				const isExpanded = expandedIncidents.has(incident.id);
-				out.push({ type: 'incident', incident, shownCount: members.length, isExpanded });
+				folders.push({
+					type: 'incident',
+					incident,
+					shownCount: members.length,
+					isExpanded,
+					members: members.map((member) => member.alert),
+				});
 				if (isExpanded) {
-					out.push(...members.map((member) => ({ ...member, incidentMember: true })));
+					folders.push(...members.map((member) => ({ ...member, incidentMember: true })));
 				}
 			}
+			out.push(...folders);
 			return out;
 		};
 

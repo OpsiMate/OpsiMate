@@ -1,3 +1,4 @@
+import { USERNAME_HTML_PATTERN, USERNAME_MAX_LENGTH, USERNAME_MIN_LENGTH, USERNAME_RULES } from '@OpsiMate/shared';
 import React, { useCallback, useState } from 'react';
 import { useFormErrors } from '../hooks/useFormErrors';
 import { apiRequest } from '../lib/api';
@@ -17,14 +18,16 @@ interface EditUserModalProps {
 
 export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onClose, onUserUpdated }) => {
 	const [fullName, setFullName] = useState(user?.fullName || '');
+	const [username, setUsername] = useState(user?.username || '');
 	const [email, setEmail] = useState(user?.email || '');
 	const [saving, setSaving] = useState(false);
-	const { generalError, clearErrors, handleApiResponse } = useFormErrors();
+	const { errors, generalError, clearErrors, handleApiResponse } = useFormErrors();
 
 	React.useEffect(() => {
 		if (user) {
 			setFullName(user.fullName);
-			setEmail(user.email);
+			setUsername(user.username);
+			setEmail(user.email ?? '');
 		}
 	}, [user]);
 
@@ -37,7 +40,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 		try {
 			const response = await apiRequest<User>(`/users/${user.id}`, 'PATCH', {
 				fullName: fullName.trim(),
-				email: email.trim(),
+				username: username.trim(),
+				// Optional: an empty box clears the address.
+				email: email.trim() || null,
 			});
 
 			if (response.success && response.data) {
@@ -54,7 +59,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 		} finally {
 			setSaving(false);
 		}
-	}, [user, fullName, email, clearErrors, handleApiResponse, onUserUpdated, onClose]);
+	}, [user, fullName, username, email, clearErrors, handleApiResponse, onUserUpdated, onClose]);
 
 	const handleClose = useCallback(() => {
 		clearErrors();
@@ -63,7 +68,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault();
-		if (saving || !fullName.trim() || !email.trim()) return;
+		if (saving || !fullName.trim() || !username.trim()) return;
 		handleSave();
 	};
 
@@ -73,7 +78,8 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 				<DialogHeader>
 					<DialogTitle>Edit User</DialogTitle>
 					<DialogDescription>
-						Update user information. The user will need to use their new email for login if changed.
+						Update user information. A renamed username or changed email is what the user signs in with from
+						now on.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -91,7 +97,28 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="edit-email">Email</Label>
+						<Label htmlFor="edit-username">Username</Label>
+						<Input
+							id="edit-username"
+							value={username}
+							onChange={(e) => setUsername(e.target.value.toLowerCase())}
+							placeholder="john.doe"
+							minLength={USERNAME_MIN_LENGTH}
+							maxLength={USERNAME_MAX_LENGTH}
+							pattern={USERNAME_HTML_PATTERN}
+							title={USERNAME_RULES}
+							aria-invalid={!!errors.username}
+							disabled={user?.authSource === 'ldap'}
+						/>
+						{errors.username && (
+							<p className="text-xs text-destructive" role="alert">
+								{errors.username}
+							</p>
+						)}
+					</div>
+
+					<div className="space-y-2">
+						<Label htmlFor="edit-email">Email (optional)</Label>
 						<Input
 							id="edit-email"
 							type="email"
@@ -100,9 +127,14 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 							placeholder="john@example.com"
 							disabled={user?.authSource === 'ldap'}
 						/>
+						{errors.email && (
+							<p className="text-xs text-destructive" role="alert">
+								{errors.email}
+							</p>
+						)}
 						{user?.authSource === 'ldap' && (
 							<p className="text-xs text-muted-foreground">
-								Signs in through LDAP: the email comes from the directory.
+								Signs in through LDAP: the username and email come from the directory.
 							</p>
 						)}
 					</div>
@@ -111,7 +143,7 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
 						<Button type="button" variant="ghost" onClick={handleClose} disabled={saving}>
 							Cancel
 						</Button>
-						<Button type="submit" disabled={saving || !fullName.trim() || !email.trim()}>
+						<Button type="submit" disabled={saving || !fullName.trim() || !username.trim()}>
 							{saving ? 'Saving...' : 'Save Changes'}
 						</Button>
 					</DialogFooter>

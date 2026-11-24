@@ -8,6 +8,13 @@ import { getDatabaseConfig } from '../config/config';
 
 const logger = new Logger('dal/db');
 
+const BUSY_TIMEOUT_MS = 5000;
+
+export function applyConnectionPragmas(db: Database.Database): void {
+	db.pragma('journal_mode = WAL');
+	db.pragma(`busy_timeout = ${BUSY_TIMEOUT_MS}`);
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -27,8 +34,7 @@ export function initializeDb(): Database.Database {
 		}
 
 		const db = new Database(dbPath);
-		db.pragma('journal_mode = WAL');
-		db.pragma('busy_timeout = 5000');
+		applyConnectionPragmas(db);
 		logger.info(`SQLite database connected at ${dbPath}`);
 
 		return db;

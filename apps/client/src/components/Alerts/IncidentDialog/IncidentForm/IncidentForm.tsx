@@ -5,9 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { pluralize } from '@/lib/text';
+import { IncidentSummary } from '@OpsiMate/shared';
 import { Folder, FolderInput, FolderMinus, FolderPlus, Pencil } from 'lucide-react';
 import { FormEvent, useId, useState } from 'react';
-import { IncidentDialogTarget, IncidentFormResult } from '../IncidentDialog.types';
+import { IncidentDialogPreset, IncidentDialogTarget, IncidentFormResult } from '../IncidentDialog.types';
 import { DestinationOption } from './DestinationOption';
 import { DESTINATION_MODE, Destination, Mode, SUBMIT_LABELS } from './IncidentForm.constants';
 
@@ -18,18 +19,37 @@ interface IncidentFormProps {
 	isSubmitting?: boolean;
 }
 
+interface InitialChoice {
+	destination: Destination;
+	incidentId: string;
+}
+
+// Where the form starts: a drop can open it on its own target ("Existing" with that
+// incident chosen, or "Remove"); otherwise on "New", with the first candidate ready
+// should the user switch to "Existing".
+const initialChoice = (preset: IncidentDialogPreset | undefined, candidates: IncidentSummary[]): InitialChoice => {
+	const fallback = candidates[0] ? String(candidates[0].id) : '';
+	if (preset?.destination === 'remove') return { destination: 'remove', incidentId: fallback };
+	const chosen = preset ? candidates.find((incident) => incident.id === preset.incidentId) : undefined;
+	return chosen
+		? { destination: 'existing', incidentId: String(chosen.id) }
+		: { destination: 'new', incidentId: fallback };
+};
+
 export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: IncidentFormProps) => {
 	const idPrefix = useId();
 	const editing = 'incident' in target ? target.incident : null;
 	const alerts = 'alerts' in target ? target.alerts : [];
 	const incidents = 'alerts' in target ? target.incidents : [];
 	const incidentsState = 'alerts' in target ? target.incidentsState : 'ready';
+	const preset = 'alerts' in target ? target.preset : undefined;
 	// An incident every selected alert already belongs to has nothing to receive.
 	const candidates = incidents.filter((incident) => alerts.some((alert) => alert.incidentId !== incident.id));
 	// Members among the selection, for the remove option.
 	const members = alerts.filter((alert) => alert.incidentId != null);
-	const [destination, setDestination] = useState<Destination>('new');
-	const [incidentId, setIncidentId] = useState<string>(candidates[0] ? String(candidates[0].id) : '');
+	const start = initialChoice(preset, candidates);
+	const [destination, setDestination] = useState<Destination>(start.destination);
+	const [incidentId, setIncidentId] = useState<string>(start.incidentId);
 	const [name, setName] = useState(editing?.name ?? '');
 	const [description, setDescription] = useState(editing?.description ?? '');
 
@@ -78,7 +98,7 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 
 	return (
 		<>
-			<DialogHeader>
+			<DialogHeader className="min-w-0">
 				<DialogTitle className="flex items-center gap-2">
 					{editing ? <Pencil className="h-4 w-4" /> : <Folder className="h-4 w-4" />}
 					{editing ? 'Edit incident' : 'Incident'}
@@ -92,13 +112,13 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 					</DialogDescription>
 				)}
 			</DialogHeader>
-			<form onSubmit={handleSubmit} className="space-y-4">
+			<form onSubmit={handleSubmit} className="min-w-0 space-y-4">
 				{!editing && (
 					<div className="grid grid-cols-3 gap-1 rounded-md border border-border p-1" role="radiogroup">
 						<DestinationOption
 							selected={destination === 'new'}
 							icon={<FolderPlus className="h-3.5 w-3.5" />}
-							label="New incident"
+							label="New"
 							onSelect={() => setDestination('new')}
 						/>
 						<DestinationOption
@@ -106,7 +126,7 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 							disabled={candidates.length === 0}
 							title={candidates.length === 0 ? 'No existing incident can take these alerts' : undefined}
 							icon={<FolderInput className="h-3.5 w-3.5" />}
-							label="Existing incident"
+							label="Existing"
 							onSelect={() => setDestination('existing')}
 						/>
 						<DestinationOption
@@ -132,11 +152,20 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 							<SelectTrigger id={`${idPrefix}-incident`}>
 								<SelectValue placeholder="Choose an incident" />
 							</SelectTrigger>
-							<SelectContent>
+							{/* The popper sizes itself to its items, so a long incident name would widen
+							    the list past the dialog: cap it at the trigger's width and let the item
+							    text (a flex child of the item) shrink so the name truncates. */}
+							<SelectContent className="max-w-(--radix-select-trigger-width)">
 								{candidates.map((incident) => (
-									<SelectItem key={incident.id} value={String(incident.id)}>
-										{incident.name}
-										<span className="ml-2 text-xs text-muted-foreground">
+									<SelectItem
+										key={incident.id}
+										value={String(incident.id)}
+										className="[&>span:last-child]:flex [&>span:last-child]:min-w-0 [&>span:last-child]:items-baseline"
+									>
+										<span className="truncate" title={incident.name}>
+											{incident.name}
+										</span>
+										<span className="ml-2 shrink-0 text-xs text-muted-foreground">
 											{incident.alertCount} {pluralize(incident.alertCount, 'alert')}
 											{incident.ownerName ? ` · ${incident.ownerName}` : ''}
 										</span>
@@ -179,7 +208,7 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 					</p>
 				)}
 				{dissolving.length > 0 && (
-					<p className="text-xs text-amber-600 dark:text-amber-400" role="alert">
+					<p className="break-words text-xs text-amber-600 dark:text-amber-400" role="alert">
 						{dissolving.length === 1 ? 'This dissolves incident ' : 'This dissolves incidents '}
 						{dissolving.map((incident) => `"${incident.name}"`).join(', ')}
 						{' — every alert '}
@@ -189,7 +218,11 @@ export const IncidentForm = ({ target, onCancel, onSubmit, isSubmitting }: Incid
 				{!editing && (
 					<div className="max-h-32 overflow-y-auto rounded-md border border-border p-2 space-y-1">
 						{alerts.map((alert) => (
-							<div key={alert.id} className="text-xs text-muted-foreground truncate">
+							<div
+								key={alert.id}
+								className="min-w-0 truncate text-xs text-muted-foreground"
+								title={alert.alertName}
+							>
 								{alert.alertName}
 								{alert.incidentId != null && (
 									<span className="ml-1 opacity-70">· in {incidentName(alert.incidentId)}</span>

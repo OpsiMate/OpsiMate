@@ -1,8 +1,10 @@
-import { IncidentRollups } from '@/components/Alerts/IncidentRollups';
-import { Badge } from '@/components/ui/badge';
+import { SeverityBadge } from '@/components/Alerts/SeverityBadge';
+import { IncidentCountBadge } from './IncidentCountBadge';
+import { INCIDENT_SELECTION_LABELS, IncidentSelectionState } from './IncidentRow.constants';
+import { MemberCheckbox } from '../MemberCheckbox';
 import { formatShortDateTime } from '@/lib/datetime';
-import { pluralize } from '@/lib/text';
 import { cn } from '@/lib/utils';
+import { useId } from 'react';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -11,6 +13,8 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { IncidentSummary } from '@OpsiMate/shared';
+import { useDroppable } from '@dnd-kit/core';
+import { dropId } from '../../AlertDragAndDrop';
 import { ChevronDown, ChevronRight, FolderOpen, Folder, MoreVertical, Pencil, Ungroup, User } from 'lucide-react';
 
 interface IncidentRowProps {
@@ -26,6 +30,12 @@ interface IncidentRowProps {
 	// Deletes the incident, leaving its alerts untouched.
 	onUngroup?: (incidentId: number) => void;
 	isActive?: boolean;
+	// How many of the folded members are selected; undefined hides the checkbox (no selection on this table).
+	selectionState?: IncidentSelectionState;
+	// The folder checkbox: select every member, or unselect them all.
+	onToggleSelection?: () => void;
+	// Accept alerts dragged onto the folder (the page owns the DndContext).
+	dropTarget?: boolean;
 }
 
 // The folder row an incident renders as in the alerts table. The row body toggles
@@ -41,17 +51,38 @@ export const IncidentRow = ({
 	onEdit,
 	onUngroup,
 	isActive,
+	selectionState,
+	onToggleSelection,
+	dropTarget = false,
 }: IncidentRowProps) => {
-	const partial = shownCount < incident.alertCount;
+	// An incident spanning several group-by segments renders one folder per segment; each
+	// is its own drop target.
+	const dropScope = useId();
+	const { setNodeRef, isOver } = useDroppable({ id: dropId.incident(incident.id, dropScope), disabled: !dropTarget });
 	return (
 		<div
+			ref={setNodeRef}
 			className={cn(
-				'flex items-center gap-2 h-9 border-b border-border bg-primary/[0.04] hover:bg-primary/[0.08] px-2 cursor-pointer select-none',
+				'flex items-center gap-2 h-9 border-b border-border bg-primary/[0.04] hover:bg-primary/[0.08] pr-2 cursor-pointer select-none',
+				isOver && 'ring-2 ring-inset ring-primary bg-primary/15',
+				// Without a checkbox cell the chevron takes the select column's padding.
+				selectionState === undefined && 'pl-2',
 				isActive && 'bg-primary/10 shadow-[inset_3px_0_0_0] shadow-primary'
 			)}
 			onClick={() => onToggle(incident.id)}
 			role="row"
+			data-selection-scope
 		>
+			{selectionState !== undefined && (
+				<MemberCheckbox
+					state={selectionState}
+					labels={{
+						select: INCIDENT_SELECTION_LABELS.select(incident.name),
+						unselect: INCIDENT_SELECTION_LABELS.unselect(incident.name),
+					}}
+					onToggle={onToggleSelection}
+				/>
+			)}
 			{/* A real button, not just the clickable row: keyboard users need a focusable
 			    toggle, and aria-expanded belongs on the control that toggles. */}
 			<button
@@ -66,6 +97,7 @@ export const IncidentRow = ({
 			>
 				{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 			</button>
+			<IncidentCountBadge incident={incident} shownCount={shownCount} />
 			{isExpanded ? (
 				<FolderOpen className="h-4 w-4 shrink-0 text-primary" />
 			) : (
@@ -82,17 +114,13 @@ export const IncidentRow = ({
 			>
 				{incident.name}
 			</button>
-			<Badge variant="outline" className="h-5 px-1.5 text-xs shrink-0">
-				{partial ? `${shownCount} of ${incident.alertCount}` : incident.alertCount}{' '}
-				{pluralize(incident.alertCount, 'alert')}
-			</Badge>
+			{incident.worstSeverity && <SeverityBadge severity={incident.worstSeverity} />}
 			{incident.ownerName && (
 				<span className="flex items-center gap-1 text-xs text-muted-foreground shrink-0" title="Incident owner">
 					<User className="h-3 w-3" />
 					{incident.ownerName}
 				</span>
 			)}
-			<IncidentRollups incident={incident} />
 			<span className="ml-auto text-xs text-muted-foreground shrink-0">
 				{incident.latestUpdatedAt ? formatShortDateTime(incident.latestUpdatedAt, '') : ''}
 			</span>

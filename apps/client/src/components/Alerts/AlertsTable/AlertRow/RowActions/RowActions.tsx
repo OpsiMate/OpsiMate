@@ -6,11 +6,10 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Alert } from '@OpsiMate/shared';
-import { BellOff, CheckCircle2, Flame, MoreVertical, RotateCcw, Trash2, FolderMinus } from 'lucide-react';
+import { Alert, AUTO_FIX_RESOLVE_REFUSED, isAutoFixed } from '@OpsiMate/shared';
+import { BellOff, CheckCircle2, Flame, MoreVertical, RotateCcw, FolderMinus } from 'lucide-react';
 import { AlertLinkIcon } from '../../../AlertLinkIcon';
 import { getAlertLinks } from '../../../utils/links.utils';
-import { canDelete } from '@/lib/permissions';
 
 export interface RowActionsProps {
 	alert: Alert;
@@ -34,19 +33,20 @@ export const RowActions = ({
 	const { isSilenced } = alert;
 	const links = getAlertLinks(alert);
 	// In the combined "All" view a row carries a transient isResolved flag so it can present
-	// resolved behaviour (permanent delete, no silence/resolve) even though the table-level
+	// resolved behaviour (Unresolve, no Silence or Resolve) even though the table-level
 	// callbacks are shared across active and resolved rows.
 	const isResolvedAlert = Boolean(alert.isResolved);
-	const canShowDelete = !isResolvedAlert || canDelete();
-
 	const isActive = !isResolvedAlert && Boolean(onSilenceAlert);
+	const canResolve = isActive && Boolean(onDeleteAlert);
+	// Fixed by its source: the item stays, greyed, so the absence of Resolve is explained.
+	const autoFixed = isActive && isAutoFixed(alert);
 	const canToggleSilence =
 		!isResolvedAlert && ((!isSilenced && Boolean(onSilenceAlert)) || (isSilenced && Boolean(onUnsilenceAlert)));
 	// Only resolved rows can be moved back to firing (isActive is false on the Resolved tab
 	// and on resolved rows in the All view).
 	const canUnresolve = !isActive && Boolean(onUnresolveAlert);
 	const hasActions = Boolean(
-		links.length > 0 || (onDeleteAlert && canShowDelete) || canToggleSilence || canUnresolve || onRemoveFromIncident
+		links.length > 0 || canResolve || canToggleSilence || canUnresolve || onRemoveFromIncident
 	);
 
 	const handleToggleSilence = (event: React.MouseEvent) => {
@@ -62,8 +62,10 @@ export const RowActions = ({
 		window.open(url, '_blank', 'noopener,noreferrer');
 	};
 
-	const handleDelete = (event: React.MouseEvent) => {
+	const handleResolve = (event: React.MouseEvent) => {
 		event.stopPropagation();
+		// The item is disabled for an auto-fixed alert; the guard holds without the CSS too.
+		if (autoFixed) return;
 		onDeleteAlert?.(alert.id);
 	};
 
@@ -103,32 +105,28 @@ export const RowActions = ({
 							{link.label}
 						</DropdownMenuItem>
 					))}
-					{links.length > 0 && ((onDeleteAlert && canShowDelete) || canToggleSilence || canUnresolve) && (
-						<DropdownMenuSeparator />
-					)}
+					{links.length > 0 && (canResolve || canToggleSilence || canUnresolve) && <DropdownMenuSeparator />}
 					{canUnresolve && (
 						<DropdownMenuItem onClick={handleUnresolve}>
 							<Flame className="mr-2 h-3 w-3" />
 							Unresolve
 						</DropdownMenuItem>
 					)}
-					{onDeleteAlert && canShowDelete && (
-						<DropdownMenuItem
-							onClick={handleDelete}
-							className={isActive ? '' : 'text-destructive focus:text-destructive'}
-						>
-							{isActive ? (
-								<>
-									<CheckCircle2 className="mr-2 h-3 w-3" />
-									Resolve
-								</>
-							) : (
-								<>
-									<Trash2 className="mr-2 h-3 w-3" />
-									Delete
-								</>
+					{canResolve && (
+						// A disabled item takes no pointer events, so the reason rides on a
+						// wrapper that does.
+						<div title={autoFixed ? AUTO_FIX_RESOLVE_REFUSED : undefined}>
+							<DropdownMenuItem onClick={handleResolve} disabled={autoFixed}>
+								<CheckCircle2 className="mr-2 h-3 w-3" />
+								Resolve
+								{autoFixed && <span className="ml-2 text-xs text-muted-foreground">auto fix</span>}
+							</DropdownMenuItem>
+							{autoFixed && (
+								// Visible, not only on hover: a disabled item is skipped by arrow keys,
+								// so keyboard users would otherwise never meet the reason.
+								<p className="px-2 pb-1.5 text-xs text-muted-foreground">{AUTO_FIX_RESOLVE_REFUSED}</p>
 							)}
-						</DropdownMenuItem>
+						</div>
 					)}
 					{onRemoveFromIncident && (
 						<DropdownMenuItem

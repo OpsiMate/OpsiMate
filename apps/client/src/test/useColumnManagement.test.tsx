@@ -5,8 +5,8 @@ import { DEFAULT_COLUMN_ORDER, DEFAULT_VISIBLE_COLUMNS } from '@/components/Aler
 import { TagKeyInfo } from '@/types';
 
 const tagKeys: TagKeyInfo[] = [
-	{ key: 'host', label: 'Host' },
-	{ key: 'env', label: 'Env' },
+	{ key: 'host', label: 'Host', values: [] },
+	{ key: 'env', label: 'Env', values: [] },
 ];
 
 afterEach(() => {

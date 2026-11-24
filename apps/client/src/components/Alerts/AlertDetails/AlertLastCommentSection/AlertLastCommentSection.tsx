@@ -1,6 +1,6 @@
 import { useAlertComments } from '@/hooks/queries/alertComments';
 import { useUsers } from '@/hooks/queries/users';
-import { formatRelativeTime } from '@/lib/datetime';
+import { formatDateTime, formatTimestamp } from '@/lib/datetime';
 import { MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';
 import { CollapsibleSection } from '../CollapsibleSection';
@@ -21,7 +21,8 @@ const initials = (name: string): string =>
 		.toUpperCase() || '?';
 
 // Shows the most recent comment as a preview in the Details tab, with a count and a link to
-// the full Comments tab.
+// the full Comments tab — only when there is one. Open by default: the latest comment is
+// often the most useful line in the panel (what the last responder found).
 export const AlertLastCommentSection = ({ alertId, onViewAll }: AlertLastCommentSectionProps) => {
 	const { data: comments = [] } = useAlertComments(alertId);
 	const { data: users = [] } = useUsers();
@@ -46,38 +47,38 @@ export const AlertLastCommentSection = ({ alertId, onViewAll }: AlertLastComment
 		</button>
 	);
 
+	// Nothing to preview, nothing to show: the Comments tab is where a first comment is
+	// added, and an empty section would only take a row.
+	if (!latest) return null;
+
 	return (
 		<CollapsibleSection
 			title="Latest comment"
 			icon={<MessageSquare className="h-3.5 w-3.5" />}
 			badge={comments.length || undefined}
 			headerRight={viewAll}
-			defaultOpen={false}
+			defaultOpen
+			className="shrink-0"
 		>
-			{latest ? (
+			{latest && (
 				<div className="rounded-lg border bg-muted/30 p-3 space-y-1.5">
 					<div className="flex items-center gap-2">
 						<span className="h-5 w-5 rounded-full bg-primary/10 text-primary text-[10px] font-medium flex items-center justify-center shrink-0">
 							{initials(authorName)}
 						</span>
 						<span className="text-xs font-medium truncate">{authorName}</span>
-						<span className="text-xs text-muted-foreground shrink-0">
-							{formatRelativeTime(latest.createdAt)}
-						</span>
+						<time
+							className="text-xs text-muted-foreground shrink-0"
+							dateTime={latest.createdAt}
+							title={formatDateTime(latest.createdAt)}
+						>
+							{formatTimestamp(latest.createdAt)}
+						</time>
 					</div>
 					<p className="text-sm text-foreground whitespace-pre-wrap wrap-break-word line-clamp-4">
 						{latest.comment}
 					</p>
 				</div>
-			) : (
-				<p className="text-xs text-muted-foreground">
-					No comments yet.{' '}
-					{onViewAll && (
-						<button type="button" onClick={onViewAll} className="underline hover:text-foreground">
-							Add one
-						</button>
-					)}
-				</p>
 			)}
 		</CollapsibleSection>
 	);

@@ -1,3 +1,5 @@
+import { queryKeys } from '../queryKeys';
+import { applyOwnerMovesToSummaries, ownerMovesBetween } from './ownerSummaryCache';
 import { Alert } from '@OpsiMate/shared';
 import { QueryClient, QueryKey } from '@tanstack/react-query';
 
@@ -83,6 +85,13 @@ export const applyToAlertCaches = async (
 	await queryClient.cancelQueries({ queryKey: prefix });
 	const snapshot = queryClient.getQueriesData({ queryKey: prefix });
 	queryClient.setQueriesData({ queryKey: prefix }, updater);
+	// The owner group summaries (split-pane counts, owner group headers) live under the
+	// active prefix too but hold no alerts, so the updater leaves them alone: shift their
+	// counts by what it did to the active lists' owners. The snapshot already holds
+	// their previous value, so a rollback restores them with everything else.
+	if (prefix[0] === queryKeys.alerts[0]) {
+		applyOwnerMovesToSummaries(queryClient, ownerMovesBetween(snapshot, updater));
+	}
 	return snapshot;
 };
 

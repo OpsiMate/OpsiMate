@@ -90,7 +90,8 @@ export type ResolvedAlertRow = {
 
 export type UserRow = {
 	id: number;
-	email: string;
+	username: string;
+	email: string | null;
 	password_hash: string;
 	full_name: string;
 	role: Role;
@@ -99,6 +100,7 @@ export type UserRow = {
 	// Absent on rows read before the column existed; treated as 'local'.
 	auth_source?: string | null;
 	ldap_dn?: string | null;
+	ldap_object_id?: string | null;
 };
 
 export type OncallTeamRow = {
@@ -115,7 +117,8 @@ export type OncallTeamMemberRow = {
 	user_id: number;
 	position: number;
 	full_name: string;
-	email: string;
+	username: string;
+	email: string | null;
 	phone_number: string | null;
 };
 
