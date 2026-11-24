@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
@@ -6,10 +6,19 @@ import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
 // The /metrics endpoint (issue #658): Prometheus text format, alert-state gauges
 // computed from cheap SQL counts at scrape time, ingestion counter, request-duration
 // histogram with matched-route labels, and optional bearer-token gating.
+const HOUR_MS = 60 * 60 * 1000;
 
 let app: SuperTest<Test>;
 let db: Database.Database;
 let jwtToken: string;
+
+const insertSilencedAlert = (id: string, silencedUntil: string | null) => {
+	const now = new Date().toISOString();
+	db.prepare(
+		`INSERT INTO alerts (id, status, tags, starts_at, updated_at, alert_url, alert_name, summary, is_dismissed, silenced_until, silenced_at)
+		 VALUES (?, 'firing', '{}', ?, ?, ?, ?, 'Summary', 1, ?, ?)`
+	).run(id, now, now, `https://example.com/${id}`, `Alert ${id}`, silencedUntil, now);
+};
 
 const insertAlert = (id: string, severity: string, dismissed: number) => {
 	db.prepare(
@@ -125,5 +134,178 @@ describe('GET /metrics', () => {
 		expect(denied.status).toBe(401);
 		const allowed = await app.get('/metrics').set('Authorization', 'Bearer scrape-secret');
 		expect(allowed.status).toBe(200);
+	});
+});
+
+describe('Prometheus metrics tests', () => {
+	async function match_counter(alertName: string): Promise<number> {
+		const metrics = await app.get('/metrics');
+		const match = metrics.text.match(new RegExp(`^${alertName} (\\S+)$`, 'm'));
+
+		if (!match) {
+			throw new Error('metric not found : ' + alertName);
+		}
+		const count_before = Number(match[1]);
+		return count_before;
+	}
+
+	test('manual unsilence increments the opsimate_alerts_unsilenced_total by 1', async () => {
+		// silenced alert
+		insertSilencedAlert('indefinite', null);
+
+		// before counter
+		const count_before = await match_counter('opsimate_alerts_unsilenced_total');
+
+		const res = await app.patch('/api/v1/alerts/indefinite/unsilence').set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(res.status).toBe(200);
+
+		// after counter
+		const count_after = await match_counter('opsimate_alerts_unsilenced_total');
+
+		expect(count_after - count_before).toBe(1);
+	});
+
+	test('manual unsilence : call to a nonnexistant id does not move the counter', async () => {
+		// before counter
+		const count_before = await match_counter('opsimate_alerts_unsilenced_total');
+
+		// call with nonexistent id
+		const res = await app.patch('/api/v1/alerts/nonexistent/unsilence').set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(res.status).toBe(404);
+
+		// after counter
+		const count_after = await match_counter('opsimate_alerts_unsilenced_total');
+
+		expect(count_after - count_before).toBe(0);
+	});
+
+	test('timer expiry increment the counter by two for alerts in the past but not for future', async () => {
+		// before counter
+		const count_before = await match_counter('opsimate_alerts_unsilenced_total');
+
+		// silenced alerts : silencedUntil an hour in the past
+		insertSilencedAlert('expiredOne', new Date(Date.now() - HOUR_MS).toISOString());
+		insertSilencedAlert('expiredTwo', new Date(Date.now() - HOUR_MS).toISOString());
+
+		// silenced alerts : silencedUntil an hour in the future
+		insertSilencedAlert('futureOne', new Date(Date.now() + HOUR_MS).toISOString());
+
+		const res = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+
+		expect(res.status).toBe(200);
+
+		// after counter
+		const count_after = await match_counter('opsimate_alerts_unsilenced_total');
+
+		expect(count_after - count_before).toBe(2);
+	});
+
+	test('Daily reset : the counter goes up by the number of silence cleared', async () => {
+		try {
+			// fix the date
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(new Date('2024-11-24T21:00:00'));
+
+			const res = await app
+				.put('/api/v1/alerts/silence-reset')
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ enabled: true, hour: new Date().getHours() });
+
+			expect(res.status).toBe(200);
+
+			insertSilencedAlert('dailyResetOne', null);
+
+			// backdate silenced_at by a day
+			const backdated = await app
+				.patch(`/api/v1/alerts/dailyResetOne/silence`)
+				.set('Authorization', `Bearer ${jwtToken}`)
+				.send({ silencedUntil: new Date(Date.now() + HOUR_MS).toISOString() });
+
+			expect(backdated.status).toBe(200);
+
+			db.prepare(`UPDATE alerts SET silenced_at = ? WHERE id = ?`).run(
+				new Date(Date.now() - 24 * HOUR_MS).toISOString(),
+				'dailyResetOne'
+			);
+
+			// before counter
+			const count_before = await match_counter('opsimate_alerts_unsilenced_total');
+
+			const res_two = await app.get('/api/v1/alerts').set('Authorization', `Bearer ${jwtToken}`);
+
+			expect(res_two.status).toBe(200);
+
+			// after counter
+			const count_after = await match_counter('opsimate_alerts_unsilenced_total');
+
+			// m-3 in beforeall is counted
+			expect(count_after - count_before).toBe(2);
+		} finally {
+			db.exec('DELETE FROM silence_reset_config');
+			vi.useRealTimers();
+		}
+	});
+
+	test('ingest batch size increments sum and count by 1', async () => {
+		// before counter
+		const count_before = await match_counter('opsimate_ingest_batch_size_count');
+		const count_before_sum = await match_counter('opsimate_ingest_batch_size_sum');
+
+		// Post call
+		const res = await app
+			.post('/api/v1/alerts/custom')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ id: 'batch-size-1', alertName: 'batch size test', tags: { severity: 'critical' } });
+		expect(res.status).toBe(200);
+
+		// after counter
+		const count_after = await match_counter('opsimate_ingest_batch_size_count');
+		const count_after_sum = await match_counter('opsimate_ingest_batch_size_sum');
+
+		expect(count_after - count_before).toBe(1);
+		expect(count_after_sum - count_before_sum).toBe(1);
+	});
+
+	test('event loop utilization : mesure event loop value with opsimate_event_loop_utilization', async () => {
+		const metricsOne = await app.get('/metrics');
+		const matchOne = metricsOne.text.match(/^opsimate_event_loop_utilization (\S+)$/m);
+		const valueOne = Number(matchOne?.[1]);
+
+		expect(Number.isFinite(valueOne)).toBe(true);
+		expect(0 <= valueOne && 1 >= valueOne).toBe(true);
+
+		const metricsTwo = await app.get('/metrics');
+		const matchTwo = metricsTwo.text.match(/^opsimate_event_loop_utilization (\S+)$/m);
+		const valueTwo = Number(matchTwo?.[1]);
+
+		expect(Number.isFinite(valueTwo)).toBe(true);
+		expect(0 <= valueTwo && 1 >= valueTwo).toBe(true);
+	});
+
+	test('unmatched route return 404 and write route="unmatched" in opsimate_http_request_duration_seconds_count', async () => {
+		// no such path call
+		const res = await app.get('/no-such-path').set('Authorization', `Bearer ${jwtToken}`);
+		expect(res.status).toBe(404);
+
+		// get metrics
+		const metrics = await app.get('/metrics');
+
+		// verify right metrics
+		const match_found = metrics.text
+			.split('\n')
+			.filter(
+				(str) =>
+					str.startsWith('opsimate_http_request_duration_seconds_count') &&
+					str.includes('route="unmatched"') &&
+					str.includes('status_code="404"')
+			);
+
+		// wrong metrics should not be found
+		const match_not_found = metrics.text.split('\n').filter((str) => str.includes('route="/no-such-path"'));
+
+		expect(match_found.length).toBeGreaterThan(0);
+		expect(match_not_found.length).toBe(0);
 	});
 });
