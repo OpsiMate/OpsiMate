@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, test } from 'vitest';
+import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
@@ -204,6 +204,10 @@ describe('Prometheus metrics tests', () => {
 
 	test('Daily reset : the counter goes up by the number of silence cleared', async () => {
 		try {
+			// fix the date
+			vi.useFakeTimers({ toFake: ['Date'] });
+			vi.setSystemTime(new Date('2026-11-24T21:00:00'));
+
 			const res = await app
 				.put('/api/v1/alerts/silence-reset')
 				.set('Authorization', `Bearer ${jwtToken}`)
@@ -238,8 +242,10 @@ describe('Prometheus metrics tests', () => {
 
 			// m-3 in beforeall is counted
 			expect(count_after - count_before).toBe(2);
-		} finally {
+
 			db.exec('DELETE FROM silence_reset_config');
+		} finally {
+			vi.useRealTimers();
 		}
 	});
 
