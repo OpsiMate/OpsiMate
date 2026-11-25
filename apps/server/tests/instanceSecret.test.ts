@@ -53,6 +53,13 @@ describe('readOrCreateInstanceSecret', () => {
 		expect(fs.existsSync(path.join(nested, 'jwt-secret'))).toBe(true);
 	});
 
+	test('a key file someone opened up (a recursive chmod) is made owner-only again on the next read', () => {
+		const first = readOrCreateInstanceSecret(dir, 'jwt-secret');
+		fs.chmodSync(first.file, 0o777);
+		expect(readOrCreateInstanceSecret(dir, 'jwt-secret').secret).toBe(first.secret);
+		if (process.platform !== 'win32') expect(fs.statSync(first.file).mode & 0o777).toBe(0o600);
+	});
+
 	test('a file written by someone else (a restore, an operator) is used as it is', () => {
 		const restored = 'ab'.repeat(32);
 		fs.writeFileSync(path.join(dir, 'jwt-secret'), `${restored}\n`);

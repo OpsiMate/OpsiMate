@@ -26,9 +26,9 @@ await (async () => {
 
 	app.listen(PORT, HOST, () => {
 		logger.info(`Server running on ${HOST}:${PORT}`);
-		// After the port is open, so a long migration (one PBKDF2 round per stored
-		// integration) never holds up the first health check. Until it has run, credentials
-		// still under the old public key are read through the fallback in decryptPassword.
-		setImmediate(() => moveLegacyCredentials(db));
+		// In the background once the port is open, one credential at a time, so it never
+		// holds up a request or a health check. Until a value has moved it is read through
+		// the old-key fallback in decryptPassword.
+		void moveLegacyCredentials(db);
 	});
 })();

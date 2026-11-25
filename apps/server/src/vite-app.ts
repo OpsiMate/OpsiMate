@@ -12,6 +12,6 @@ export const viteNodeApp = (async () => {
 	// Initialize DB (you can reuse your production init if safe)
 	const db = initializeDb();
 	const app = await createApp(db, AppMode.SERVER);
-	moveLegacyCredentials(db);
+	void moveLegacyCredentials(db);
 	return app;
 })();

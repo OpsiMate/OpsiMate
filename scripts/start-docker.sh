@@ -5,14 +5,16 @@ set -e
 
 echo "Setting up OpsiMate local environment..."
 
-# Create persistent data directories if missing
+# Create persistent data directories if missing, owner-only: data/database holds the database
+# and the keys the backend generates for itself (login sessions, stored credentials), and
+# anyone who can write to a directory can replace the files in it. The backend container
+# runs as root, which needs no group or world access to these. Installs made by an older
+# version of this script left them world-writable (0777); this closes them again. Only the
+# directories are changed, never the files inside (the backend keeps its own files private).
 mkdir -p data/database data/private-keys
-# On an existing install, files the backend container created belong to root (it runs as
-# root), and a normal user cannot change them. That is expected and must not stop the
-# checks or the upgrade below: chmod still updates everything it owns, and only the
-# failure is passed over.
-if ! chmod -R 0777 data 2>/dev/null; then
-  echo "Note: some files under data/ belong to another user (usually the container); left as they are."
+if ! chmod 700 data data/database data/private-keys 2>/dev/null; then
+  echo "Note: data/ directories belong to another user, so they were left as they are. Make them"
+  echo "owner-only yourself: sudo chmod 700 data data/database data/private-keys"
 fi
 
 # Download config.yml if not present

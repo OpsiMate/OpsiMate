@@ -27,18 +27,30 @@ export function prepareInstanceSecrets(): void {
 	warnIfEncryptionKeyInsecure();
 }
 
+const summarize = (counts: Record<string, number>): { total: number; detail: string } => ({
+	total: Object.values(counts).reduce((sum, count) => sum + count, 0),
+	detail: Object.entries(counts)
+		.map(([table, count]) => `${table}: ${count}`)
+		.join(', '),
+});
+
 // Credentials an older version encrypted with the public built-in key move to this
-// install's own key. Best effort: on any problem nothing is changed and the server starts
-// anyway, since they stay readable either way.
-export function moveLegacyCredentials(db: Database.Database): void {
+// install's own key, in the background (see reencryptLegacyCredentials). Best effort:
+// whatever does not move stays readable through the fallback and is tried again on the
+// next start. Never throws.
+export async function moveLegacyCredentials(db: Database.Database): Promise<void> {
 	try {
-		const moved = reencryptLegacyCredentials(db);
-		const total = Object.values(moved).reduce((sum, count) => sum + count, 0);
-		if (total > 0) {
-			const detail = Object.entries(moved)
-				.map(([table, count]) => `${table}: ${count}`)
-				.join(', ');
-			logger.info(`Moved ${total} stored credential(s) off the old public encryption key (${detail})`);
+		const { moved, failed } = await reencryptLegacyCredentials(db);
+		const done = summarize(moved);
+		if (done.total > 0) {
+			logger.info(`Moved ${done.total} stored credential(s) off the old public encryption key (${done.detail})`);
+		}
+		const left = summarize(failed);
+		if (left.total > 0) {
+			logger.warn(
+				`Could not move ${left.total} stored credential(s) off the old public key (${left.detail}); ` +
+					'they still work and are tried again on the next start'
+			);
 		}
 	} catch (error) {
 		logger.error('Could not move stored credentials to this install’s encryption key; left as they were', error);

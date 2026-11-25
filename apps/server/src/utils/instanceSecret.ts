@@ -40,7 +40,7 @@ export function readOrCreateInstanceSecret(
 	{ settleMs = SETTLE_MS }: { settleMs?: number } = {}
 ): InstanceSecret {
 	const file = path.join(dir, name);
-	if (fs.existsSync(file)) return { secret: readSettled(file, settleMs), file, created: false };
+	if (fs.existsSync(file)) return existingSecret(file, settleMs);
 
 	fs.mkdirSync(dir, { recursive: true });
 	const secret = crypto.randomBytes(INSTANCE_SECRET_BYTES).toString('hex');
@@ -51,19 +51,36 @@ export function readOrCreateInstanceSecret(
 			fs.linkSync(tmp, file);
 		} catch (error) {
 			const code = (error as NodeJS.ErrnoException).code ?? '';
-			if (code === 'EEXIST') return { secret: readSettled(file, settleMs), file, created: false };
+			if (code === 'EEXIST') return existingSecret(file, settleMs);
 			if (!NO_HARD_LINKS.has(code)) throw error;
 			// No hard links here: an exclusive create still guarantees a single writer.
 			try {
 				fs.writeFileSync(file, `${secret}\n`, { mode: 0o600, flag: 'wx' });
 			} catch (fallbackError) {
 				if ((fallbackError as NodeJS.ErrnoException).code !== 'EEXIST') throw fallbackError;
-				return { secret: readSettled(file, settleMs), file, created: false };
+				return existingSecret(file, settleMs);
 			}
 		}
 		return { secret, file, created: true };
 	} finally {
 		fs.rmSync(tmp, { force: true });
+	}
+}
+
+function existingSecret(file: string, settleMs: number): InstanceSecret {
+	const secret = readSettled(file, settleMs);
+	keepPrivate(file);
+	return { secret, file, created: false };
+}
+
+// The file is created 0600, but a recursive chmod on the data directory (an install script
+// run with sudo, say) can open it up. Put it back on every start; best effort, since a file
+// we do not own cannot be changed and is still readable to us.
+function keepPrivate(file: string): void {
+	try {
+		if ((fs.statSync(file).mode & 0o077) !== 0) fs.chmodSync(file, 0o600);
+	} catch {
+		// Not ours to change; the secret is still read.
 	}
 }
 
