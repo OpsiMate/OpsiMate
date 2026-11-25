@@ -18,11 +18,20 @@ export function applyConnectionPragmas(db: Database.Database): void {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-export function initializeDb(): Database.Database {
+// The database file's absolute path, resolved the way the connection opens it.
+export function resolveDatabasePath(): string {
 	const databaseConfig = getDatabaseConfig();
-	const dbPath = path.isAbsolute(databaseConfig.path)
-		? databaseConfig.path
-		: path.resolve(__dirname, databaseConfig.path);
+	return path.isAbsolute(databaseConfig.path) ? databaseConfig.path : path.resolve(__dirname, databaseConfig.path);
+}
+
+// Where generated instance secrets live (see utils/instanceSecret): the database's own
+// directory, the one every working install keeps across restarts.
+export function instanceSecretsDir(): string {
+	return path.dirname(resolveDatabasePath());
+}
+
+export function initializeDb(): Database.Database {
+	const dbPath = resolveDatabasePath();
 	logger.info(`SQLite database is connecting to ${dbPath}`);
 
 	try {

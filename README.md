@@ -114,16 +114,7 @@ Each source has a setup guide in the app (Integrations → Add) with the exact w
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
 
-The installer creates `.env` with a private `JWT_SECRET`, the secret that signs login sessions, readable only by you. Back it up, and keep it across restarts and upgrades: changing it signs everyone out.
-
-Running `docker-compose.yml` yourself, without the installer? Create the `.env` first; the backend refuses to start without it:
-
-```bash
-touch .env && chmod 600 .env
-echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env
-```
-
-Upgrading an install from before `JWT_SECRET` was required: fetch the latest `docker-compose.yml` (or add `- JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}` under the backend's `environment`), then run the installer again, which creates the `.env`. Everyone signs in again once, since sessions signed with the old public key no longer work.
+On first start OpsiMate generates its own private keys, one that signs login sessions and one that encrypts stored credentials (LDAP, AI, integrations), and keeps them in `data/database/` next to the database. Nothing to set up. Back up `data/database/` as a whole: without those files, everyone is signed out and saved credentials must be entered again. Upgrading from a version that used the built-in public keys signs everyone in once more, and stored credentials move to the new key on their own.
 
 **Access the application:**
 
@@ -163,7 +154,7 @@ security:
   api_token: "change-me"
 ```
 
-`JWT_SECRET` (session signing) is required: the server refuses to start without a private value of at least 32 bytes (`openssl rand -hex 32`). Keep it out of source control and keep it the same across restarts, since changing it signs everyone out. Also set `ENCRYPTION_KEY` (credentials at rest — the server warns at startup if it's missing) for anything beyond a laptop.
+`JWT_SECRET` (session signing) and `ENCRYPTION_KEY` (credentials at rest) are optional: unset, the server generates both on first start and keeps them as `jwt-secret` and `encryption-key` next to the database. Set them yourself (`openssl rand -hex 32`; `JWT_SECRET` must be at least 32 bytes) to keep them in a secret store, or when several backends do not share the database directory. Keep them out of source control and the same across restarts: a new `JWT_SECRET` signs everyone out, a new `ENCRYPTION_KEY` makes saved credentials unreadable.
 
 ## Contributing
 

@@ -1,25 +1,21 @@
 import { initializeDb } from './dal/db';
 import { createApp, AppMode } from './app';
 import { getServerConfig } from './config/config';
-import { warnIfEncryptionKeyInsecure } from './utils/encryption';
 import { Logger } from '@OpsiMate/shared';
-import { getJwtSecret } from './utils/jwtSecret';
+import { moveLegacyCredentials, prepareInstanceSecrets } from './bootSecrets';
 
 const logger = new Logger('server');
 
 await (async () => {
-	// Nudge, don't block: a production boot with no ENCRYPTION_KEY encrypts credentials
-	// under the public fallback key — warn loudly but keep existing deployments running.
-	warnIfEncryptionKeyInsecure();
-
 	const serverConfig = getServerConfig();
 
 	// Allow environment variable to override config file
 	const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : serverConfig.port;
 	const HOST = process.env.HOST || serverConfig.host;
 
-	// Refuse to start without a private JWT_SECRET: throws before the DB is touched.
-	getJwtSecret();
+	// The session and encryption keys: from the environment, or generated once next to the
+	// database. Settled before anything signs a token or decrypts a credential.
+	prepareInstanceSecrets();
 
 	const db = initializeDb();
 	const app = await createApp(db, AppMode.SERVER);
@@ -27,6 +23,8 @@ await (async () => {
 	if (!app) {
 		throw new Error('Failed to create Express application');
 	}
+
+	moveLegacyCredentials(db);
 
 	app.listen(PORT, HOST, () => {
 		logger.info(`Server running on ${HOST}:${PORT}`);

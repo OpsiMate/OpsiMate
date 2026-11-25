@@ -35,17 +35,7 @@ Learn how to set up and run the OpsiMate project locally for development.
    export CONFIG_FILE=/path/to/config.yml
    ```
 
-6. **Set a JWT secret:** the server refuses to start without one, in development too. It only signs your local logins; set it in every new shell, or in your shell profile.
-   ```bash
-   export JWT_SECRET=$(openssl rand -hex 32)
-   ```
-   PowerShell:
-   ```powershell
-   $env:JWT_SECRET = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
-   ```
-   With `docker-compose.dev.yml`, put `JWT_SECRET=...` in a `.env` file next to it instead.
-
-7. **Start development server:**
+6. **Start development server:** the first start generates the session and encryption keys into the database directory (`jwt-secret`, `encryption-key`); there is nothing to set. Deleting them signs you out and makes saved credentials unreadable.
    ```bash
    pnpm run dev
    ```

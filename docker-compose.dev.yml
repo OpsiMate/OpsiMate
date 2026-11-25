@@ -33,8 +33,9 @@ services:
       - PORT=3001
       - HOST=0.0.0.0
       - CONFIG_FILE=/app/config/config.yml
-      # The server refuses to start without it, in development too: set it in .env.
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set in .env (generate one with openssl rand -hex 32)}
+      # Optional: unset, the server generates its own keys into ./data/database.
+      - JWT_SECRET=${JWT_SECRET:-}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
     volumes:
       - ./apps/server:/app/apps/server
       - ./packages/shared:/app/packages/shared
@@ -54,6 +55,7 @@ services:
     environment:
       - NODE_ENV=development
       - CONFIG_FILE=/app/config/config.yml
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
     volumes:
       - ./apps/server:/app/apps/server
       - ./packages/shared:/app/packages/shared

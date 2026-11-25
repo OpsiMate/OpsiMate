@@ -37,6 +37,13 @@ spec:
               value: {{ .Values.worker.env.NODE_ENV | quote }}
             - name: CONFIG_FILE
               value: {{ .Values.worker.env.CONFIG_FILE | quote }}
+            # The same credential key as the backend (or, unset, the one it generated).
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsimate.secretName" . }}
+                  key: ENCRYPTION_KEY
+                  optional: true
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           volumeMounts:

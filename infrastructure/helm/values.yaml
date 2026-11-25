@@ -196,13 +196,16 @@ persistence:
 secrets:
   # -- API token for backend authentication
   apiToken: ""
-  # -- Private secret that signs login sessions (JWT_SECRET), at least 32 bytes. Required
-  # unless existingSecret is set. Generate it with `openssl rand -hex 32`, pass it at install
-  # time (--set secrets.jwtSecret=...), never commit it, and keep it across upgrades:
-  # changing it signs everyone out.
+  # -- Secret that signs login sessions (JWT_SECRET), at least 32 bytes. Optional: left
+  # empty, the backend generates its own on first start and keeps it on the data volume
+  # next to the database (persistence.enabled). Set it (`openssl rand -hex 32`) to manage
+  # it yourself, never commit it, and keep it across upgrades: changing it signs everyone out.
   jwtSecret: ""
-  # -- Name of an existing Secret to use instead of creating one. It must hold the keys
-  # API_TOKEN and JWT_SECRET.
+  # -- Key that encrypts stored credentials (ENCRYPTION_KEY). Optional, generated the same
+  # way when empty. Changing it later makes credentials saved under the old key unreadable.
+  encryptionKey: ""
+  # -- Name of an existing Secret to use instead of creating one. It must hold API_TOKEN, and
+  # may hold JWT_SECRET and ENCRYPTION_KEY.
   existingSecret: ""
 
 # -- ConfigMap configuration
