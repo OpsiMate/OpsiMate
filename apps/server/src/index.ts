@@ -3,6 +3,7 @@ import { createApp, AppMode } from './app';
 import { getServerConfig } from './config/config';
 import { warnIfEncryptionKeyInsecure } from './utils/encryption';
 import { Logger } from '@OpsiMate/shared';
+import { getJwtSecret } from './utils/jwtSecret';
 
 const logger = new Logger('server');
 
@@ -16,6 +17,9 @@ await (async () => {
 	// Allow environment variable to override config file
 	const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : serverConfig.port;
 	const HOST = process.env.HOST || serverConfig.host;
+
+	// Refuse to start without a private JWT_SECRET: throws before the DB is touched.
+	getJwtSecret();
 
 	const db = initializeDb();
 	const app = await createApp(db, AppMode.SERVER);
