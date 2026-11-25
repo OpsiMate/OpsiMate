@@ -13,8 +13,12 @@ echo "Setting up OpsiMate local environment..."
 # directories are changed, never the files inside (the backend keeps its own files private).
 mkdir -p data/database data/private-keys
 if ! chmod 700 data data/database data/private-keys 2>/dev/null; then
-  echo "Note: data/ directories belong to another user, so they were left as they are. Make them"
-  echo "owner-only yourself: sudo chmod 700 data data/database data/private-keys"
+  echo ""
+  echo "Could not make data/ owner-only: it belongs to another user. While other users can write"
+  echo "there they can replace the keys OpsiMate keeps in it, so the install stops here. Fix it with:"
+  echo "  sudo chown -R \"\$(id -u):\$(id -g)\" data && chmod 700 data data/database data/private-keys"
+  echo "then run this script again."
+  exit 1
 fi
 
 # Download config.yml if not present

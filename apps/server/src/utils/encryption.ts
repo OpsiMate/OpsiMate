@@ -38,15 +38,12 @@ export function resolveEncryptionKey(env: NodeJS.ProcessEnv, dir: string): Resol
 	const explicit = env.ENCRYPTION_KEY;
 	if (explicit) {
 		// An operator moving to a key of their own (a secret store) after the install made
-		// one: what the generated key encrypted must stay readable, and then move.
-		let previous: string | null = null;
-		try {
-			previous = readInstanceSecretIfPresent(dir, ENCRYPTION_KEY_FILE);
-		} catch {
-			// A damaged file cannot have encrypted anything readable; nothing to fall back to.
-		}
+		// one: what the generated key encrypted must stay readable, and then move. Absent, it
+		// is simply not needed; present but unreadable is an error (startup stops) rather
+		// than a silently dropped fallback that would leave those credentials unreadable.
+		const previous = readInstanceSecretIfPresent(dir, ENCRYPTION_KEY_FILE);
 		const replacesGeneratedKey = previous !== null && previous !== explicit;
-		const readOnlyKeys = [LEGACY_PUBLIC_KEY, ...(replacesGeneratedKey ? [previous as string] : [])].filter(
+		const readOnlyKeys = [LEGACY_PUBLIC_KEY, ...(replacesGeneratedKey ? [previous] : [])].filter(
 			(candidate) => candidate !== explicit
 		);
 		return { key: explicit, source: 'env', readOnlyKeys, replacesGeneratedKey };

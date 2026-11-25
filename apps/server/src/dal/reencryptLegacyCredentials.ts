@@ -70,8 +70,11 @@ function moveSecretFile(keysDir: string, storedName: string): 'moved' | 'unchang
 	const next = reencryptLegacyValue(content);
 	if (next === null) return 'unchanged';
 	const tmp = `${file}.${crypto.randomBytes(6).toString('hex')}.tmp`;
+	const mode = fs.statSync(file).mode & 0o777;
 	try {
-		fs.writeFileSync(tmp, next, { mode: fs.statSync(file).mode & 0o777, flag: 'wx' });
+		fs.writeFileSync(tmp, next, { mode: 0o600, flag: 'wx' });
+		// Set explicitly: a creation mode is narrowed by the process umask.
+		fs.chmodSync(tmp, mode);
 		if (fs.readFileSync(file, 'utf8') !== content) return 'unchanged';
 		fs.renameSync(tmp, file);
 		return 'moved';

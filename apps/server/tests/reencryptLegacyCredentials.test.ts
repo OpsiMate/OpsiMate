@@ -138,9 +138,9 @@ describe('reencryptLegacyCredentials', () => {
 				`CREATE TABLE secrets (id INTEGER PRIMARY KEY AUTOINCREMENT, secret_name TEXT NOT NULL, secret_filename TEXT NOT NULL, secret_type TEXT NOT NULL DEFAULT 'ssh')`
 			);
 			const sshKey = '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----\n';
-			fs.writeFileSync(path.join(keysDir, '1700000000-id_ed25519'), encryptUnder(LEGACY_PUBLIC_KEY, sshKey), {
-				mode: 0o640,
-			});
+			fs.writeFileSync(path.join(keysDir, '1700000000-id_ed25519'), encryptUnder(LEGACY_PUBLIC_KEY, sshKey));
+			// Set explicitly: a creation mode is narrowed by the umask.
+			fs.chmodSync(path.join(keysDir, '1700000000-id_ed25519'), 0o640);
 			const current = encryptPassword('apiVersion: v1') as string;
 			fs.writeFileSync(path.join(keysDir, '1700000001-kubeconfig'), current);
 			// A hostile name in the table can only ever mean a file inside the keys folder.

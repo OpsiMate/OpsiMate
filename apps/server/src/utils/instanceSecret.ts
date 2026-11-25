@@ -70,6 +70,23 @@ export function readOrCreateInstanceSecret(
 	}
 }
 
+// The directories among `dir` and its parent that users other than the owner can write to.
+// Anyone who can write to a directory can replace the files in it, so a key kept there is
+// only as private as the directory (the file's own 0600 does not help). Empty on Windows,
+// where these mode bits do not apply.
+export function directoriesWritableByOthers(dir: string): string[] {
+	if (process.platform === 'win32') return [];
+	return [dir, path.dirname(dir)].filter((candidate) => {
+		try {
+			const stat = fs.statSync(candidate);
+			// The sticky bit (as on /tmp) stops others from replacing what they do not own.
+			return (stat.mode & 0o022) !== 0 && (stat.mode & 0o1000) === 0;
+		} catch {
+			return false;
+		}
+	});
+}
+
 // The secret in `<dir>/<name>` if this install has one, never creating it: null when the file
 // is absent. Used to find a key the install generated earlier, before an operator set one.
 export function readInstanceSecretIfPresent(dir: string, name: string): string | null {

@@ -3,7 +3,9 @@ import Database from 'better-sqlite3';
 import { Logger } from '@OpsiMate/shared';
 import { getSecurityConfig } from './config/config';
 import { reencryptLegacyCredentials } from './dal/reencryptLegacyCredentials';
+import { instanceSecretsDir } from './dal/db';
 import { initEncryptionKey, warnIfEncryptionKeyInsecure } from './utils/encryption';
+import { directoriesWritableByOthers } from './utils/instanceSecret';
 import { initJwtSecret } from './utils/jwtSecret';
 
 const logger = new Logger('server/secrets');
@@ -21,7 +23,20 @@ const describe = (what: string, source: 'env' | 'generated' | 'file', file?: str
 // when set, otherwise from the file this install generated next to its database. Throws
 // (the server does not start) on a JWT_SECRET that is set but too short, or a generated
 // file that is damaged.
+// Starts that bypass the install script (docker compose run by hand, a directory an older
+// script made 0777) are told when the key directory is not private, every start.
+const warnIfKeyDirectoryOpen = (): void => {
+	const open = directoriesWritableByOthers(instanceSecretsDir());
+	if (open.length > 0) {
+		logger.warn(
+			`${open.join(' and ')} can be written by other users, who could then replace this install's ` +
+				`login-session and encryption keys. Make ${open.length > 1 ? 'them' : 'it'} owner-only: chmod 700 ${open.join(' ')}`
+		);
+	}
+};
+
 export function prepareInstanceSecrets(): void {
+	warnIfKeyDirectoryOpen();
 	const jwt = initJwtSecret();
 	logger.info(describe('Login session key', jwt.source, jwt.file));
 	prepareEncryptionKey();

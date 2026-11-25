@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { readOrCreateInstanceSecret } from '../src/utils/instanceSecret';
+import { directoriesWritableByOthers, readOrCreateInstanceSecret } from '../src/utils/instanceSecret';
 
 // A generated instance secret: made once, kept, private, never silently replaced.
 
@@ -59,6 +59,23 @@ describe('readOrCreateInstanceSecret', () => {
 		fs.chmodSync(first.file, 0o777);
 		expect(readOrCreateInstanceSecret(dir, 'jwt-secret').secret).toBe(first.secret);
 		if (process.platform !== 'win32') expect(fs.statSync(first.file).mode & 0o777).toBe(0o600);
+	});
+
+	test('directoriesWritableByOthers names the key directory or its parent when others can write there', () => {
+		if (process.platform === 'win32') return;
+		const keys = path.join(dir, 'database');
+		fs.mkdirSync(keys);
+		fs.chmodSync(dir, 0o700);
+		fs.chmodSync(keys, 0o700);
+		expect(directoriesWritableByOthers(keys)).toEqual([]);
+		fs.chmodSync(keys, 0o777);
+		expect(directoriesWritableByOthers(keys)).toEqual([keys]);
+		fs.chmodSync(dir, 0o775);
+		expect(directoriesWritableByOthers(keys)).toEqual([keys, dir]);
+		// Sticky, as /tmp is: others cannot replace what they do not own.
+		fs.chmodSync(keys, 0o1777);
+		fs.chmodSync(dir, 0o700);
+		expect(directoriesWritableByOthers(keys)).toEqual([]);
 	});
 
 	test('a file written by someone else (a restore, an operator) is used as it is', () => {

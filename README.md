@@ -154,7 +154,7 @@ security:
   api_token: "change-me"
 ```
 
-`JWT_SECRET` (session signing) and `ENCRYPTION_KEY` (credentials at rest) are optional: unset, the server generates both on first start and keeps them as `jwt-secret` and `encryption-key` next to the database. Set them yourself (`openssl rand -hex 32`; `JWT_SECRET` must be at least 32 bytes) to keep them in a secret store, or when several backends do not share the database directory. Keep them out of source control and the same across restarts: a new `JWT_SECRET` signs everyone out. Moving from the generated encryption key to an `ENCRYPTION_KEY` of your own is safe (saved credentials move to it on the next start; keep the old file until then), but replacing one `ENCRYPTION_KEY` with another makes saved credentials unreadable.
+`JWT_SECRET` (session signing) and `ENCRYPTION_KEY` (credentials at rest) are optional: unset, the server generates both on first start and keeps them as `jwt-secret` and `encryption-key` next to the database. Set them yourself (`openssl rand -hex 32`; `JWT_SECRET` must be at least 32 bytes) to keep them in a secret store, or when several backends do not share the database directory. Keep them out of source control and the same across restarts: a new `JWT_SECRET` signs everyone out. Moving from the generated encryption key to an `ENCRYPTION_KEY` of your own is safe (saved credentials move to it on start; keep the old `encryption-key` file until a start logs no "Could not move" warning, since a credential that failed to move is retried on the next start), but replacing one `ENCRYPTION_KEY` with another makes saved credentials unreadable.
 
 ## Contributing
 
