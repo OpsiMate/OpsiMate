@@ -16,7 +16,9 @@ console.log('started');
 await withSchemaLock(db, async () => {
 	if (mode === 'hold') {
 		console.log('holding');
-		await new Promise(() => {});
+		// A promise nobody settles does not keep Node running on its own: with the event
+		// loop empty it exits (and drops the lock) before the test gets to kill it.
+		await new Promise(() => setInterval(() => {}, 60_000));
 		return;
 	}
 	const columns = db.prepare(`PRAGMA table_info(t)`).all() as { name: string }[];

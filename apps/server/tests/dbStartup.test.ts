@@ -22,11 +22,12 @@ function startProcess(args: string[]): { child: ChildProcess; lines: string[]; n
 	});
 	const lines: string[] = [];
 	const waiters: Array<{ word: string; resolve: () => void }> = [];
+	// A chunk is not a line: a marker can arrive split across two chunks.
+	let pending = '';
 	child.stdout.on('data', (chunk: Buffer) => {
-		for (const line of String(chunk)
-			.split('\n')
-			.map((l) => l.trim())
-			.filter(Boolean)) {
+		const parts = (pending + String(chunk)).split('\n');
+		pending = parts.pop() ?? '';
+		for (const line of parts.map((l) => l.trim()).filter(Boolean)) {
 			lines.push(line);
 			for (const waiter of waiters.splice(0)) {
 				if (lines.includes(waiter.word)) waiter.resolve();
