@@ -1,7 +1,10 @@
 import * as crypto from 'node:crypto';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import Database from 'better-sqlite3';
 import { afterEach, beforeEach, describe, expect, test } from 'vitest';
-import { reencryptLegacyCredentials } from '../src/dal/reencryptLegacyCredentials';
+import { reencryptLegacyCredentials, SECRET_FILES } from '../src/dal/reencryptLegacyCredentials';
 import { decryptPassword, encryptPassword, reencryptLegacyValue } from '../src/utils/encryption';
 
 // An upgrade from an install that never set ENCRYPTION_KEY: its stored credentials were
@@ -58,7 +61,7 @@ describe('reencryptLegacyCredentials', () => {
 		const currentCredentials = encryptPassword('{"token":"already-current"}') as string;
 		db.prepare('INSERT INTO integrations (name, credentials) VALUES (?, ?)').run('zabbix', currentCredentials);
 
-		expect(await reencryptLegacyCredentials(db, noPause)).toEqual({
+		expect(await reencryptLegacyCredentials(db, { pause: noPause })).toEqual({
 			moved: { ldap_config: 1, ai_config: 1, integrations: 1 },
 			failed: {},
 		});
@@ -73,7 +76,7 @@ describe('reencryptLegacyCredentials', () => {
 		expect(integration('zabbix')).toBe(currentCredentials);
 
 		// A second start has nothing to do.
-		expect(await reencryptLegacyCredentials(db, noPause)).toEqual({ moved: {}, failed: {} });
+		expect(await reencryptLegacyCredentials(db, { pause: noPause })).toEqual({ moved: {}, failed: {} });
 	});
 
 	test('a value whose write fails is left as it was, the rest still move, and the next start finishes it', async () => {
@@ -82,7 +85,7 @@ describe('reencryptLegacyCredentials', () => {
 		// The integrations write is refused this time (a locked table, a full disk...).
 		db.exec(`CREATE TRIGGER refuse BEFORE UPDATE ON integrations BEGIN SELECT RAISE(ABORT, 'disk full'); END;`);
 
-		expect(await reencryptLegacyCredentials(db, noPause)).toEqual({
+		expect(await reencryptLegacyCredentials(db, { pause: noPause })).toEqual({
 			moved: { ldap_config: 1, ai_config: 1 },
 			failed: { integrations: 1 },
 		});
@@ -91,7 +94,10 @@ describe('reencryptLegacyCredentials', () => {
 		expect(decryptPassword(legacyGrafana)).toBe('{"apiKey":"g"}');
 
 		db.exec('DROP TRIGGER refuse');
-		expect(await reencryptLegacyCredentials(db, noPause)).toEqual({ moved: { integrations: 1 }, failed: {} });
+		expect(await reencryptLegacyCredentials(db, { pause: noPause })).toEqual({
+			moved: { integrations: 1 },
+			failed: {},
+		});
 		expect(reencryptLegacyValue(integration('grafana'))).toBeNull();
 		expect(decryptPassword(integration('grafana'))).toBe('{"apiKey":"g"}');
 	});
@@ -107,7 +113,7 @@ describe('reencryptLegacyCredentials', () => {
 			}
 			return Promise.resolve();
 		};
-		const result = await reencryptLegacyCredentials(db, adminSavesDuringFirstPause);
+		const result = await reencryptLegacyCredentials(db, { pause: adminSavesDuringFirstPause });
 		expect(result.moved.ldap_config).toBeUndefined();
 		expect(value('SELECT bind_password AS value FROM ldap_config')).toBe(savedMeanwhile);
 		expect(result.moved).toMatchObject({ ai_config: 1, integrations: 1 });
@@ -116,16 +122,61 @@ describe('reencryptLegacyCredentials', () => {
 	test('yields to the event loop before each value', async () => {
 		seedLegacy();
 		let pauses = 0;
-		await reencryptLegacyCredentials(db, () => {
-			pauses++;
-			return Promise.resolve();
+		await reencryptLegacyCredentials(db, {
+			pause: () => {
+				pauses++;
+				return Promise.resolve();
+			},
 		});
 		expect(pauses).toBe(3);
+	});
+
+	test('uploaded SSH keys and kubeconfigs move too: replaced atomically, mode kept, only inside the keys folder', async () => {
+		const keysDir = fs.mkdtempSync(path.join(os.tmpdir(), 'opsimate-keys-'));
+		try {
+			db.exec(
+				`CREATE TABLE secrets (id INTEGER PRIMARY KEY AUTOINCREMENT, secret_name TEXT NOT NULL, secret_filename TEXT NOT NULL, secret_type TEXT NOT NULL DEFAULT 'ssh')`
+			);
+			const sshKey = '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----\n';
+			fs.writeFileSync(path.join(keysDir, '1700000000-id_ed25519'), encryptUnder(LEGACY_PUBLIC_KEY, sshKey), {
+				mode: 0o640,
+			});
+			const current = encryptPassword('apiVersion: v1') as string;
+			fs.writeFileSync(path.join(keysDir, '1700000001-kubeconfig'), current);
+			// A hostile name in the table can only ever mean a file inside the keys folder.
+			const outside = path.join(path.dirname(keysDir), `outside-${path.basename(keysDir)}`);
+			fs.writeFileSync(outside, encryptUnder(LEGACY_PUBLIC_KEY, 'not ours'));
+			db.prepare('INSERT INTO secrets (secret_name, secret_filename) VALUES (?, ?), (?, ?), (?, ?), (?, ?)').run(
+				'ssh',
+				'1700000000-id_ed25519',
+				'kube',
+				'1700000001-kubeconfig',
+				'gone',
+				'1700000002-deleted-meanwhile',
+				'escape',
+				`../${path.basename(outside)}`
+			);
+
+			const result = await reencryptLegacyCredentials(db, { keysDir, pause: noPause });
+			expect(result).toEqual({ moved: { [SECRET_FILES]: 1 }, failed: {} });
+			const moved = fs.readFileSync(path.join(keysDir, '1700000000-id_ed25519'), 'utf8');
+			expect(decryptPassword(moved)).toBe(sshKey);
+			expect(reencryptLegacyValue(moved)).toBeNull();
+			if (process.platform !== 'win32') {
+				expect(fs.statSync(path.join(keysDir, '1700000000-id_ed25519')).mode & 0o777).toBe(0o640);
+			}
+			expect(fs.readFileSync(path.join(keysDir, '1700000001-kubeconfig'), 'utf8')).toBe(current);
+			expect(reencryptLegacyValue(fs.readFileSync(outside, 'utf8'))).not.toBeNull();
+			expect(fs.readdirSync(keysDir).sort()).toEqual(['1700000000-id_ed25519', '1700000001-kubeconfig']);
+			fs.rmSync(outside, { force: true });
+		} finally {
+			fs.rmSync(keysDir, { recursive: true, force: true });
+		}
 	});
 
 	test('empty tables, NULL columns and missing tables are fine', async () => {
 		db.prepare('INSERT INTO ldap_config (id, settings, bind_password) VALUES (1, ?, NULL)').run('{}');
 		db.exec('DROP TABLE ai_config');
-		expect(await reencryptLegacyCredentials(db, noPause)).toEqual({ moved: {}, failed: {} });
+		expect(await reencryptLegacyCredentials(db, { pause: noPause })).toEqual({ moved: {}, failed: {} });
 	});
 });

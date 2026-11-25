@@ -13,7 +13,8 @@ import * as path from 'node:path';
 
 export const INSTANCE_SECRET_BYTES = 32;
 
-const HEX_SECRET = /^[0-9a-f]+$/;
+// What this module writes: lowercase hex. A shorter run of it may be a write in progress.
+const OWN_FORMAT = /^[0-9a-f]*$/;
 
 // Filesystems without hard links (some network and Windows-backed volumes) report one of these.
 const NO_HARD_LINKS = new Set(['EPERM', 'ENOTSUP', 'EOPNOTSUPP', 'ENOSYS', 'EXDEV']);
@@ -40,7 +41,9 @@ export function readOrCreateInstanceSecret(
 	{ settleMs = SETTLE_MS }: { settleMs?: number } = {}
 ): InstanceSecret {
 	const file = path.join(dir, name);
-	if (fs.existsSync(file)) return existingSecret(file, settleMs);
+	// lstat, not exists: a symlink whose target is missing is still "there", and must be
+	// reported rather than replaced.
+	if (isPresent(file)) return existingSecret(file, settleMs);
 
 	fs.mkdirSync(dir, { recursive: true });
 	const secret = crypto.randomBytes(INSTANCE_SECRET_BYTES).toString('hex');
@@ -67,6 +70,23 @@ export function readOrCreateInstanceSecret(
 	}
 }
 
+// The secret in `<dir>/<name>` if this install has one, never creating it: null when the file
+// is absent. Used to find a key the install generated earlier, before an operator set one.
+export function readInstanceSecretIfPresent(dir: string, name: string): string | null {
+	const file = path.join(dir, name);
+	return isPresent(file) ? existingSecret(file, SETTLE_MS).secret : null;
+}
+
+const isPresent = (file: string): boolean => {
+	try {
+		fs.lstatSync(file);
+		return true;
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
+		throw error;
+	}
+};
+
 function existingSecret(file: string, settleMs: number): InstanceSecret {
 	const secret = readSettled(file, settleMs);
 	keepPrivate(file);
@@ -90,27 +110,42 @@ const SETTLE_STEP_MS = 50;
 
 type SecretFileState = { kind: 'complete'; value: string } | { kind: 'incomplete' } | { kind: 'invalid' };
 
+// Any single token of at least 32 bytes is a usable secret, whatever its encoding (hex in any
+// case, base64...), so a file restored or written by hand is taken as it is. Only a run of
+// lowercase hex shorter than what this module writes can be its own write still in progress.
 const classify = (raw: string): SecretFileState => {
 	const value = raw.trim();
-	if (value === '') return { kind: 'incomplete' };
-	if (!HEX_SECRET.test(value)) return { kind: 'invalid' };
-	return value.length < INSTANCE_SECRET_BYTES * 2 ? { kind: 'incomplete' } : { kind: 'complete', value };
+	if (OWN_FORMAT.test(value) && value.length < INSTANCE_SECRET_BYTES * 2) return { kind: 'incomplete' };
+	if (/\s/.test(value) || Buffer.byteLength(value, 'utf8') < INSTANCE_SECRET_BYTES) return { kind: 'invalid' };
+	return { kind: 'complete', value };
 };
 
-// The file's secret, once complete. Content that is not hex cannot be a write in progress
-// and fails at once; content that could be (empty, a hex prefix) gets `settleMs` to finish,
-// then fails the same way. Never replaced either way.
+// The file's secret, once complete. Content that cannot be a write in progress fails at once;
+// content that could be (empty, a short lowercase-hex prefix) gets `settleMs` to finish, then
+// fails the same way. Never replaced either way.
 function readSettled(file: string, settleMs: number): string {
 	const deadline = Date.now() + settleMs;
 	for (;;) {
-		const state = classify(fs.readFileSync(file, 'utf8'));
+		let raw: string;
+		try {
+			raw = fs.readFileSync(file, 'utf8');
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+			throw new Error(
+				`${file} points to a file that does not exist (a symlink to a secret that is not ` +
+					'mounted yet?). Make the target available, or remove the link to let OpsiMate generate one.',
+				{ cause: error }
+			);
+		}
+		const state = classify(raw);
 		if (state.kind === 'complete') return state.value;
 		if (state.kind === 'invalid' || Date.now() >= deadline) break;
 		Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, SETTLE_STEP_MS);
 	}
 	throw new Error(
-		`${file} does not hold a usable secret. Restore it from a backup; only if nothing ` +
-			'depends on it any more (everyone will be signed out, and credentials it encrypted ' +
-			'must be entered again), delete it so OpsiMate generates a new one.'
+		`${file} does not hold a usable secret (one value of at least ${INSTANCE_SECRET_BYTES} bytes, no spaces). ` +
+			'Restore it from a backup; only if nothing depends on it any more (everyone will be ' +
+			'signed out, and credentials it encrypted must be entered again), delete it so OpsiMate ' +
+			'generates a new one.'
 	);
 }

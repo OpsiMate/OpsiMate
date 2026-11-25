@@ -1,7 +1,7 @@
 import * as crypto from 'crypto';
 import { Logger } from '@OpsiMate/shared';
 import { instanceSecretsDir } from '../dal/db';
-import { readOrCreateInstanceSecret } from './instanceSecret';
+import { readInstanceSecretIfPresent, readOrCreateInstanceSecret } from './instanceSecret';
 import { MS_PER_MINUTE } from './time';
 
 const ALGORITHM = 'aes-256-gcm';
@@ -22,6 +22,12 @@ export interface ResolvedEncryptionKey {
 	key: string;
 	source: 'env' | 'generated' | 'file';
 	file?: string;
+	// Keys that only READ: what earlier values may still be under, moved to `key` by
+	// reencryptLegacyValue. The old public key, and, when ENCRYPTION_KEY was set after this
+	// install had generated its own, that generated key.
+	readOnlyKeys: string[];
+	// True when that generated key is among them (for the startup log).
+	replacesGeneratedKey: boolean;
 }
 
 // ENCRYPTION_KEY, when set (non-empty), is used verbatim, as it always was: changing how a
@@ -30,9 +36,29 @@ export interface ResolvedEncryptionKey {
 // utils/instanceSecret). Env and directory are injected for tests.
 export function resolveEncryptionKey(env: NodeJS.ProcessEnv, dir: string): ResolvedEncryptionKey {
 	const explicit = env.ENCRYPTION_KEY;
-	if (explicit) return { key: explicit, source: 'env' };
+	if (explicit) {
+		// An operator moving to a key of their own (a secret store) after the install made
+		// one: what the generated key encrypted must stay readable, and then move.
+		let previous: string | null = null;
+		try {
+			previous = readInstanceSecretIfPresent(dir, ENCRYPTION_KEY_FILE);
+		} catch {
+			// A damaged file cannot have encrypted anything readable; nothing to fall back to.
+		}
+		const replacesGeneratedKey = previous !== null && previous !== explicit;
+		const readOnlyKeys = [LEGACY_PUBLIC_KEY, ...(replacesGeneratedKey ? [previous as string] : [])].filter(
+			(candidate) => candidate !== explicit
+		);
+		return { key: explicit, source: 'env', readOnlyKeys, replacesGeneratedKey };
+	}
 	const generated = readOrCreateInstanceSecret(dir, ENCRYPTION_KEY_FILE);
-	return { key: generated.secret, source: generated.created ? 'generated' : 'file', file: generated.file };
+	return {
+		key: generated.secret,
+		source: generated.created ? 'generated' : 'file',
+		file: generated.file,
+		readOnlyKeys: [LEGACY_PUBLIC_KEY],
+		replacesGeneratedKey: false,
+	};
 }
 
 let resolvedKey: ResolvedEncryptionKey | null = null;
@@ -47,6 +73,8 @@ export function initEncryptionKey(): ResolvedEncryptionKey {
 function getEncryptionKey(): string {
 	return initEncryptionKey().key;
 }
+
+const readOnlyKeys = (): string[] => initEncryptionKey().readOnlyKeys;
 
 /**
  * Called once at server boot. A generated key needs no warning. A set ENCRYPTION_KEY that
@@ -131,21 +159,29 @@ function decryptWith(masterKey: string, encryptedPassword: string): string | nul
 }
 
 /**
- * Decrypt a password string. A value saved before this install had its own key was
- * encrypted with the old public key, so that is tried second (reencryptLegacyValue moves
- * such values over at startup). Anything else is returned as given, for values stored
- * before encryption existed.
+ * Decrypt a password string. A value saved before the current key was in use (under the old
+ * public key, or under the key this install generated before ENCRYPTION_KEY was set) is read
+ * with that key; reencryptLegacyValue moves such values over at startup. Anything else is
+ * returned as given, for values stored before encryption existed.
+ *
+ * `readOnlyKeys: false` skips those other keys, for input that cannot be an old stored value
+ * (a password-reset token from a link, made minutes ago): each extra key is another PBKDF2
+ * derivation, and such input may be anyone's guess.
  */
-export function decryptPassword(encryptedPassword: string | undefined): string | undefined {
+export function decryptPassword(
+	encryptedPassword: string | undefined,
+	{ readOnlyKeys: tryReadOnlyKeys = true }: { readOnlyKeys?: boolean } = {}
+): string | undefined {
 	if (!encryptedPassword) {
 		return encryptedPassword;
 	}
-	const masterKey = getEncryptionKey();
-	const decrypted = decryptWith(masterKey, encryptedPassword);
+	const decrypted = decryptWith(getEncryptionKey(), encryptedPassword);
 	if (decrypted !== null) return decrypted;
-	if (masterKey !== LEGACY_PUBLIC_KEY) {
-		const legacy = decryptWith(LEGACY_PUBLIC_KEY, encryptedPassword);
-		if (legacy !== null) return legacy;
+	if (tryReadOnlyKeys) {
+		for (const key of readOnlyKeys()) {
+			const old = decryptWith(key, encryptedPassword);
+			if (old !== null) return old;
+		}
 	}
 	logger.error('Failed to decrypt a stored value with the current encryption key');
 	// Return the original value if decryption fails (for backward compatibility)
@@ -153,16 +189,19 @@ export function decryptPassword(encryptedPassword: string | undefined): string |
 }
 
 /**
- * The same plaintext encrypted under the install's own key, when `value` is still under
- * the old public key; null when there is nothing to move (already under the current key,
- * not a value either key encrypted, or the current key is the public one).
+ * The same plaintext encrypted under the current key, when `value` is still under one of the
+ * read-only keys (see decryptPassword); null when there is nothing to move (already under
+ * the current key, or not a value any of them encrypted).
  */
 export function reencryptLegacyValue(value: string | null | undefined): string | null {
 	if (!value) return null;
 	const masterKey = getEncryptionKey();
-	if (masterKey === LEGACY_PUBLIC_KEY) return null;
 	if (decryptWith(masterKey, value) !== null) return null;
-	const plaintext = decryptWith(LEGACY_PUBLIC_KEY, value);
+	let plaintext: string | null = null;
+	for (const key of readOnlyKeys()) {
+		plaintext = decryptWith(key, value);
+		if (plaintext !== null) break;
+	}
 	if (plaintext === null) return null;
 	const moved = encryptPassword(plaintext);
 	// Never write back something that does not read back to the same value.

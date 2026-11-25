@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -67,9 +68,27 @@ describe('readOrCreateInstanceSecret', () => {
 	});
 
 	test.each([
+		['restored as uppercase hex', 'AB'.repeat(32)],
+		['written by hand as base64', crypto.randomBytes(32).toString('base64')],
+	])('a strong value in another encoding (%s) is accepted as it is', (_case, content) => {
+		fs.writeFileSync(path.join(dir, 'jwt-secret'), `${content}\n`);
+		expect(readOrCreateInstanceSecret(dir, 'jwt-secret', { settleMs: 100 }).secret).toBe(content);
+	});
+
+	test('a symlink to a secret that is not mounted is reported plainly, and nothing is created in its place', () => {
+		const file = path.join(dir, 'jwt-secret');
+		fs.symlinkSync(path.join(dir, 'not-mounted', 'jwt-secret'), file);
+		expect(() => readOrCreateInstanceSecret(dir, 'jwt-secret', { settleMs: 100 })).toThrow(
+			/points to a file that does not exist/
+		);
+		expect(fs.lstatSync(file).isSymbolicLink()).toBe(true);
+	});
+
+	test.each([
 		['empty', ''],
 		['too short', 'ab'.repeat(31)],
-		['not hex', 'z'.repeat(64)],
+		['too short and not hex', 'zz'],
+		['two words', `${'a'.repeat(20)} ${'b'.repeat(20)}`],
 	])('a damaged file (%s) is an error and is left untouched, never replaced', (_case, content) => {
 		const file = path.join(dir, 'jwt-secret');
 		fs.writeFileSync(file, content);

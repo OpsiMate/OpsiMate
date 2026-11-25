@@ -1,5 +1,7 @@
+import * as path from 'node:path';
 import Database from 'better-sqlite3';
 import { Logger } from '@OpsiMate/shared';
+import { getSecurityConfig } from './config/config';
 import { reencryptLegacyCredentials } from './dal/reencryptLegacyCredentials';
 import { initEncryptionKey, warnIfEncryptionKeyInsecure } from './utils/encryption';
 import { initJwtSecret } from './utils/jwtSecret';
@@ -22,8 +24,21 @@ const describe = (what: string, source: 'env' | 'generated' | 'file', file?: str
 export function prepareInstanceSecrets(): void {
 	const jwt = initJwtSecret();
 	logger.info(describe('Login session key', jwt.source, jwt.file));
+	prepareEncryptionKey();
+}
+
+// The worker's half: it never signs a session, but it decrypts credentials, so a damaged
+// key file must stop it at startup too, not surface later as failing jobs.
+export function prepareEncryptionKey(): void {
 	const encryption = initEncryptionKey();
 	logger.info(describe('Credential encryption key', encryption.source, encryption.file));
+	if (encryption.replacesGeneratedKey) {
+		logger.warn(
+			'ENCRYPTION_KEY is set and differs from the key this install generated earlier. Credentials ' +
+				'saved under that key are still read with it and are moved to ENCRYPTION_KEY on this start; ' +
+				'keep the generated file until that has happened.'
+		);
+	}
 	warnIfEncryptionKeyInsecure();
 }
 
@@ -40,15 +55,16 @@ const summarize = (counts: Record<string, number>): { total: number; detail: str
 // next start. Never throws.
 export async function moveLegacyCredentials(db: Database.Database): Promise<void> {
 	try {
-		const { moved, failed } = await reencryptLegacyCredentials(db);
+		const keysDir = path.resolve(getSecurityConfig().private_keys_path);
+		const { moved, failed } = await reencryptLegacyCredentials(db, { keysDir });
 		const done = summarize(moved);
 		if (done.total > 0) {
-			logger.info(`Moved ${done.total} stored credential(s) off the old public encryption key (${done.detail})`);
+			logger.info(`Moved ${done.total} stored credential(s) to the current encryption key (${done.detail})`);
 		}
 		const left = summarize(failed);
 		if (left.total > 0) {
 			logger.warn(
-				`Could not move ${left.total} stored credential(s) off the old public key (${left.detail}); ` +
+				`Could not move ${left.total} stored credential(s) to the current encryption key (${left.detail}); ` +
 					'they still work and are tried again on the next start'
 			);
 		}

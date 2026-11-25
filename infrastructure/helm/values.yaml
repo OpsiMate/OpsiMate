@@ -202,7 +202,8 @@ secrets:
   # it yourself, never commit it, and keep it across upgrades: changing it signs everyone out.
   jwtSecret: ""
   # -- Key that encrypts stored credentials (ENCRYPTION_KEY). Optional, generated the same
-  # way when empty. Changing it later makes credentials saved under the old key unreadable.
+  # way when empty. Setting it after the backend generated one is safe (saved credentials
+  # move to it on the next start); replacing one set value with another strands them.
   encryptionKey: ""
   # -- Name of an existing Secret to use instead of creating one. It must hold API_TOKEN, and
   # may hold JWT_SECRET and ENCRYPTION_KEY.

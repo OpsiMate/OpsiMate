@@ -136,6 +136,12 @@ describe('credentials saved under the old public key', () => {
 		expect(reencryptLegacyValue(moved)).toBeNull();
 	});
 
+	test('input that cannot be an old stored value (a reset token) can skip the old keys', () => {
+		const legacy = encryptUnder(LEGACY_PUBLIC_KEY, 'token');
+		expect(decryptPassword(legacy, { readOnlyKeys: false })).toBe(legacy);
+		expect(decryptPassword(encryptPassword('fresh') as string, { readOnlyKeys: false })).toBe('fresh');
+	});
+
 	test('nothing to move: values under the current key, plaintext, garbage, empty', () => {
 		expect(reencryptLegacyValue(encryptPassword('already-current'))).toBeNull();
 		expect(reencryptLegacyValue('stored-before-encryption-existed')).toBeNull();
@@ -160,8 +166,22 @@ describe('resolveEncryptionKey', () => {
 		expect(resolveEncryptionKey({ ENCRYPTION_KEY: '  spaced  ' }, dir)).toEqual({
 			key: '  spaced  ',
 			source: 'env',
+			readOnlyKeys: [LEGACY_PUBLIC_KEY],
+			replacesGeneratedKey: false,
 		});
 		expect(fs.readdirSync(dir)).toEqual([]);
+	});
+
+	test('ENCRYPTION_KEY set after the install generated its own: that key stays readable, to be moved', () => {
+		const generated = resolveEncryptionKey({}, dir);
+		const later = resolveEncryptionKey({ ENCRYPTION_KEY: 'operator-managed-key' }, dir);
+		expect(later).toMatchObject({ key: 'operator-managed-key', source: 'env', replacesGeneratedKey: true });
+		expect(later.readOnlyKeys).toEqual([LEGACY_PUBLIC_KEY, generated.key]);
+		// Set to the generated value itself: nothing is being replaced.
+		expect(resolveEncryptionKey({ ENCRYPTION_KEY: generated.key }, dir)).toMatchObject({
+			replacesGeneratedKey: false,
+			readOnlyKeys: [LEGACY_PUBLIC_KEY],
+		});
 	});
 
 	test.each([
@@ -173,5 +193,6 @@ describe('resolveEncryptionKey', () => {
 		expect(first.key).toMatch(/^[0-9a-f]{64}$/);
 		expect(first.key).not.toBe(LEGACY_PUBLIC_KEY);
 		expect(resolveEncryptionKey(env, dir)).toEqual({ ...first, source: 'file' });
+		expect(first.readOnlyKeys).toEqual([LEGACY_PUBLIC_KEY]);
 	});
 });
