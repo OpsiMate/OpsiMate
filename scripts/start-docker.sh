@@ -57,22 +57,50 @@ if ! compose_error=$(docker compose config --quiet 2>&1); then
   exit 1
 fi
 
-# A key set in .env only reaches the containers when docker-compose.yml passes it on (Compose
-# reads .env for substitution, it does not inject it). Files kept from older versions do not,
-# and a key that silently never arrives is how saved credentials get lost: stop instead.
+# A key set in .env only reaches a container through that service's `environment` entry
+# (Compose reads .env for substitution, it does not inject it). Files kept from older
+# versions have no such entry, and a key that silently never arrives is how saved
+# credentials get lost: stop instead. JWT_SECRET is needed by backend, ENCRYPTION_KEY by
+# backend and worker.
+
+# The value .env gives a key, as Compose reads it: the last assignment, `export` allowed,
+# surrounding quotes and a trailing comment removed. Empty when unset or set to nothing.
+env_file_value() {
+  grep -E "^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*=" .env | tail -n 1 |
+    sed -E "s/^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*=[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//; s/^\"(.*)\"$/\1/; s/^'(.*)'$/\1/"
+}
+
+# Whether service $1 has an `environment` entry named $2 in the configuration Compose
+# resolves (comments gone, every file and override merged).
+service_has_env() {
+  printf '%s\n' "$compose_config" | awk -v svc="$1" -v key="$2" '
+    /^services:/ { in_services = 1; next }
+    in_services && /^[^ ]/ { in_services = 0 }
+    in_services && /^  [^ ]/ { current = $1; sub(/:$/, "", current); in_env = 0; next }
+    in_services && current == svc && /^    environment:/ { in_env = 1; next }
+    in_services && current == svc && in_env && /^    [^ ]/ { in_env = 0 }
+    in_services && current == svc && in_env && index($0, "      " key ":") == 1 { found = 1 }
+    END { exit found ? 0 : 1 }'
+}
+
 if [ -f .env ]; then
+  compose_config=$(docker compose config 2>/dev/null)
   for key in JWT_SECRET ENCRYPTION_KEY; do
-    if grep -qE "^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=[[:space:]]*[^[:space:]#]" .env &&
-      ! grep -q "${key}" docker-compose.yml; then
-      echo ""
-      echo ".env sets ${key}, but your docker-compose.yml does not pass it to the containers, so it"
-      echo "would be ignored. Move the file aside and run the installer again to get the current one"
-      echo "(your data/, config.yml and .env are kept):"
-      echo "  mv docker-compose.yml docker-compose.yml.old"
-      echo "  curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh"
-      echo "or add  - ${key}=\${${key}:-}  under environment: for backend (and, for ENCRYPTION_KEY, worker)."
-      exit 1
-    fi
+    [ -n "$(env_file_value "$key")" ] || continue
+    services="backend"
+    [ "$key" = "ENCRYPTION_KEY" ] && services="backend worker"
+    for service in $services; do
+      if ! service_has_env "$service" "$key"; then
+        echo ""
+        echo ".env sets ${key}, but your docker-compose.yml does not pass it to ${service}, so it"
+        echo "would be ignored there. Move the file aside and run the installer again to get the"
+        echo "current one (your data/, config.yml and .env are kept):"
+        echo "  mv docker-compose.yml docker-compose.yml.old"
+        echo "  curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh"
+        echo "or add  - ${key}=\${${key}:-}  under environment: for ${service}."
+        exit 1
+      fi
+    done
   done
 fi
 
