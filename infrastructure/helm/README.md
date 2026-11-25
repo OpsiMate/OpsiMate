@@ -75,27 +75,22 @@ Internet
 # 1. Navigate to helm chart
 cd infrastructure/helm
 
-# 2. Create the secret that signs login sessions, once, and save it somewhere private:
-#    every upgrade needs the same value, and changing it signs everyone out
-export OPSIMATE_JWT_SECRET=$(openssl rand -hex 32)
+# 2. Lint the chart
+helm lint .
 
-# 3. Lint the chart
-helm lint . --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
+# 3. Dry-run to see generated manifests
+helm template opsimate . --debug
 
-# 4. Dry-run to see generated manifests. The output prints the Secret, so use a throwaway
-#    value here, never the real one
-helm template opsimate . --debug --set secrets.jwtSecret=dry-run-placeholder-not-a-real-secret
-
-# 5. Install with local values (both services public)
+# 4. Install with local values (both services public). The backend generates its
+#    login-session and encryption keys on the data volume on first start.
 helm install opsimate . -n opsimate --create-namespace \
-  --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET" \
   --set service.frontend.type=LoadBalancer \
   --set service.backend.type=LoadBalancer
 
-# 6. Check pods are running
+# 5. Check pods are running
 kubectl get pods -n opsimate
 
-# 7. Check services
+# 6. Check services
 kubectl get svc -n opsimate
 
 # 8. Access application
@@ -181,19 +176,21 @@ To reach the MCP server through the Ingress, add a path for it next to the backe
 
 ### Secrets
 
-| Parameter                | Description                                                                                 | Default    |
-| ------------------------ | ------------------------------------------------------------------------------------------- | ---------- |
-| `secrets.apiToken`       | API authentication token                                                                    | `opsimate` |
-| `secrets.jwtSecret`      | **Required** unless `existingSecret` is set. Signs login sessions (`JWT_SECRET`), 32+ bytes | `""`       |
-| `secrets.existingSecret` | Name of an existing Secret to use; it must hold `API_TOKEN` and `JWT_SECRET`                | `""`       |
+| Parameter                | Description                                                                                       | Default    |
+| ------------------------ | ------------------------------------------------------------------------------------------------- | ---------- |
+| `secrets.apiToken`       | API authentication token                                                                          | `opsimate` |
+| `secrets.jwtSecret`      | Optional. Signs login sessions (`JWT_SECRET`), 32+ bytes; generated on the data volume when empty | `""`       |
+| `secrets.encryptionKey`  | Optional. Encrypts stored credentials (`ENCRYPTION_KEY`); generated the same way when empty       | `""`       |
+| `secrets.existingSecret` | Name of an existing Secret to use; it must hold `API_TOKEN`, and may hold the two keys above      | `""`       |
 
-The backend refuses to start without `JWT_SECRET`, and the chart refuses to render without one. Generate it with `openssl rand -hex 32`, pass it with `--set` rather than a committed values file, and keep the same value across upgrades: changing it signs everyone out. For production, prefer a Secret you manage yourself:
+Left empty, the backend generates both keys on first start and keeps them on the data volume next to the database (`persistence.enabled`), so there is nothing to set and they survive upgrades with the volume. Back the volume up as a whole. Supply them yourself to keep them in a secret store, or when backend pods do not share one volume. Pass them with `--set` or a Secret you manage rather than a committed values file, and keep them across upgrades: a new `JWT_SECRET` signs everyone out. Moving from the generated encryption key to one you set is safe (saved credentials move to it on start; keep the generated file until the backend logs "Credential key check finished: every stored credential is on the current encryption key"), but replacing one set `ENCRYPTION_KEY` with another makes saved credentials unreadable.
 
 ```bash
 kubectl create namespace opsimate
 kubectl create secret generic opsimate-auth -n opsimate \
   --from-literal=API_TOKEN="<your API token>" \
-  --from-literal=JWT_SECRET="$(openssl rand -hex 32)"
+  --from-literal=JWT_SECRET="$(openssl rand -hex 32)" \
+  --from-literal=ENCRYPTION_KEY="$(openssl rand -hex 32)"
 helm install opsimate . -n opsimate --set secrets.existingSecret=opsimate-auth
 ```
 
@@ -224,8 +221,7 @@ persistence:
 ```
 
 ```bash
-helm install opsimate . -f values-local.yaml -n opsimate --create-namespace \
-  --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
+helm install opsimate . -f values-local.yaml -n opsimate --create-namespace
 ```
 
 Access:
@@ -276,12 +272,12 @@ persistence:
 
 secrets:
   apiToken: "your-secure-test-token"
-  # jwtSecret: not in a values file. Pass it with --set (below) or use existingSecret.
+  # jwtSecret / encryptionKey: generated on the data volume when left out. To manage them
+  # yourself, pass them with --set or use existingSecret, never a committed values file.
 ```
 
 ```bash
-helm install opsimate . -f values-prod-ingress.yaml -n opsimate --create-namespace \
-  --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
+helm install opsimate . -f values-prod-ingress.yaml -n opsimate --create-namespace
 ```
 
 ### 3. AWS EKS with ALB Ingress
@@ -313,8 +309,7 @@ ingress:
 ```
 
 ```bash
-helm install opsimate . -f values-eks.yaml -n opsimate --create-namespace \
-  --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
+helm install opsimate . -f values-eks.yaml -n opsimate --create-namespace
 ```
 
 ## Useful Commands
@@ -334,20 +329,26 @@ kubectl logs -l app.kubernetes.io/component=frontend -n opsimate
 # Follow logs in real-time
 kubectl logs -f -l app.kubernetes.io/component=backend -n opsimate
 
-# Upgrade release, keeping every value it was installed with: secrets.jwtSecret, or
-# secrets.existingSecret, included
+# Upgrade release, keeping every value it was installed with. Generated keys live on the
+# data volume, so they carry over with it; keys you set must be passed again if you do not
+# reuse values (or keep secrets.existingSecret in the file)
 helm upgrade opsimate . -n opsimate --reuse-values
 
-# First upgrade from a chart version without the JWT secret: add it once (not needed with
-# secrets.existingSecret, as long as that Secret has a JWT_SECRET key)
-helm upgrade opsimate . -n opsimate --reuse-values --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
-
-# Upgrade with new values: the file must hold the full configuration, so pass the same JWT
-# secret again (or keep secrets.existingSecret in the file), or everyone is signed out
-helm upgrade opsimate . -f values-prod.yaml -n opsimate --set secrets.jwtSecret="$OPSIMATE_JWT_SECRET"
+# Upgrade with new values: the file must hold the full configuration
+helm upgrade opsimate . -f values-prod.yaml -n opsimate
 
 # Rollback to previous version
 helm rollback opsimate -n opsimate
+# Rolling back to a release from before installs generated their own keys: the upgrade
+# moved stored credentials (LDAP bind password, AI key, integrations) to the generated key,
+# which older releases do not read. They do read ENCRYPTION_KEY and JWT_SECRET from the
+# environment, so hand them the generated keys (still on the data volume) after the rollback;
+# nothing needs re-entering and nobody is signed out. This lasts until the next upgrade,
+# which reads the files again.
+ENC=$(kubectl exec -n opsimate deploy/opsimate-backend -- cat /app/data/database/encryption-key)
+JWT=$(kubectl exec -n opsimate deploy/opsimate-backend -- cat /app/data/database/jwt-secret)
+kubectl set env -n opsimate deploy/opsimate-backend ENCRYPTION_KEY="$ENC" JWT_SECRET="$JWT"
+kubectl set env -n opsimate deploy/opsimate-worker ENCRYPTION_KEY="$ENC"
 
 # Uninstall
 helm uninstall opsimate -n opsimate

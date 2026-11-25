@@ -675,7 +675,9 @@ export class UserBL {
 			return false;
 		}
 
-		const decryptedToken = decryptPassword(token);
+		// A token from a reset link, minutes old and anyone's guess: only the current key,
+		// never the read-only ones (each is another PBKDF2 derivation per request).
+		const decryptedToken = decryptPassword(token, { readOnlyKeys: false });
 		if (!decryptedToken) {
 			return false;
 		}
@@ -698,7 +700,7 @@ export class UserBL {
 
 	async resetPassword(token: string, newPassword: string): Promise<void> {
 		try {
-			const decryptedToken = decryptPassword(token);
+			const decryptedToken = decryptPassword(token, { readOnlyKeys: false });
 			const tokenHash = hashString(decryptedToken!);
 			const resetPassword = await this.passwordResetsRepo.getPasswordResetByTokenHash(tokenHash);
 

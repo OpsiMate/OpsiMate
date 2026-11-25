@@ -5,14 +5,20 @@ set -e
 
 echo "Setting up OpsiMate local environment..."
 
-# Create persistent data directories if missing
+# Create persistent data directories if missing, owner-only: data/database holds the database
+# and the keys the backend generates for itself (login sessions, stored credentials), and
+# anyone who can write to a directory can replace the files in it. The backend container
+# runs as root, which needs no group or world access to these. Installs made by an older
+# version of this script left them world-writable (0777); this closes them again. Only the
+# directories are changed, never the files inside (the backend keeps its own files private).
 mkdir -p data/database data/private-keys
-# On an existing install, files the backend container created belong to root (it runs as
-# root), and a normal user cannot change them. That is expected and must not stop the
-# checks or the upgrade below: chmod still updates everything it owns, and only the
-# failure is passed over.
-if ! chmod -R 0777 data 2>/dev/null; then
-  echo "Note: some files under data/ belong to another user (usually the container); left as they are."
+if ! chmod 700 data data/database data/private-keys 2>/dev/null; then
+  echo ""
+  echo "Could not make data/ owner-only: it belongs to another user. While other users can write"
+  echo "there they can replace the keys OpsiMate keeps in it, so the install stops here. Fix it with:"
+  echo "  sudo chown -R \"\$(id -u):\$(id -g)\" data && chmod 700 data data/database data/private-keys"
+  echo "then run this script again."
+  exit 1
 fi
 
 # Download config.yml if not present
@@ -31,98 +37,77 @@ else
   echo "docker-compose.yml already exists."
 fi
 
-# An existing install keeps its own docker-compose.yml, which may predate JWT_SECRET. The
-# backend would then start without the secret and keep restarting, so stop here instead.
-if ! grep -q 'JWT_SECRET' docker-compose.yml; then
-  echo ""
-  echo "Your docker-compose.yml was written before OpsiMate required JWT_SECRET."
-  echo "Either add this line under services -> backend -> environment:"
-  echo ""
-  echo '      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set}'
-  echo ""
-  echo "or move the file away and run this script again to download the current one."
-  exit 1
-fi
-
-print_jwt_secret_instructions() {
-  echo ""
-  echo "OpsiMate needs a private secret to sign login sessions."
-  echo "Create one in a .env next to docker-compose.yml, then run this script again:"
-  echo ""
-  echo '  touch .env && chmod 600 .env'
-  echo '  echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env'
-  echo ""
-  echo "Keep .env private, and keep the same value across restarts and upgrades:"
-  echo "changing it signs everyone out."
-}
-
-# Prints 32 random bytes as 64 hex characters, or nothing when this host has no way to make
-# them: openssl first, then /dev/urandom for minimal hosts without it.
-generate_jwt_secret() {
-  secret=""
-  if command -v openssl >/dev/null 2>&1; then
-    secret=$(openssl rand -hex 32 2>/dev/null) || secret=""
-  fi
-  if [ "${#secret}" -ne 64 ] && [ -r /dev/urandom ]; then
-    secret=$(head -c 32 /dev/urandom 2>/dev/null | od -An -tx1 | tr -d ' \n') || secret=""
-  fi
-  case "$secret" in
-    *[!0-9a-f]*) secret="" ;;
-  esac
-  if [ "${#secret}" -eq 64 ]; then
-    printf '%s' "$secret"
-  fi
-}
-
-# The backend signs login sessions with JWT_SECRET and refuses to start without it. Ask
-# Compose itself whether it can resolve the file: it reads the shell and .env exactly as
-# `up` will (spaces around =, export, quotes), and the file's ${JWT_SECRET:?...} fails
-# when the secret is missing or empty.
-#
-# Missing or empty, and not set in the shell: this is a first run, or an install from before
-# the secret was required. Generate it into .env, so the one-line install just works. A value
-# set in the shell, even an empty one, wins over .env in Compose, so then .env is left alone
-# and the check below explains. The server and docker-compose.yml still refuse to run without
-# the secret: only this script creates one.
-if ! compose_error=$(docker compose config --quiet 2>&1) &&
-  echo "$compose_error" | grep -q 'JWT_SECRET' &&
-  [ -z "${JWT_SECRET+set}" ]; then
-  jwt_secret=$(generate_jwt_secret)
-  if [ -z "$jwt_secret" ]; then
-    echo ""
-    echo "Could not generate JWT_SECRET: neither openssl nor /dev/urandom is usable here."
-    print_jwt_secret_instructions
-    exit 1
-  fi
-  # Private before the secret goes in: a new .env is created 600, and an existing one is
-  # made 600 first.
-  touch .env
-  chmod 600 .env
-  # Compose reads the last JWT_SECRET line, so an empty one already in .env is overridden.
-  # Start on a new line if the file does not end with one, or the secret would join the
-  # last line.
-  if [ -s .env ] && [ -n "$(tail -c 1 .env)" ]; then
-    echo "" >> .env
-  fi
-  echo "JWT_SECRET=$jwt_secret" >> .env
-  jwt_secret=""
-  echo "Generated a private JWT_SECRET in .env: keep that file and back it up, since losing or changing it signs everyone out."
-fi
-
+# Stop with Compose's own message when the file does not resolve (a typo, a bad override),
+# rather than at the pull or start below.
 if ! compose_error=$(docker compose config --quiet 2>&1); then
   echo ""
   echo "$compose_error"
+  # A docker-compose.yml kept from the short-lived version that required JWT_SECRET: the
+  # variable is optional now (the backend generates its own), but that file still demands it.
   if echo "$compose_error" | grep -q 'JWT_SECRET'; then
-    if [ -n "${JWT_SECRET+set}" ]; then
-      echo ""
-      echo "JWT_SECRET is set but empty in your shell, and a shell value wins over .env."
-      echo "Run 'unset JWT_SECRET' and run this script again, or export a private value."
-    else
-      print_jwt_secret_instructions
-    fi
+    echo ""
+    echo "Your docker-compose.yml is from a version that required JWT_SECRET; it is optional now."
+    echo "Either move it aside and run the installer again, which downloads the current one"
+    echo "(your data/ and config.yml are kept):"
+    echo "  mv docker-compose.yml docker-compose.yml.old"
+    echo "  curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh"
+    echo "or keep the file and give it a value in .env:"
+    echo '  touch .env && chmod 600 .env && echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env'
   fi
   exit 1
 fi
+
+# A key set in .env only reaches a container through that service's `environment` entry
+# (Compose reads .env for substitution, it does not inject it). Files kept from older
+# versions have no such entry, and a key that silently never arrives is how saved
+# credentials get lost: stop instead. JWT_SECRET is needed by backend, ENCRYPTION_KEY by
+# backend and worker.
+
+# The value .env gives a key, as Compose reads it: the last assignment (KEY=value or
+# KEY: value), `export` allowed, surrounding quotes and a trailing comment removed. Empty when
+# unset or set to nothing.
+env_file_value() {
+  grep -E "^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*[=:]" .env | tail -n 1 |
+    sed -E "s/^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*[=:][[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//; s/^\"(.*)\"$/\1/; s/^'(.*)'$/\1/"
+}
+
+# Whether service $1 has an `environment` entry named $2 in the configuration Compose
+# resolves (comments gone, every file and override merged).
+service_has_env() {
+  printf '%s\n' "$compose_config" | awk -v svc="$1" -v key="$2" '
+    /^services:/ { in_services = 1; next }
+    in_services && /^[^ ]/ { in_services = 0 }
+    in_services && /^  [^ ]/ { current = $1; sub(/:$/, "", current); in_env = 0; next }
+    in_services && current == svc && /^    environment:/ { in_env = 1; next }
+    in_services && current == svc && in_env && /^    [^ ]/ { in_env = 0 }
+    in_services && current == svc && in_env && index($0, "      " key ":") == 1 { found = 1 }
+    END { exit found ? 0 : 1 }'
+}
+
+if [ -f .env ]; then
+  compose_config=$(docker compose config 2>/dev/null)
+  for key in JWT_SECRET ENCRYPTION_KEY; do
+    [ -n "$(env_file_value "$key")" ] || continue
+    services="backend"
+    [ "$key" = "ENCRYPTION_KEY" ] && services="backend worker"
+    for service in $services; do
+      if ! service_has_env "$service" "$key"; then
+        echo ""
+        echo ".env sets ${key}, but your docker-compose.yml does not pass it to ${service}, so it"
+        echo "would be ignored there. Move the file aside and run the installer again to get the"
+        echo "current one (your data/, config.yml and .env are kept):"
+        echo "  mv docker-compose.yml docker-compose.yml.old"
+        echo "  curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh"
+        echo "or add  - ${key}=\${${key}:-}  under environment: for ${service}."
+        exit 1
+      fi
+    done
+  done
+fi
+
+# Nothing to generate here: on first start the backend creates its own login-session and
+# encryption keys in data/database, next to the database. Back that directory up as a whole.
+# To manage the keys yourself instead, set JWT_SECRET and ENCRYPTION_KEY in a .env file.
 
 # Pull latest official images
 echo "Pulling latest OpsiMate images (backend + frontend)..."

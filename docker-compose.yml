@@ -18,10 +18,12 @@ services:
       - NODE_ENV=production
       - HOST=0.0.0.0
       - CONFIG_FILE=/app/config/config.yml
-      # Signs login sessions; the backend refuses to start without it. Put it in a .env
-      # file next to this one (JWT_SECRET=<output of openssl rand -hex 32>), keep that file
-      # private, and keep the same value across restarts and upgrades.
-      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET must be set in .env next to docker-compose.yml (generate one with openssl rand -hex 32)}
+      # The keys that sign login sessions and encrypt stored credentials. Leave them unset
+      # and OpsiMate generates its own on first start, in ./data/database next to the
+      # database (back them up with it). To manage them yourself, put them in a .env next
+      # to this file: JWT_SECRET=<openssl rand -hex 32>, ENCRYPTION_KEY=<same>.
+      - JWT_SECRET=${JWT_SECRET:-}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
     restart: unless-stopped
 
   worker:
@@ -38,6 +40,8 @@ services:
     environment:
       - NODE_ENV=production
       - CONFIG_FILE=/app/config/config.yml
+      # Same key as the backend (generated into ./data/database when unset).
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY:-}
     restart: unless-stopped
 
   # AI assistants (Claude Code, Cursor, Claude Desktop...) connect to this; it reads
