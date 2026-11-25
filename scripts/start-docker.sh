@@ -63,11 +63,12 @@ fi
 # credentials get lost: stop instead. JWT_SECRET is needed by backend, ENCRYPTION_KEY by
 # backend and worker.
 
-# The value .env gives a key, as Compose reads it: the last assignment, `export` allowed,
-# surrounding quotes and a trailing comment removed. Empty when unset or set to nothing.
+# The value .env gives a key, as Compose reads it: the last assignment (KEY=value or
+# KEY: value), `export` allowed, surrounding quotes and a trailing comment removed. Empty when
+# unset or set to nothing.
 env_file_value() {
-  grep -E "^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*=" .env | tail -n 1 |
-    sed -E "s/^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*=[[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//; s/^\"(.*)\"$/\1/; s/^'(.*)'$/\1/"
+  grep -E "^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*[=:]" .env | tail -n 1 |
+    sed -E "s/^[[:space:]]*(export[[:space:]]+)?$1[[:space:]]*[=:][[:space:]]*//; s/[[:space:]]+#.*$//; s/[[:space:]]+$//; s/^\"(.*)\"$/\1/; s/^'(.*)'$/\1/"
 }
 
 # Whether service $1 has an `environment` entry named $2 in the configuration Compose
