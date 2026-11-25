@@ -24,9 +24,11 @@ await (async () => {
 		throw new Error('Failed to create Express application');
 	}
 
-	moveLegacyCredentials(db);
-
 	app.listen(PORT, HOST, () => {
 		logger.info(`Server running on ${HOST}:${PORT}`);
+		// After the port is open, so a long migration (one PBKDF2 round per stored
+		// integration) never holds up the first health check. Until it has run, credentials
+		// still under the old public key are read through the fallback in decryptPassword.
+		setImmediate(() => moveLegacyCredentials(db));
 	});
 })();

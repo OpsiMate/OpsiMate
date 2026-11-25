@@ -339,6 +339,16 @@ helm upgrade opsimate . -f values-prod.yaml -n opsimate
 
 # Rollback to previous version
 helm rollback opsimate -n opsimate
+# Rolling back to a release from before installs generated their own keys: the upgrade
+# moved stored credentials (LDAP bind password, AI key, integrations) to the generated key,
+# which older releases do not read. They do read ENCRYPTION_KEY and JWT_SECRET from the
+# environment, so hand them the generated keys (still on the data volume) after the rollback;
+# nothing needs re-entering and nobody is signed out. This lasts until the next upgrade,
+# which reads the files again.
+ENC=$(kubectl exec -n opsimate deploy/opsimate-backend -- cat /app/data/database/encryption-key)
+JWT=$(kubectl exec -n opsimate deploy/opsimate-backend -- cat /app/data/database/jwt-secret)
+kubectl set env -n opsimate deploy/opsimate-backend ENCRYPTION_KEY="$ENC" JWT_SECRET="$JWT"
+kubectl set env -n opsimate deploy/opsimate-worker ENCRYPTION_KEY="$ENC"
 
 # Uninstall
 helm uninstall opsimate -n opsimate

@@ -32,10 +32,15 @@ export interface InstanceSecret {
 //
 // A file that exists but does not hold a usable secret is an error, never a reason to make a
 // new one: replacing it would sign everyone out, or strand the credentials it encrypted.
-export function readOrCreateInstanceSecret(dir: string, name: string): InstanceSecret {
+// (On a filesystem without hard links another process may still be writing it, so an empty
+// or short-but-hex file is waited for, briefly, before it counts as damaged.)
+export function readOrCreateInstanceSecret(
+	dir: string,
+	name: string,
+	{ settleMs = SETTLE_MS }: { settleMs?: number } = {}
+): InstanceSecret {
 	const file = path.join(dir, name);
-	const existing = readSecretFile(file);
-	if (existing !== null) return { secret: existing, file, created: false };
+	if (fs.existsSync(file)) return { secret: readSettled(file, settleMs), file, created: false };
 
 	fs.mkdirSync(dir, { recursive: true });
 	const secret = crypto.randomBytes(INSTANCE_SECRET_BYTES).toString('hex');
@@ -46,14 +51,14 @@ export function readOrCreateInstanceSecret(dir: string, name: string): InstanceS
 			fs.linkSync(tmp, file);
 		} catch (error) {
 			const code = (error as NodeJS.ErrnoException).code ?? '';
-			if (code === 'EEXIST') return { secret: readWinner(file), file, created: false };
+			if (code === 'EEXIST') return { secret: readSettled(file, settleMs), file, created: false };
 			if (!NO_HARD_LINKS.has(code)) throw error;
 			// No hard links here: an exclusive create still guarantees a single writer.
 			try {
 				fs.writeFileSync(file, `${secret}\n`, { mode: 0o600, flag: 'wx' });
 			} catch (fallbackError) {
 				if ((fallbackError as NodeJS.ErrnoException).code !== 'EEXIST') throw fallbackError;
-				return { secret: readWinner(file), file, created: false };
+				return { secret: readSettled(file, settleMs), file, created: false };
 			}
 		}
 		return { secret, file, created: true };
@@ -62,33 +67,33 @@ export function readOrCreateInstanceSecret(dir: string, name: string): InstanceS
 	}
 }
 
-// Another process created the file between our read and our write: theirs is the secret.
-// Without hard links that process may still be writing it, so give it a moment.
-function readWinner(file: string): string {
-	for (let attempt = 0; attempt < 20; attempt++) {
-		const value = readSecretFile(file, { allowEmpty: true });
-		if (value) return value;
-		Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
-	}
-	throw new Error(`${file} was created by another process but is still empty`);
-}
+// How long a file that looks mid-write (empty, or hex but too short) is waited for.
+const SETTLE_MS = 1000;
+const SETTLE_STEP_MS = 50;
 
-function readSecretFile(file: string, { allowEmpty = false } = {}): string | null {
-	let raw: string;
-	try {
-		raw = fs.readFileSync(file, 'utf8');
-	} catch (error) {
-		if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null;
-		throw error;
-	}
+type SecretFileState = { kind: 'complete'; value: string } | { kind: 'incomplete' } | { kind: 'invalid' };
+
+const classify = (raw: string): SecretFileState => {
 	const value = raw.trim();
-	if (value === '' && allowEmpty) return null;
-	if (!HEX_SECRET.test(value) || value.length < INSTANCE_SECRET_BYTES * 2) {
-		throw new Error(
-			`${file} does not hold a usable secret. Restore it from a backup; only if nothing ` +
-				'depends on it any more (everyone will be signed out, and credentials it encrypted ' +
-				'must be entered again), delete it so OpsiMate generates a new one.'
-		);
+	if (value === '') return { kind: 'incomplete' };
+	if (!HEX_SECRET.test(value)) return { kind: 'invalid' };
+	return value.length < INSTANCE_SECRET_BYTES * 2 ? { kind: 'incomplete' } : { kind: 'complete', value };
+};
+
+// The file's secret, once complete. Content that is not hex cannot be a write in progress
+// and fails at once; content that could be (empty, a hex prefix) gets `settleMs` to finish,
+// then fails the same way. Never replaced either way.
+function readSettled(file: string, settleMs: number): string {
+	const deadline = Date.now() + settleMs;
+	for (;;) {
+		const state = classify(fs.readFileSync(file, 'utf8'));
+		if (state.kind === 'complete') return state.value;
+		if (state.kind === 'invalid' || Date.now() >= deadline) break;
+		Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, SETTLE_STEP_MS);
 	}
-	return value;
+	throw new Error(
+		`${file} does not hold a usable secret. Restore it from a backup; only if nothing ` +
+			'depends on it any more (everyone will be signed out, and credentials it encrypted ' +
+			'must be entered again), delete it so OpsiMate generates a new one.'
+	);
 }

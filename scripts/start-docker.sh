@@ -36,6 +36,18 @@ fi
 if ! compose_error=$(docker compose config --quiet 2>&1); then
   echo ""
   echo "$compose_error"
+  # A docker-compose.yml kept from the short-lived version that required JWT_SECRET: the
+  # variable is optional now (the backend generates its own), but that file still demands it.
+  if echo "$compose_error" | grep -q 'JWT_SECRET'; then
+    echo ""
+    echo "Your docker-compose.yml is from a version that required JWT_SECRET; it is optional now."
+    echo "Either move it aside and run the installer again, which downloads the current one"
+    echo "(your data/ and config.yml are kept):"
+    echo "  mv docker-compose.yml docker-compose.yml.old"
+    echo "  curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh"
+    echo "or keep the file and give it a value in .env:"
+    echo '  touch .env && chmod 600 .env && echo "JWT_SECRET=$(openssl rand -hex 32)" >> .env'
+  fi
   exit 1
 fi
 

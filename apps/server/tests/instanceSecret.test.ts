@@ -1,3 +1,4 @@
+import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -65,7 +66,30 @@ describe('readOrCreateInstanceSecret', () => {
 	])('a damaged file (%s) is an error and is left untouched, never replaced', (_case, content) => {
 		const file = path.join(dir, 'jwt-secret');
 		fs.writeFileSync(file, content);
-		expect(() => readOrCreateInstanceSecret(dir, 'jwt-secret')).toThrow(/does not hold a usable secret/);
+		expect(() => readOrCreateInstanceSecret(dir, 'jwt-secret', { settleMs: 100 })).toThrow(
+			/does not hold a usable secret/
+		);
 		expect(fs.readFileSync(file, 'utf8')).toBe(content);
+	});
+
+	test('a file another process is still writing (no hard links: empty, then complete) is waited for', () => {
+		const file = path.join(dir, 'jwt-secret');
+		const theirs = 'cd'.repeat(32);
+		fs.writeFileSync(file, '');
+		// A separate process finishes the write while this one waits (the wait blocks this
+		// thread, so the writer has to live elsewhere).
+		const writer = spawn(process.execPath, [
+			'-e',
+			`setTimeout(() => require('fs').writeFileSync(${JSON.stringify(file)}, '${theirs}\\n'), 300)`,
+		]);
+		try {
+			expect(readOrCreateInstanceSecret(dir, 'jwt-secret', { settleMs: 5000 })).toEqual({
+				secret: theirs,
+				file,
+				created: false,
+			});
+		} finally {
+			writer.kill();
+		}
 	});
 });
