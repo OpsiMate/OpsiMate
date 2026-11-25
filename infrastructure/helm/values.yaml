@@ -203,8 +203,9 @@ secrets:
   jwtSecret: ""
   # -- Key that encrypts stored credentials (ENCRYPTION_KEY). Optional, generated the same
   # way when empty. Setting it after the backend generated one is safe (saved credentials
-  # move to it on start; keep the generated file until a start logs no "Could not move"
-  # warning); replacing one set value with another strands them.
+  # move to it on start; keep the generated file until the backend logs "Credential key check
+  # finished: every stored credential is on the current encryption key"); replacing one set
+  # value with another strands them.
   encryptionKey: ""
   # -- Name of an existing Secret to use instead of creating one. It must hold API_TOKEN, and
   # may hold JWT_SECRET and ENCRYPTION_KEY.

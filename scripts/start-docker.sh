@@ -57,6 +57,25 @@ if ! compose_error=$(docker compose config --quiet 2>&1); then
   exit 1
 fi
 
+# A key set in .env only reaches the containers when docker-compose.yml passes it on (Compose
+# reads .env for substitution, it does not inject it). Files kept from older versions do not,
+# and a key that silently never arrives is how saved credentials get lost: stop instead.
+if [ -f .env ]; then
+  for key in JWT_SECRET ENCRYPTION_KEY; do
+    if grep -qE "^[[:space:]]*(export[[:space:]]+)?${key}[[:space:]]*=[[:space:]]*[^[:space:]#]" .env &&
+      ! grep -q "${key}" docker-compose.yml; then
+      echo ""
+      echo ".env sets ${key}, but your docker-compose.yml does not pass it to the containers, so it"
+      echo "would be ignored. Move the file aside and run the installer again to get the current one"
+      echo "(your data/, config.yml and .env are kept):"
+      echo "  mv docker-compose.yml docker-compose.yml.old"
+      echo "  curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh"
+      echo "or add  - ${key}=\${${key}:-}  under environment: for backend (and, for ENCRYPTION_KEY, worker)."
+      exit 1
+    fi
+  done
+fi
+
 # Nothing to generate here: on first start the backend creates its own login-session and
 # encryption keys in data/database, next to the database. Back that directory up as a whole.
 # To manage the keys yourself instead, set JWT_SECRET and ENCRYPTION_KEY in a .env file.

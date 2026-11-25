@@ -83,6 +83,13 @@ export async function moveLegacyCredentials(db: Database.Database): Promise<void
 					'they still work and are tried again on the next start'
 			);
 		}
+		// Every run says it finished, so an operator replacing a key knows when the old one is
+		// no longer needed (the docs point at this line).
+		logger.info(
+			left.total > 0
+				? `Credential key check finished: ${left.total} stored credential(s) still need an older key; keep it`
+				: 'Credential key check finished: every stored credential is on the current encryption key'
+		);
 	} catch (error) {
 		logger.error('Could not move stored credentials to this install’s encryption key; left as they were', error);
 	}
