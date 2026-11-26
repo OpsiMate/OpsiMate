@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { extractTagKeyFromColumnId, isTagKeyColumn } from '@/types';
 import { Alert } from '@OpsiMate/shared';
 import { ACTIONS_COLUMN, COLUMN_SEPARATOR_CLASSES, COLUMN_WIDTHS, SELECT_COLUMN_WIDTH } from '../AlertsTable.constants';
-import { CELL_PADDING } from './AlertRow.constants';
+import { CELL_PADDING, SILENCED_ROW_CLASSES } from './AlertRow.constants';
 import { copyValueOf, isForeignTarget, isPrimaryPress, isSelectCellTarget, isToggleModifier } from './AlertRow.utils';
 import { ContextMenu, ContextMenuTrigger } from '@/components/ui/context-menu';
 import { AlertCellContextMenu } from './AlertCellContextMenu';
@@ -240,6 +240,10 @@ export const AlertRow = ({
 						COLUMN_SEPARATOR_CLASSES,
 						// Severity tint sits under selection/active highlights so those still win.
 						severityColors && SEVERITY_ROW_CLASSES[getAlertSeverity(alert)],
+						// A silenced alert is tinted over its severity (silenced wins, as in the status
+						// icon): the row is only in the table when silenced alerts are shown, and the
+						// tint is what tells it apart from the firing rows around it.
+						alert.isSilenced && SILENCED_ROW_CLASSES,
 						// Selection carries its own hover class so the severity hover tint can't
 						// override the selection cue while the pointer is over the row.
 						isSelected && 'bg-muted/50 hover:bg-muted/50',
