@@ -25,6 +25,13 @@ vi.setConfig({ testTimeout: 30000 });
 // for module-eval order — so keep this line ahead of any setup*() call.
 process.env.ALERTS_SNAPSHOT_TTL_MS = '0';
 
+// Without these the server generates its own session and encryption keys into the data
+// directory on first use (utils/instanceSecret). Fixed, test-only values keep the suite
+// off any real data directory; they are resolved on first use, so setting them here is
+// early enough. Tests of the generation itself pass a temporary directory explicitly.
+process.env.JWT_SECRET = 'test-only-jwt-secret-never-use-in-production';
+process.env.ENCRYPTION_KEY = 'test-only-encryption-key-never-use-in-production';
+
 export async function setupDB(): Promise<Database.Database> {
 	const db = new Database(':memory:');
 	const dashboardRepo = new DashboardRepository(db);

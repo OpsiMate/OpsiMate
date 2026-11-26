@@ -114,6 +114,8 @@ Each source has a setup guide in the app (Integrations → Add) with the exact w
 curl -fsSL https://raw.githubusercontent.com/OpsiMate/OpsiMate/main/scripts/start-docker.sh | sh
 ```
 
+On first start OpsiMate generates its own private keys, one that signs login sessions and one that encrypts stored credentials (LDAP, AI, integrations), and keeps them in `data/database/` next to the database. Nothing to set up. Back up `data/database/` as a whole: without those files, everyone is signed out and saved credentials must be entered again. Upgrading from a version that used the built-in public keys signs everyone in once more, and stored credentials move to the new key on their own. Rolling back to such a version: keep the current `docker-compose.yml`, which passes both keys to the backend and the worker (older ones do not), change only the image tags (`opsimate/backend:<old version>`), and put the two files' contents in `.env` as `ENCRYPTION_KEY=` and `JWT_SECRET=`. The older version then still reads the moved credentials and keeps everyone signed in.
+
 **Access the application:**
 
 - **Backend:** [http://localhost:3001](http://localhost:3001)
@@ -152,7 +154,7 @@ security:
   api_token: "change-me"
 ```
 
-Set `ENCRYPTION_KEY` (credentials at rest — the server warns at startup if it's missing) and `JWT_SECRET` (session signing) in the environment for anything beyond a laptop.
+`JWT_SECRET` (session signing) and `ENCRYPTION_KEY` (credentials at rest) are optional: unset, the server generates both on first start and keeps them as `jwt-secret` and `encryption-key` next to the database. Set them yourself (`openssl rand -hex 32`; `JWT_SECRET` must be at least 32 bytes) to keep them in a secret store, or when several backends do not share the database directory. Keep them out of source control and the same across restarts: a new `JWT_SECRET` signs everyone out. Moving from the generated encryption key to an `ENCRYPTION_KEY` of your own is safe (saved credentials move to it on start; keep the old `encryption-key` file until the log says `Credential key check finished: every stored credential is on the current encryption key`; with Docker Compose, use a `docker-compose.yml` that passes `ENCRYPTION_KEY` to both services, as the current one does), but replacing one `ENCRYPTION_KEY` with another makes saved credentials unreadable. A small `schema.lock` file sits next to them: the backend and the worker take turns through it when they prepare the database schema at start. It holds nothing and needs no backup.
 
 ## Contributing
 

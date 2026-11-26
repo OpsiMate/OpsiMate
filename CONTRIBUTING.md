@@ -35,7 +35,7 @@ Learn how to set up and run the OpsiMate project locally for development.
    export CONFIG_FILE=/path/to/config.yml
    ```
 
-6. **Start development server:**
+6. **Start development server:** the first start generates the session and encryption keys into the database directory (`jwt-secret`, `encryption-key`); there is nothing to set. Deleting them signs you out and makes saved credentials unreadable.
    ```bash
    pnpm run dev
    ```
