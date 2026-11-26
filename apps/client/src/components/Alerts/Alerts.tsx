@@ -32,6 +32,8 @@ import {
 } from '@/hooks/queries/dashboards';
 import { CreateDashboardInput, Dashboard } from '@/hooks/queries/dashboards/dashboards.types';
 import { useToast } from '@/hooks/use-toast';
+import { useUsers } from '@/hooks/queries/users';
+import { downloadFile, fileTimestamp } from '@/lib/csv';
 import { AlertFacetsResponse } from '@/lib/api';
 import { ACTIVE_ALERTS_POLL_MS, GROUPED_ALERTS_POLL_MS } from '@/lib/pollIntervals';
 import { pluralize } from '@/lib/text';
@@ -45,6 +47,7 @@ import {
 	CheckCircle2,
 	ChevronDown,
 	Columns2,
+	Download,
 	Filter,
 	LayoutList,
 	Palette,
@@ -66,6 +69,7 @@ import { VerticalSplit } from './VerticalSplit';
 import { ACTIONS_COLUMN, COLUMN_LABELS } from './AlertsTable/AlertsTable.constants';
 import { aiFilterTimeRange } from './utils/aiFilter.utils';
 import { areSilencedAlertsShown, toggleSilencedAlerts } from './utils/silenced.utils';
+import { alertsExportFilename, alertsToCsv } from './utils/alertsExport.utils';
 import { AlertTab, GroupStatus } from './AlertsTable/AlertsTable.types';
 import { SearchBar } from './AlertsTable/SearchBar';
 import { TimeFilter, createEmptyTimeRange } from './AlertsTable/TimeFilter';
@@ -788,6 +792,24 @@ const Alerts = () => {
 		[allViewActiveAlerts, resolvedViewAlerts]
 	);
 
+	// CSV export of exactly what the table shows: the current tab with its filters, search
+	// and time range applied. Only loaded rows can be exported — the "N of M" notice
+	// already tells the user when more alerts match than are loaded.
+	const { data: users = [] } = useUsers();
+	const currentViewAlerts =
+		activeTab === AlertTab.Resolved
+			? resolvedViewAlerts
+			: activeTab === AlertTab.All
+				? filteredAllAlerts
+				: filteredAlerts;
+	const exportAlertsToCsv = useCallback(
+		(toExport: Alert[], suffix?: string) => {
+			const name = [dashboardState.name, suffix].filter(Boolean).join(' ');
+			downloadFile(alertsExportFilename(name, fileTimestamp()), 'text/csv', alertsToCsv(toExport, users));
+		},
+		[dashboardState.name, users]
+	);
+
 	const {
 		handleSilenceAlert,
 		handleUnsilenceAlert,
@@ -1489,6 +1511,19 @@ const Alerts = () => {
 										<span className="hidden lg:inline">Expand rows</span>
 									</Button>
 
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => exportAlertsToCsv(currentViewAlerts)}
+										disabled={currentViewAlerts.length === 0}
+										className="gap-1.5 shrink-0"
+										title="Export the alerts in this view to CSV"
+										aria-label={`Export ${currentViewAlerts.length} ${pluralize(currentViewAlerts.length, 'alert')} to CSV`}
+									>
+										<Download className="h-4 w-4" />
+										<span className="hidden lg:inline">Export</span>
+									</Button>
+
 									<TimeFilter
 										value={dashboardState.timeRange ?? createEmptyTimeRange()}
 										onChange={(range) => updateDashboardField('timeRange', range)}
@@ -1627,6 +1662,13 @@ const Alerts = () => {
 											onAssignOwnerAll={handleAssignOwnerAllSelected}
 											onResolveAll={confirmResolveAllSelected}
 											onCommentAll={confirmCommentAllSelected}
+											// Same rule as grouping: with "all N matching" armed over a partial
+											// page, an export would silently hold only the loaded subset.
+											onExportAll={
+												allMatchingSelected && (bulkMatchCount ?? 0) > selectedAlerts.length
+													? undefined
+													: () => exportAlertsToCsv(selectedAlerts, 'selected')
+											}
 											// Permanent delete never runs by-filter — it stays on the loaded
 											// selection, so it's hidden while "all matching" is armed.
 											onDeleteAll={

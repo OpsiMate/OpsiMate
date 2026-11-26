@@ -1,3 +1,4 @@
+import { toCsv } from '@/lib/csv';
 import { AlertHistoryData, AlertHistoryEventType } from '@OpsiMate/shared';
 import { TimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.types';
 import { resolveTimeRange } from '../../AlertsTable/TimeFilter/TimeFilter.utils';
@@ -125,40 +126,18 @@ const exportEventLabel = (entry: AlertHistoryData): string => {
 	return EXPORT_LABELS[eventType] ?? String(eventType);
 };
 
-// Spreadsheets execute cells that begin with a formula trigger even when the field is
-// properly quoted — and actor names and descriptions carry user-typed text, so a user
-// named "=HYPERLINK(...)" would become a live formula in an exported file. The standard
-// neutralization is a leading apostrophe, which spreadsheets read as "literal text".
-// Applied to EVERY field (not just actorName): benign fields never start with a trigger,
-// so the guard is invisible where it isn't needed.
-const FORMULA_TRIGGER = /^[=+\-@\t\r]/;
-const neutralizeFormula = (value: string): string => (FORMULA_TRIGGER.test(value) ? `'${value}` : value);
-
-// RFC 4180: quote every field, double any quotes inside, and normalize embedded line
-// breaks to CRLF so a multi-line description stays one record for strict parsers.
-const csvField = (value: string): string =>
-	`"${neutralizeFormula(value)
-		.replace(/\r\n|\r|\n/g, '\r\n')
-		.replace(/"/g, '""')}"`;
-
-export const historyToCsv = (data: AlertHistoryData[]): string => {
-	const header = ['date', 'event', 'branch', 'status', 'actor', 'description'];
-	const rows = data.map((entry) =>
-		[
+export const historyToCsv = (data: AlertHistoryData[]): string =>
+	toCsv(
+		['date', 'event', 'branch', 'status', 'actor', 'description'],
+		data.map((entry) => [
 			entry.date,
 			exportEventLabel(entry),
 			historyEntryLane(entry),
 			entry.status ?? '',
 			entry.actorName ?? '',
 			entry.description ?? '',
-		]
-			.map(csvField)
-			.join(',')
+		])
 	);
-	// CRLF record separator per RFC 4180 (embedded breaks are normalized to CRLF too,
-	// but stay inside their quotes).
-	return [header.map(csvField).join(','), ...rows].join('\r\n');
-};
 
 export const historyToJson = (data: AlertHistoryData[]): string =>
 	JSON.stringify(
