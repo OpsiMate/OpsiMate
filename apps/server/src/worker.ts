@@ -1,11 +1,15 @@
 import { initializeDb } from './dal/db';
 import { createApp, AppMode } from './app';
 import { Logger } from '@OpsiMate/shared';
+import { prepareEncryptionKey } from './bootSecrets';
 
 const logger = new Logger('worker');
 
 await (async () => {
 	logger.info('Initializing worker process...');
+
+	// The credential key, settled (and checked) before any job decrypts with it.
+	prepareEncryptionKey();
 
 	// Initialize database and directories
 	const db = initializeDb();

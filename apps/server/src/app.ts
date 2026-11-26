@@ -10,6 +10,7 @@ import { ActionController } from './api/v1/actions/controller';
 import { AlertController } from './api/v1/alerts/controller';
 import { RootCauseBL } from './bl/rootCause/rootCause.bl';
 import { RootCauseRepository } from './dal/rootCauseRepository';
+import { withSchemaLock } from './dal/db';
 import { AuditController } from './api/v1/audit/controller';
 import { RetentionController } from './api/v1/retention/controller';
 import { CustomFieldsController } from './api/v1/custom-fields/controller';
@@ -95,18 +96,21 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	// available in WORKER mode where AlertBL is used.
 	const userRepo = new UserRepository(db);
 
-	// Init tables (needed by both)
-	await Promise.all([
-		integrationRepo.initIntegrationsTable(),
-		resolvedAlertRepo.initResolvedAlertsTable(), // this should be prior to alertRepo.initAlertsTable
-		alertRepo.initAlertsTable(),
-		alertCommentsRepo.initAlertCommentsTable(),
-		alertHistoryRepo.initAlertHistoryEventsTable(),
-		rootCauseRepo.initRootCausesTable(),
-		auditLogRepo.initAuditLogsTable(),
-		secretsMetadataRepo.initSecretsMetadataTable(),
-		retentionRepo.initRetentionTables(),
-	]);
+	// Init tables (needed by both). Under the schema lock: the backend and the worker
+	// start together and both run this (see withSchemaLock).
+	await withSchemaLock(db, () =>
+		Promise.all([
+			integrationRepo.initIntegrationsTable(),
+			resolvedAlertRepo.initResolvedAlertsTable(), // this should be prior to alertRepo.initAlertsTable
+			alertRepo.initAlertsTable(),
+			alertCommentsRepo.initAlertCommentsTable(),
+			alertHistoryRepo.initAlertHistoryEventsTable(),
+			rootCauseRepo.initRootCausesTable(),
+			auditLogRepo.initAuditLogsTable(),
+			secretsMetadataRepo.initSecretsMetadataTable(),
+			retentionRepo.initRetentionTables(),
+		])
+	);
 
 	// BL (needed by both)
 	const auditBL = new AuditBL(auditLogRepo);
@@ -209,23 +213,26 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 	const mailClient = new MailClient();
 	await mailClient.initialize();
 
-	// Init additional tables (only for SERVER)
-	await Promise.all([
-		dashboardRepository.initDashboardTable(),
-		tagRepo.initTagsTables(),
-		userRepo.initUsersTable(),
-		serviceCustomFieldRepo.initServiceCustomFieldTable(),
-		passwordResetsRepo.initPasswordResetsTable(),
-		playgroundRepo.initPlaygroundTable(),
-		mutePolicyRepo.initMutePoliciesTable(),
-		incidentRepo.initIncidentsTables(),
-		oncallRepo.initOncallTables(),
-		enrichmentRepo.initEnrichmentsTable(),
-		actionRepo.initActionsTable(),
-		aiConfigRepo.initAiConfigTable(),
-		ldapConfigRepo.initLdapConfigTable(),
-		alertCallbackRepo.initAlertCallbacksTable(),
-	]);
+	// Init additional tables (only for SERVER). Under the lock as well: a second backend
+	// (dev server next to a container, a rolling update) prepares the same database.
+	await withSchemaLock(db, () =>
+		Promise.all([
+			dashboardRepository.initDashboardTable(),
+			tagRepo.initTagsTables(),
+			userRepo.initUsersTable(),
+			serviceCustomFieldRepo.initServiceCustomFieldTable(),
+			passwordResetsRepo.initPasswordResetsTable(),
+			playgroundRepo.initPlaygroundTable(),
+			mutePolicyRepo.initMutePoliciesTable(),
+			incidentRepo.initIncidentsTables(),
+			oncallRepo.initOncallTables(),
+			enrichmentRepo.initEnrichmentsTable(),
+			actionRepo.initActionsTable(),
+			aiConfigRepo.initAiConfigTable(),
+			ldapConfigRepo.initLdapConfigTable(),
+			alertCallbackRepo.initAlertCallbacksTable(),
+		])
+	);
 
 	// Every table the metric gauges count now exists.
 	initMetrics(db);

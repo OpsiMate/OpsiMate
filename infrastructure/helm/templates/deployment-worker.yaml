@@ -13,6 +13,8 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        # The worker reads ENCRYPTION_KEY from the Secret: roll it with the backend when it changes.
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
         {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -37,6 +39,13 @@ spec:
               value: {{ .Values.worker.env.NODE_ENV | quote }}
             - name: CONFIG_FILE
               value: {{ .Values.worker.env.CONFIG_FILE | quote }}
+            # The same credential key as the backend (or, unset, the one it generated).
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsimate.secretName" . }}
+                  key: ENCRYPTION_KEY
+                  optional: true
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
           volumeMounts:

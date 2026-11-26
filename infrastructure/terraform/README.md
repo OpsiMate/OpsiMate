@@ -132,6 +132,7 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main
 
 # 3. Deploy OpsiMate with Helm
 cd ../helm
+# The login-session and encryption keys are generated on the data volume on first start.
 helm install opsimate . -n opsimate --create-namespace \
   --set service.frontend.type=ClusterIP \
   --set service.backend.type=ClusterIP \

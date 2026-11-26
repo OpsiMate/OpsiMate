@@ -118,6 +118,19 @@ export const formatRelativeTime = (value: DateInput, fallback = '—', maxRelati
 };
 
 /**
+ * "Nov 19, 14:05" — the exact moment of a comment or an RCA entry: the time of day and
+ * the date, with the year only when it is not this year. Comments carry over from one
+ * occurrence of an alert to the next and are never reset, so "1d ago" tells a reader
+ * too little about when something was written; this says it. The full-precision form
+ * (formatDateTime) belongs in the element's title for the hover.
+ */
+export const formatTimestamp = (value: DateInput, fallback = '—'): string => {
+	const date = toDate(value);
+	if (!date) return fallback;
+	return date.getFullYear() === new Date().getFullYear() ? formatShortDateTime(date) : formatLongDateTime(date);
+};
+
+/**
  * SQLite's bare "YYYY-MM-DD HH:MM:SS" is UTC but carries no marker, so `new Date()`
  * reads it as local time and shifts it by the viewer's offset. The audit-log table
  * stores timestamps that way (DEFAULT CURRENT_TIMESTAMP) and the endpoint passes them

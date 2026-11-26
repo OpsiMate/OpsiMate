@@ -45,6 +45,20 @@ spec:
                 secretKeyRef:
                   name: {{ include "opsimate.secretName" . }}
                   key: API_TOKEN
+            # Optional: when the Secret has no such key, the backend generates its own
+            # keys on the data volume, next to the database.
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsimate.secretName" . }}
+                  key: JWT_SECRET
+                  optional: true
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsimate.secretName" . }}
+                  key: ENCRYPTION_KEY
+                  optional: true
           {{- if .Values.backend.livenessProbe.enabled }}
           livenessProbe:
             httpGet:

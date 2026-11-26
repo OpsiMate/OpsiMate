@@ -20,7 +20,28 @@ jobs:
       - name: Install Helm
         uses: azure/setup-helm@v5
 
+      # Lint every way an operator can install: no keys (the backend generates its own),
+      # keys in values, and an existing Secret. The values here are placeholders for
+      # rendering only, never real secrets.
       - name: Helm Lint
         run: |
           cd infrastructure/helm/
           helm lint .
+          helm lint . --set secrets.jwtSecret=ci-placeholder-not-a-real-secret-0123456789 \
+            --set secrets.encryptionKey=ci-placeholder-not-a-real-key-0123456789
+          helm lint . --set secrets.existingSecret=opsimate-auth
+
+      # The keys are optional: without them the chart renders, the Secret carries neither,
+      # and the env references are optional so the backend can start and generate them.
+      # Given in values, they are in the Secret.
+      - name: Helm keys are optional
+        run: |
+          cd infrastructure/helm/
+          plain=$(helm template opsimate .)
+          if echo "$plain" | grep -qE '^\s+(JWT_SECRET|ENCRYPTION_KEY):'; then
+            echo "the Secret carries a key nobody set"
+            exit 1
+          fi
+          [ "$(echo "$plain" | grep -c 'optional: true')" -ge 3 ] || { echo "key references must be optional"; exit 1; }
+          given=$(helm template opsimate . --set secrets.jwtSecret=ci-placeholder-not-a-real-secret-0123456789)
+          echo "$given" | grep -qE '^\s+JWT_SECRET:' || { echo "a set jwtSecret is missing from the Secret"; exit 1; }

@@ -29,8 +29,8 @@ import {
 import jwt from 'jsonwebtoken';
 import { AuthenticatedRequest } from '../../../middleware/auth';
 import { User } from '@OpsiMate/shared';
+import { getJwtSecret } from '../../../utils/jwtSecret';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'changeme-secret';
 const logger = new Logger('api/v1/users/controller');
 
 export class UsersController {
@@ -40,7 +40,7 @@ export class UsersController {
 		try {
 			const { username, email, fullName, password } = RegisterSchema.parse(req.body);
 			const result = await this.userBL.register({ username, email, fullName, password });
-			const token = jwt.sign(result, JWT_SECRET, { expiresIn: '7d' });
+			const token = jwt.sign(result, getJwtSecret(), { expiresIn: '7d' });
 			return res.status(201).json({ success: true, data: result, token });
 		} catch (error) {
 			const taken = uniqueViolationMessage(error);
@@ -101,7 +101,7 @@ export class UsersController {
 			const user = await this.userBL.login(loginIdentifierOf(login), login.password, {
 				legacyEmailField: login.identifier === undefined,
 			});
-			const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
+			const token = jwt.sign(user, getJwtSecret(), { expiresIn: '7d' });
 			return res.status(200).json({ success: true, data: user, token });
 		} catch (error) {
 			if (isZodError(error)) {
@@ -215,7 +215,7 @@ export class UsersController {
 
 			// If password was changed, generate a new token
 			if (newPassword) {
-				const token = jwt.sign(updatedUser, JWT_SECRET, { expiresIn: '7d' });
+				const token = jwt.sign(updatedUser, getJwtSecret(), { expiresIn: '7d' });
 				responseData.token = token;
 			}
 

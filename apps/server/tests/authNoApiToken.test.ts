@@ -6,6 +6,7 @@ import request from 'supertest';
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { Role, User } from '@OpsiMate/shared';
+import { getJwtSecret } from '../src/utils/jwtSecret';
 
 // A config file may leave security.api_token out: API-token auth is then off, and the
 // Bearer check that runs in front of every JWT verification must not throw on the
@@ -54,7 +55,7 @@ describe('authenticate when the config file has no security.api_token', () => {
 		role: Role.Admin,
 		createdAt: '2026-01-01T00:00:00.000Z',
 	};
-	const validJwt = jwt.sign(user, process.env.JWT_SECRET || 'changeme-secret');
+	const validJwt = jwt.sign(user, getJwtSecret());
 
 	const guardedApp = () => {
 		const app = express();
