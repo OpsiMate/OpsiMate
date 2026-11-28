@@ -83,6 +83,15 @@ export class ResolvedAlertRepository {
 						CREATE INDEX IF NOT EXISTS idx_alerts_history_alert
 							ON alerts_history (alert_id, archived_at);
 
+						-- The hot resolved cache reads only the last N days (getResolvedAlertsSince)
+						-- and both resolved reads order by archived_at; retention purges by it too.
+						CREATE INDEX IF NOT EXISTS idx_alerts_resolved_archived_at
+							ON alerts_resolved (archived_at);
+						-- Retention purges alerts_history by archived_at alone, which the
+						-- (alert_id, archived_at) index cannot serve.
+						CREATE INDEX IF NOT EXISTS idx_alerts_history_archived_at
+							ON alerts_history (archived_at);
+
 						`
 			);
 
@@ -336,6 +345,24 @@ export class ResolvedAlertRepository {
 		return runAsync(() => {
 			const stmt = this.db.prepare('SELECT * FROM alerts_resolved ORDER BY archived_at DESC');
 			const rows = stmt.all() as ResolvedAlertRow[];
+			return rows.map(this.toSharedAlert);
+		});
+	}
+
+	// Resolved alerts archived on or after `cutoff`, newest first — the hot cache's read.
+	// archived_at is written by the resolve path as CURRENT_TIMESTAMP ("YYYY-MM-DD HH:MM:SS")
+	// and by the resolve-only episode path as ISO ("YYYY-MM-DDTHH:MM:SS.sssZ"). Both sort by
+	// their first ten characters (the date), and a day-boundary cutoff in the space form
+	// compares correctly against both: on the cutoff date itself "T" (0x54) sorts after
+	// " " (0x20), so an ISO row of that date is kept, as it should be. Comparing the raw
+	// column keeps idx_alerts_resolved_archived_at usable; datetime() on it would not.
+	async getResolvedAlertsSince(cutoff: Date): Promise<SharedAlert[]> {
+		return runAsync(() => {
+			const dayStart = `${cutoff.toISOString().slice(0, 10)} 00:00:00`;
+			const stmt = this.db.prepare(
+				'SELECT * FROM alerts_resolved WHERE archived_at >= ? ORDER BY archived_at DESC'
+			);
+			const rows = stmt.all(dayStart) as ResolvedAlertRow[];
 			return rows.map(this.toSharedAlert);
 		});
 	}

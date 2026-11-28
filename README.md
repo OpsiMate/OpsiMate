@@ -152,6 +152,12 @@ security:
   # Machine-to-machine token: your monitoring tools send it as X-API-Token
   # when pushing alerts and root causes. Change it.
   api_token: "change-me"
+
+alerts:
+  # Resolved alerts from the last N days stay in the hot cache the Resolved tab and
+  # its counts read; older ones are still kept and shown under a wider time range.
+  # 0 keeps every resolved alert hot. Env ALERTS_RESOLVED_WINDOW_DAYS overrides.
+  resolved_window_days: 30
 ```
 
 `JWT_SECRET` (session signing) and `ENCRYPTION_KEY` (credentials at rest) are optional: unset, the server generates both on first start and keeps them as `jwt-secret` and `encryption-key` next to the database. Set them yourself (`openssl rand -hex 32`; `JWT_SECRET` must be at least 32 bytes) to keep them in a secret store, or when several backends do not share the database directory. Keep them out of source control and the same across restarts: a new `JWT_SECRET` signs everyone out. Moving from the generated encryption key to an `ENCRYPTION_KEY` of your own is safe (saved credentials move to it on start; keep the old `encryption-key` file until the log says `Credential key check finished: every stored credential is on the current encryption key`; with Docker Compose, use a `docker-compose.yml` that passes `ENCRYPTION_KEY` to both services, as the current one does), but replacing one `ENCRYPTION_KEY` with another makes saved credentials unreadable. A small `schema.lock` file sits next to them: the backend and the worker take turns through it when they prepare the database schema at start. It holds nothing and needs no backup.

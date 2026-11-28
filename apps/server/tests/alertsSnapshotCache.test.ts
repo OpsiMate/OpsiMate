@@ -1,7 +1,8 @@
-import { beforeAll, describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test, vi } from 'vitest';
 import { SuperTest, Test } from 'supertest';
 import Database from 'better-sqlite3';
 import { setupDB, setupExpressApp, setupUserWithToken } from './setup';
+import { ResolvedAlertRepository } from '../src/dal/resolvedAlertRepository';
 
 // Integration coverage for the alerts snapshot cache at the HTTP layer: the
 // content-derived ETag / 304 contract, TTL'd caching, and write-path invalidation.
@@ -89,6 +90,51 @@ describe('alerts snapshot cache over HTTP', () => {
 			.set('If-None-Match', etagBefore);
 		expect(revalidated.status).toBe(200);
 	});
+	test('silencing an active alert does not rebuild the resolved list', async () => {
+		// Warm the resolved snapshot, then count rebuilds across an active-only click.
+		const warm = await app.get('/api/v1/alerts/resolved').set('Authorization', `Bearer ${jwtToken}`);
+		expect(warm.status).toBe(200);
+		const rebuilds = vi.spyOn(ResolvedAlertRepository.prototype, 'getAllResolvedAlerts');
+		const sinceRebuilds = vi.spyOn(ResolvedAlertRepository.prototype, 'getResolvedAlertsSince');
+
+		const silence = await app
+			.patch('/api/v1/alerts/cache-alert-1/unsilence')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({});
+		expect(silence.status).toBe(200);
+		const after = await app.get('/api/v1/alerts/resolved').set('Authorization', `Bearer ${jwtToken}`);
+		expect(after.status).toBe(200);
+		expect(after.headers['etag']).toBe(warm.headers['etag']);
+		expect(rebuilds).not.toHaveBeenCalled();
+		expect(sinceRebuilds).not.toHaveBeenCalled();
+		rebuilds.mockRestore();
+		sinceRebuilds.mockRestore();
+	});
+
+	test('resolving an alert rebuilds both lists: the immediate refetch sees it on each side', async () => {
+		await getAlerts(); // warm the active list after the previous test's click
+		insertAlert('cache-alert-to-resolve', 'Cache Alert To Resolve');
+		const activeBefore = await getAlerts();
+		// Served from the warm cache: the direct insert is not visible yet.
+		expect(activeBefore.body.data.alerts.map((a: AlertIdRow) => a.id)).not.toContain('cache-alert-to-resolve');
+		const resolved = await app
+			.post('/api/v1/alerts/bulk')
+			.set('Authorization', `Bearer ${jwtToken}`)
+			.send({ action: 'resolve', ids: ['cache-alert-to-resolve'] });
+		expect(resolved.status).toBe(200);
+		expect(resolved.body.data.succeeded).toBe(1);
+		const activeAfter = await getAlerts();
+		expect(activeAfter.body.data.alerts.map((a: AlertIdRow) => a.id)).not.toContain('cache-alert-to-resolve');
+		// A windowed read is the hot list, which the resolve dropped: fresh at once. (The
+		// parameterless read is the archive, which a resolve only marks stale — it catches
+		// up in the background within the refresh window; see AlertBL.invalidateResolved.)
+		const resolvedList = await app
+			.get('/api/v1/alerts/resolved')
+			.query({ sort: 'startsAt', dir: 'desc', limit: '100', from: new Date(Date.now() - 3600_000).toISOString() })
+			.set('Authorization', `Bearer ${jwtToken}`);
+		expect(resolvedList.body.data.alerts.map((a: AlertIdRow) => a.id)).toContain('cache-alert-to-resolve');
+	});
+
 	test('a webhook does not invalidate: the snapshot is served until the refresh window passes', async () => {
 		const before = await getAlerts();
 		const posted = await app

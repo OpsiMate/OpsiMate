@@ -94,6 +94,13 @@ export interface OpsimateConfig {
 		};
 	};
 	ldap?: LdapConfig;
+	alerts?: {
+		// How many days of resolved alerts the server keeps in its hot, per-request cache.
+		// Resolved alerts older than this are still stored and still served, from a
+		// separate cache that is only rebuilt in the background. 0 = keep every resolved
+		// alert hot (the pre-0.1.10 behaviour). Env: ALERTS_RESOLVED_WINDOW_DAYS wins.
+		resolved_window_days?: number;
+	};
 	login?: {
 		// Typing a name without "@" at login means <name>@<this domain>, so people need not
 		// type their full address every time. One domain per installation. Env:
@@ -190,6 +197,22 @@ export function getDatabaseConfig() {
 
 export function getSecurityConfig() {
 	return loadConfig().security;
+}
+
+export const DEFAULT_RESOLVED_WINDOW_DAYS = 30;
+
+export interface AlertsConfig {
+	resolvedWindowDays: number;
+}
+
+// The alerts section with its defaults applied; the environment overrides the file.
+export function getAlertsConfig(): AlertsConfig {
+	const fromEnv = process.env.ALERTS_RESOLVED_WINDOW_DAYS;
+	const fromFile = loadConfig().alerts?.resolved_window_days;
+	const raw = fromEnv !== undefined && fromEnv !== '' ? Number(fromEnv) : fromFile;
+	const resolvedWindowDays =
+		raw !== undefined && Number.isInteger(raw) && raw >= 0 ? raw : DEFAULT_RESOLVED_WINDOW_DAYS;
+	return { resolvedWindowDays };
 }
 
 export function getMailerConfig() {
