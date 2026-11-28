@@ -62,6 +62,9 @@ export class AlertHistoryRepository {
 
 				CREATE INDEX IF NOT EXISTS idx_alert_history_events_alert
 					ON alert_history_events (alert_id, created_at);
+				-- Retention purges by created_at alone.
+				CREATE INDEX IF NOT EXISTS idx_alert_history_events_created_at
+					ON alert_history_events (created_at);
 				`
 			);
 		});

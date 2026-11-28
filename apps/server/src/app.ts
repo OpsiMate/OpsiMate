@@ -286,7 +286,7 @@ export async function createApp(db: Database.Database, mode: AppMode): Promise<e
 			(await alertRepo.getAlert(alertId)) ?? (await resolvedAlertRepo.getResolvedAlert(alertId)) ?? null,
 	});
 	const incidentBL = new IncidentBL(incidentRepo, alertHistoryRepo, {
-		invalidateSnapshots: () => alertBL.invalidateSnapshots(),
+		invalidateSnapshots: () => alertBL.invalidateMemberships(),
 		claimUnowned: (alertIds, actor) => alertBL.claimUnownedAlerts(alertIds, actor),
 	});
 	alertBL.setIncidentRepo(incidentRepo);

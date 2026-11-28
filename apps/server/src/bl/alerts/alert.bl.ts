@@ -37,6 +37,7 @@ import {
 import { UserRepository } from '../../dal/userRepository';
 import { CallbackDispatcher } from '../callbacks/callbackDispatcher';
 import { toIsoUtc } from '../../utils/time';
+import { getAlertsConfig } from '../../config/config';
 import { computeAlertAnalytics } from '../analytics/computeAlertAnalytics';
 import { EnrichmentBL } from '../enrichments/enrichment.bl';
 import { MutePolicyBL } from '../mute-policies/mutePolicy.bl';
@@ -105,6 +106,11 @@ const resolvedSnapshotTtlMs = () =>
 // defaults to "now": with unchanged inputs the episode content is identical, but the
 // dense time axis can grow a new empty trailing bucket as now advances — the TTL
 // bounds how long that bucket can lag. Tests inherit 0 and bypass the cache.
+// Days of resolved alerts the hot resolved list holds (0 = all). Config/env, see
+// getAlertsConfig; read per rebuild so a test can change it without a restart.
+const resolvedWindowDays = () => getAlertsConfig().resolvedWindowDays;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 const analyticsCacheTtlMs = () =>
 	Number(process.env.ALERTS_ANALYTICS_CACHE_TTL_MS ?? process.env.ALERTS_SNAPSHOT_TTL_MS ?? 15_000);
 
@@ -262,8 +268,21 @@ export class AlertBL {
 		snapshotRefreshMs(),
 		{ fingerprint: activeListFingerprint }
 	);
+	// The hot resolved list: the last resolvedWindowDays of resolved alerts, which is what
+	// the Resolved tab's windows, its counts and every click-driven rebuild read. Bounded
+	// by age so the cost of a rebuild stops growing with the installation's history.
 	private readonly resolvedSnapshot = new SnapshotCache<Alert[]>(
-		() => this.computeAllResolvedAlerts(),
+		() => this.computeResolvedAlerts(this.resolvedCutoff()),
+		resolvedSnapshotTtlMs(),
+		snapshotRefreshMs()
+	);
+	// Every resolved alert, for reads whose window reaches past the hot cutoff ("All
+	// time" on the Resolved tab, the parameterless snapshot, analytics). Never dropped by
+	// a user action: writes only mark it stale, so it rebuilds in the background at most
+	// once per refresh window and no click waits on it. Unused while the window is 0 —
+	// resolvedArchive() then hands out the hot list, which already holds everything.
+	private readonly resolvedArchiveSnapshot = new SnapshotCache<Alert[]>(
+		() => this.computeResolvedAlerts(null),
 		resolvedSnapshotTtlMs(),
 		snapshotRefreshMs()
 	);
@@ -352,10 +371,49 @@ export class AlertBL {
 		this.ownersSnapshot.invalidate();
 	}
 
+	// Every user write below calls the narrowest of these, so a click only pays for the
+	// list it changed: silencing an active alert must not rebuild the resolved list, the
+	// expensive one. The analytics inputs are marked stale rather than dropped — Insights
+	// tolerates a refresh-window lag, and dropping them made every click re-read the whole
+	// history. invalidateSnapshots is the everything-at-once form.
+	invalidateActive(): void {
+		this.activeSnapshot.invalidate();
+		this.markHistoryStale();
+	}
+
+	invalidateResolved(): void {
+		this.resolvedSnapshot.invalidate();
+		this.resolvedArchiveSnapshot.markStale();
+		this.markHistoryStale();
+	}
+
+	// For a write that touched one alert wherever it lives: the list holding it is
+	// dropped, the other one is left alone.
+	private async invalidateListHolding(alertId: string): Promise<void> {
+		if (await this.alertRepo.getAlert(alertId)) this.invalidateActive();
+		else this.invalidateResolved();
+	}
+
+	// Incident membership is stamped on both lists. Members are nearly always active, so
+	// the active list is dropped and the resolved ones are only marked stale: a resolved
+	// member's folder shows up on the Resolved tab within the refresh window.
+	invalidateMemberships(): void {
+		this.activeSnapshot.invalidate();
+		this.resolvedSnapshot.markStale();
+		this.resolvedArchiveSnapshot.markStale();
+	}
+
+	private markHistoryStale(): void {
+		this.historyRowsSnapshot.markStale();
+		this.eventTimesSnapshot.markStale();
+	}
+
+	// Everything at once: rule edits (what every alert looks like) and the ingest drain.
 	invalidateSnapshots(): void {
 		this.ingestedSinceInvalidate = false;
 		this.activeSnapshot.invalidate();
 		this.resolvedSnapshot.invalidate();
+		this.resolvedArchiveSnapshot.markStale();
 		this.historyRowsSnapshot.invalidate();
 		this.eventTimesSnapshot.invalidate();
 	}
@@ -374,6 +432,7 @@ export class AlertBL {
 		this.ingestedSinceInvalidate = true;
 		this.activeSnapshot.markStale();
 		this.resolvedSnapshot.markStale();
+		this.resolvedArchiveSnapshot.markStale();
 		this.historyRowsSnapshot.markStale();
 		this.eventTimesSnapshot.markStale();
 	}
@@ -383,7 +442,28 @@ export class AlertBL {
 	}
 
 	async getResolvedAlertsSnapshot(): Promise<Snapshot<Alert[]>> {
-		return this.resolvedSnapshot.get();
+		return this.resolvedArchive().get();
+	}
+
+	// Start of the hot resolved window; null when the window is 0 (everything is hot).
+	private resolvedCutoff(): Date | null {
+		const days = resolvedWindowDays();
+		return days > 0 ? new Date(Date.now() - days * DAY_MS) : null;
+	}
+
+	private resolvedArchive(): SnapshotCache<Alert[]> {
+		return this.resolvedCutoff() === null ? this.resolvedSnapshot : this.resolvedArchiveSnapshot;
+	}
+
+	// Which resolved list answers a query: the hot one when the window starts inside it,
+	// the archive when it starts earlier or has no start. A resolved alert's archived_at
+	// is never earlier than the updatedAt the window test reads, so the hot list holds
+	// every match of a window that starts after the cutoff.
+	private resolvedSnapshotFor(query: Pick<AlertListQuery, 'from'>): SnapshotCache<Alert[]> {
+		const cutoff = this.resolvedCutoff();
+		if (cutoff === null) return this.resolvedSnapshot;
+		const from = query.from ? Date.parse(query.from) : Number.NaN;
+		return Number.isFinite(from) && from >= cutoff.getTime() ? this.resolvedSnapshot : this.resolvedArchiveSnapshot;
 	}
 
 	// One alert by id, read off the same cached lists the list endpoints serve — so it
@@ -393,8 +473,11 @@ export class AlertBL {
 	async findAlertById(alertId: string): Promise<AlertLookup | null> {
 		const active = (await this.activeSnapshot.get()).value.find((alert) => alert.id === alertId);
 		if (active) return { alert: active, resolved: false };
-		const resolved = (await this.resolvedSnapshot.get()).value.find((alert) => alert.id === alertId);
-		return resolved ? { alert: resolved, resolved: true } : null;
+		const recent = (await this.resolvedSnapshot.get()).value.find((alert) => alert.id === alertId);
+		if (recent) return { alert: recent, resolved: true };
+		if (this.resolvedCutoff() === null) return null;
+		const archived = (await this.resolvedArchiveSnapshot.get()).value.find((alert) => alert.id === alertId);
+		return archived ? { alert: archived, resolved: true } : null;
 	}
 
 	// Owner ids are numeric in the DB but string-typed on alerts; the engine compares
@@ -423,7 +506,10 @@ export class AlertBL {
 	}
 
 	async queryResolvedAlerts(query: AlertListQuery): Promise<AlertListPage> {
-		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.ownersSnapshot.get()]);
+		const [snapshot, owners] = await Promise.all([
+			this.resolvedSnapshotFor(query).get(),
+			this.ownersSnapshot.get(),
+		]);
 		const key = `${snapshot.etag}|${owners.etag}|${stableQueryKey(query)}`;
 		const cached = this.listQueryCache.get(key);
 		if (cached) return cached;
@@ -444,6 +530,8 @@ export class AlertBL {
 		return result;
 	}
 
+	// Resolved facets describe the hot window (the facets request carries no time range):
+	// the sidebar counts what the Resolved tab's default windows can show.
 	async getResolvedAlertFacets(filters: Record<string, string[]>, fields?: string[]): Promise<AlertFacetsResult> {
 		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.ownersSnapshot.get()]);
 		const key = `${snapshot.etag}|${owners.etag}|${stableQueryKey({ filters, fields })}`;
@@ -482,7 +570,10 @@ export class AlertBL {
 		groupBy: string[],
 		timeZone?: string
 	): Promise<AlertGroupSummaryNode[]> {
-		const [snapshot, owners] = await Promise.all([this.resolvedSnapshot.get(), this.ownersSnapshot.get()]);
+		const [snapshot, owners] = await Promise.all([
+			this.resolvedSnapshotFor(query).get(),
+			this.ownersSnapshot.get(),
+		]);
 		const key = `${snapshot.etag}|${owners.etag}|${stableQueryKey({ query, groupBy, timeZone })}`;
 		const cached = this.groupsCache.get(key);
 		if (cached) return cached;
@@ -793,7 +884,7 @@ export class AlertBL {
 	// has passed back to unsilenced, with a history entry so the timeline explains the flip.
 	private async expireSilences(): Promise<void> {
 		const expiredIds = await this.alertRepo.clearExpiredSilences(new Date().toISOString());
-		if (expiredIds.length > 0) this.invalidateSnapshots();
+		if (expiredIds.length > 0) this.invalidateActive();
 		if (expiredIds.length > 0) alertsUnsilencedTotal.inc(expiredIds.length);
 		await Promise.all(
 			expiredIds.map((id) =>
@@ -829,7 +920,7 @@ export class AlertBL {
 		// hour alone — they belong to the next day's reset.
 		await this.alertRepo.markSilenceResetCleared(occurrence.toISOString());
 		const clearedIds = await this.alertRepo.clearSilencesEstablishedBy(occurrence.toISOString());
-		if (clearedIds.length > 0) this.invalidateSnapshots();
+		if (clearedIds.length > 0) this.invalidateActive();
 		if (clearedIds.length > 0) alertsUnsilencedTotal.inc(clearedIds.length);
 		if (clearedIds.length > 0) {
 			logger.info(`Daily silence reset cleared ${clearedIds.length} silence(s)`);
@@ -849,7 +940,7 @@ export class AlertBL {
 		const settings = await this.alertRepo.updateSilenceResetSettings(updates);
 		// The next compute may run the daily reset under the new settings (e.g. a reset
 		// hour that has already passed today) — don't leave that behind a fresh snapshot.
-		this.invalidateSnapshots();
+		this.invalidateActive();
 		return settings;
 	}
 
@@ -938,7 +1029,7 @@ export class AlertBL {
 			// which is only correct when every stored value shares the same ISO-UTC format.
 			const normalizedSilencedUntil = silencedUntil ? toIsoUtc(silencedUntil) : null;
 			let alert = await this.alertRepo.silenceAlert(id, normalizedSilencedUntil);
-			this.invalidateSnapshots();
+			this.invalidateActive();
 			if (alert) {
 				alertsSilencedTotal.inc();
 				const description = normalizedSilencedUntil
@@ -965,7 +1056,7 @@ export class AlertBL {
 		try {
 			logger.info(`Marking alert as read: ${id}`);
 			const updated = await this.alertRepo.markAlertRead(id);
-			this.invalidateSnapshots();
+			this.invalidateActive();
 			return updated;
 		} catch (error) {
 			logger.error('Error marking alert as read', error);
@@ -977,7 +1068,7 @@ export class AlertBL {
 		try {
 			logger.info(`Unsilencing alert with id: ${id}`);
 			const alert = await this.alertRepo.unsilenceAlert(id);
-			this.invalidateSnapshots();
+			this.invalidateActive();
 			if (alert) {
 				alertsUnsilencedTotal.inc();
 				await this.recordHistoryEvent(id, AlertHistoryEventType.UNSILENCED, 'Alert unsilenced', actorName);
@@ -993,14 +1084,19 @@ export class AlertBL {
 
 	// region resolved
 	async getAllResolvedAlerts(): Promise<Alert[]> {
-		return (await this.resolvedSnapshot.get()).value;
+		return (await this.resolvedArchive().get()).value;
 	}
 
-	private async computeAllResolvedAlerts(): Promise<Alert[]> {
-		const endTimer = snapshotComputeDuration.startTimer({ list: 'resolved' });
+	// `cutoff` null builds the archive (every resolved alert), a date the hot list.
+	private async computeResolvedAlerts(cutoff: Date | null): Promise<Alert[]> {
+		const endTimer = snapshotComputeDuration.startTimer({ list: cutoff ? 'resolved' : 'resolved_archive' });
 		try {
-			logger.info('Fetching all resolved alerts');
-			let alerts = await this.resolvedAlertRepo.getAllResolvedAlerts();
+			logger.info(
+				cutoff ? `Fetching resolved alerts since ${cutoff.toISOString()}` : 'Fetching all resolved alerts'
+			);
+			let alerts = cutoff
+				? await this.resolvedAlertRepo.getResolvedAlertsSince(cutoff)
+				: await this.resolvedAlertRepo.getAllResolvedAlerts();
 			// Resolved alerts are enriched exactly like active ones. The added tags, links,
 			// summary and severity are how an alert is DESCRIBED, and that description
 			// shouldn't change the instant it resolves: the Resolved view would show raw
@@ -1068,7 +1164,7 @@ export class AlertBL {
 			return { resolved: await this.resolveActive(alertId, { sourceAlert: episode.alert }), created: false };
 		}
 		if (outcome === 'exists') return { resolved: false, created: false };
-		this.invalidateSnapshots();
+		this.invalidateResolved();
 		alertsResolvedTotal.inc({ mode: 'resolve_only' });
 		logger.info(`Recorded resolve-only episode for ${alertId} (${startsAt} → ${resolvedAt})`);
 		return { resolved: false, created: true };
@@ -1138,7 +1234,8 @@ export class AlertBL {
 
 			// Remove from active table
 			await this.alertRepo.deleteAlert(activeAlertId);
-			this.invalidateSnapshots();
+			this.invalidateActive();
+			this.invalidateResolved();
 			alertsResolvedTotal.inc({ mode: manualActor !== undefined ? 'manual' : 'auto' });
 
 			if (manualActor !== undefined) {
@@ -1153,7 +1250,7 @@ export class AlertBL {
 				const takesOwnership = manualActor.id != null && Number.isFinite(Number(manualActor.id));
 				if (takesOwnership) {
 					await this.resolvedAlertRepo.updateResolvedAlertOwner(activeAlertId, Number(manualActor.id));
-					this.invalidateSnapshots();
+					this.invalidateResolved();
 				}
 
 				// The alert as it now sits in the resolved table.
@@ -1204,7 +1301,8 @@ export class AlertBL {
 
 			// Delete alerts from active table
 			await this.alertRepo.deleteAlertsNotInIds(activeAlertIds, alertType);
-			this.invalidateSnapshots();
+			this.invalidateActive();
+			this.invalidateResolved();
 			if (alertsToResolve.length > 0) alertsResolvedTotal.inc({ mode: 'auto' }, alertsToResolve.length);
 
 			logger.info(`Resolved ${alertsToResolve.length} alerts`);
@@ -1246,7 +1344,8 @@ export class AlertBL {
 
 			await this.alertRepo.restoreAlert(alert);
 			await this.resolvedAlertRepo.deleteResolvedAlert(alertId);
-			this.invalidateSnapshots();
+			this.invalidateActive();
+			this.invalidateResolved();
 			await this.recordHistoryEvent(
 				alertId,
 				AlertHistoryEventType.UNRESOLVED,
@@ -1295,7 +1394,7 @@ export class AlertBL {
 				}
 				await this.emitCallback('deleted', snapshot, actor ?? { id: null, name: null });
 			}
-			this.invalidateSnapshots();
+			this.invalidateResolved();
 			return deleted > 0;
 		} catch (error) {
 			logger.error('Error deleting resolved alert', error);
@@ -1320,7 +1419,7 @@ export class AlertBL {
 		const to = query.to ?? new Date().toISOString();
 		const [activeSnapshot, resolvedSnapshot, historySnapshot, eventsSnapshot, ownersSnapshot] = await Promise.all([
 			this.activeSnapshot.get(),
-			this.resolvedSnapshot.get(),
+			this.resolvedArchive().get(),
 			this.historyRowsSnapshot.get(),
 			this.eventTimesSnapshot.get(),
 			this.ownersSnapshot.get(),
@@ -1503,7 +1602,8 @@ export class AlertBL {
 			const updated = isResolved
 				? await this.resolvedAlertRepo.updateResolvedAlertOwner(alertId, numericOwnerId)
 				: await this.alertRepo.updateAlertOwner(alertId, numericOwnerId);
-			this.invalidateSnapshots();
+			if (isResolved) this.invalidateResolved();
+			else this.invalidateActive();
 
 			if (updated) {
 				if (numericOwnerId !== null) {
@@ -1563,7 +1663,7 @@ export class AlertBL {
 		actorName?: string | null
 	): Promise<AlertComment> {
 		const created = await this.alertCommentsRepo.createComment(comment);
-		this.invalidateSnapshots();
+		await this.invalidateListHolding(comment.alertId);
 		await this.recordHistoryEvent(
 			comment.alertId,
 			AlertHistoryEventType.COMMENT_ADDED,
@@ -1583,13 +1683,15 @@ export class AlertBL {
 
 	async updateComment(id: string, userId: string, comment: string): Promise<AlertComment | null> {
 		const updated = await this.alertCommentsRepo.updateComment(id, userId, comment);
-		this.invalidateSnapshots();
+		if (updated) await this.invalidateListHolding(updated.alertId);
 		return updated;
 	}
 
 	async deleteComment(id: string, userId: string): Promise<void> {
 		await this.alertCommentsRepo.deleteComment(id, userId);
-		this.invalidateSnapshots();
+		// The comment is gone, so the alert it belonged to is unknown here: both lists.
+		this.invalidateActive();
+		this.invalidateResolved();
 	}
 
 	async getCommentsByAlertId(alertId: string): Promise<AlertComment[]> {

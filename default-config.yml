@@ -10,6 +10,15 @@ server:
 database:
   path: "/app/data/database/opsimate.db"  # Container path
 
+# Alerts configuration
+alerts:
+  # Resolved alerts from the last N days stay in the server's hot cache, which every
+  # list, count and click reads. Older resolved alerts are still kept and still shown
+  # (pick a wider time range on the Resolved tab); they come from a cache that only
+  # rebuilds in the background, so old history never slows the live page. 0 keeps
+  # every resolved alert hot. Env ALERTS_RESOLVED_WINDOW_DAYS overrides this.
+  resolved_window_days: 30
+
 # Security configuration
 security:
   private_keys_path: "/app/data/private-keys"  # Container path for SSH keys

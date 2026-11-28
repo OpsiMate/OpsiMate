@@ -368,6 +368,15 @@ export class AlertRepository {
 				this.db.prepare(`ALTER TABLE alerts ADD COLUMN silenced_at TEXT`).run();
 			}
 
+			// Every active-list rebuild first sweeps expired timed silences
+			// (clearExpiredSilences: is_dismissed = 1 AND silenced_until <= now), and
+			// retention purges active alerts by updated_at. Both were full scans of the
+			// active table on every rebuild.
+			this.db.exec(`
+				CREATE INDEX IF NOT EXISTS idx_alerts_silence_expiry ON alerts (is_dismissed, silenced_until);
+				CREATE INDEX IF NOT EXISTS idx_alerts_updated_at ON alerts (updated_at);
+			`);
+
 			// Repair: an alert id must never exist as both active and resolved. Ingestion used
 			// to re-insert a previously-resolved alert into the active table without dropping
 			// its resolved copy, so it showed up twice in the UI. The active row wins — the
